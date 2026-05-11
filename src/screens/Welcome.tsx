@@ -1,29 +1,74 @@
-import { ShieldCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import porty from '../assets/porty.png';
 
 type WelcomeProps = {
   setAppState: (s: string) => void;
 };
 
 export default function Welcome({ setAppState }: WelcomeProps) {
-  return (
-    <div className="max-w-md mx-auto bg-gradient-to-br from-blue-900 to-gray-900 h-screen overflow-hidden flex flex-col items-center justify-center font-sans border shadow-xl relative text-white">
-      <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 text-center space-y-6 px-8 w-full">
-        <div className="w-20 h-20 bg-white/10 rounded-3xl backdrop-blur-md flex items-center justify-center mx-auto mb-8 border border-white/20">
-          <ShieldCheck className="w-10 h-10 text-blue-400" />
-        </div>
-        <h1 className="text-4xl font-bold tracking-tight">WooriPort</h1>
-        <p className="text-blue-200 text-sm leading-relaxed">
-          나의 첫 자산관리 매니저,<br/>AI가 제안하는 완벽한 미래를 만나보세요.
+  const [isSplash, setIsSplash] = useState(true);
+  const [fadeOut, setFadeOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFadeOut(true);
+      setTimeout(() => setIsSplash(false), 500);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 스플래시 화면
+  if (isSplash) {
+    return (
+      <div
+        className={`max-w-md mx-auto bg-white h-screen flex flex-col items-center justify-center transition-opacity duration-500 ${
+          fadeOut ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        <img src={porty} alt="WooriPort 마스코트" className="w-48 h-48 object-contain mb-6" />
+        <h1
+          className="text-4xl font-bold text-blue-500 mb-2"
+          style={{ fontFamily: 'WooriDaum', fontWeight: 700 }}
+        >
+          WooriPort
+        </h1>
+        <p
+          className="text-blue-400 text-sm"
+          style={{ fontFamily: 'WooriDaum', fontWeight: 400 }}
+        >
+          나의 첫 자산관리 매니저
         </p>
-        <div className="pt-12 space-y-4 w-full">
-          <button onClick={() => setAppState('login')} className="w-full bg-white hover:bg-gray-100 text-blue-900 py-4 rounded-xl font-bold transition shadow-lg active:scale-95">
-            로그인
+      </div>
+    );
+  }
+
+  // 로그인/회원가입 화면
+  return (
+    <div className="max-w-md mx-auto bg-white h-screen flex flex-col items-center justify-center animate-in fade-in duration-500">
+      <h1
+        className="text-4xl font-bold text-blue-500 mb-16"
+        style={{ fontFamily: 'WooriDaum', fontWeight: 700 }}
+      >
+        WooriPort
+      </h1>
+
+      <div className="w-full px-12 space-y-5">
+        <button
+          onClick={() => setAppState('login')}
+          className="w-full border-2 border-blue-400 text-blue-500 py-3 rounded-lg font-semibold text-base transition hover:bg-blue-50 active:scale-95"
+          style={{ fontFamily: 'WooriDaum' }}
+        >
+          로그인
+        </button>
+
+        <div className="flex justify-center">
+          <button
+            onClick={() => setAppState('signup')}
+            className="text-blue-400 text-sm underline underline-offset-4 hover:text-blue-600 transition"
+            style={{ fontFamily: 'WooriDaum' }}
+          >
+            회원가입
           </button>
-          <div className="pt-4">
-            <button onClick={() => setAppState('signup')} className="text-sm text-blue-300 hover:text-white underline underline-offset-4 transition">
-              아직 계정이 없으신가요? 회원가입
-            </button>
-          </div>
         </div>
       </div>
     </div>
