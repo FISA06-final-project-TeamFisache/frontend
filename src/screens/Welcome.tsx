@@ -13,7 +13,7 @@ export default function Welcome({ setAppState }: WelcomeProps) {
         </div>
         <h1 className="text-4xl font-bold tracking-tight">WooriPort</h1>
         <p className="text-blue-200 text-sm leading-relaxed">
-          나의 모든 자산을 한곳에 모으고,<br/>AI가 제안하는 완벽한 미래를 만나보세요.
+          나의 첫 자산관리 매니저,<br/>AI가 제안하는 완벽한 미래를 만나보세요.
         </p>
         <div className="pt-12 space-y-4 w-full">
           <button onClick={() => setAppState('login')} className="w-full bg-white hover:bg-gray-100 text-blue-900 py-4 rounded-xl font-bold transition shadow-lg active:scale-95">
