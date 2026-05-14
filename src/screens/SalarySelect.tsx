@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Wallet, ArrowRight, CheckCircle2, Sparkles, AlertCircle, X, Loader2 } from 'lucide-react';
 
 const LINKED_ACCOUNTS = [
@@ -8,31 +10,25 @@ const LINKED_ACCOUNTS = [
 
 type LinkedAccount = typeof LINKED_ACCOUNTS[number];
 
-type SalarySelectProps = {
-  salaryAccount: LinkedAccount | null;
-  setSalaryAccount: (acc: LinkedAccount) => void;
-  showWooriNudge: boolean;
-  setShowWooriNudge: (v: boolean) => void;
-  showTransferDateModal: boolean;
-  setShowTransferDateModal: (v: boolean) => void;
-  showReadOnlyWarningModal: boolean;
-  setShowReadOnlyWarningModal: (v: boolean) => void;
-  transferDate: number;
-  setTransferDate: (v: number) => void;
-  isTransferSetting: boolean;
-  onWooriConfirm: () => void;
-  setAppState: (s: string) => void;
-};
+export default function SalarySelect() {
+  const navigate = useNavigate();
+  const [salaryAccount, setSalaryAccount] = useState<LinkedAccount | null>(null);
+  const [showWooriNudge, setShowWooriNudge] = useState(false);
+  const [showTransferDateModal, setShowTransferDateModal] = useState(false);
+  const [showReadOnlyWarningModal, setShowReadOnlyWarningModal] = useState(false);
+  const [transferDate, setTransferDate] = useState(25);
+  const [isTransferSetting, setIsTransferSetting] = useState(false);
 
-export default function SalarySelect({
-  salaryAccount, setSalaryAccount,
-  showWooriNudge, setShowWooriNudge,
-  showTransferDateModal, setShowTransferDateModal,
-  showReadOnlyWarningModal, setShowReadOnlyWarningModal,
-  transferDate, setTransferDate,
-  isTransferSetting, onWooriConfirm,
-  setAppState,
-}: SalarySelectProps) {
+  const handleWooriConfirm = () => {
+    setIsTransferSetting(true);
+    // TODO: 실제 자동이체 등록 API로 교체
+    setTimeout(() => {
+      setIsTransferSetting(false);
+      setShowTransferDateModal(false);
+      navigate('/prompt');
+    }, 1500);
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-50 h-screen overflow-hidden flex flex-col font-sans border shadow-xl relative">
       <div className="px-6 py-8 flex flex-col h-full animate-in slide-in-from-right duration-300">
@@ -136,7 +132,7 @@ export default function SalarySelect({
                 </select>
               </div>
             </div>
-            <button onClick={onWooriConfirm} disabled={isTransferSetting} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-4 rounded-xl text-lg font-bold shadow-md transition flex items-center justify-center gap-2 active:scale-95">
+            <button onClick={handleWooriConfirm} disabled={isTransferSetting} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-4 rounded-xl text-lg font-bold shadow-md transition flex items-center justify-center gap-2 active:scale-95">
               {isTransferSetting ? <><Loader2 className="w-5 h-5 animate-spin" /> 설정 중...</> : '이 날짜로 설정 완료'}
             </button>
           </div>
@@ -157,7 +153,7 @@ export default function SalarySelect({
               <button onClick={() => { setShowReadOnlyWarningModal(false); setShowWooriNudge(true); }} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition shadow-md active:scale-95">
                 우리은행 계좌 연결하기
               </button>
-              <button onClick={() => { setShowReadOnlyWarningModal(false); setAppState('onboarding_survey'); }} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3.5 rounded-xl font-bold transition active:scale-95">
+              <button onClick={() => { setShowReadOnlyWarningModal(false); navigate('/prompt'); }} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3.5 rounded-xl font-bold transition active:scale-95">
                 조회 전용으로 계속하기
               </button>
             </div>

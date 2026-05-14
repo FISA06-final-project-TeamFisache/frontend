@@ -1,11 +1,20 @@
+import { useState } from 'react';
 import { Link2, CheckCircle2, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-type LinkingProps = {
-  isLinking: boolean;
-  onLinkAccounts: () => void;
-};
+export default function Linking() {
+  const navigate = useNavigate();
+  const [isLinking, setIsLinking] = useState(false);
 
-export default function Linking({ isLinking, onLinkAccounts }: LinkingProps) {
+  const handleLinkAccounts = () => {
+    setIsLinking(true);
+    // TODO: 실제 마이데이터 연동 API로 교체
+    setTimeout(() => {
+      setIsLinking(false);
+      navigate('/salary-select');
+    }, 2000);
+  };
+
   return (
     <div className="max-w-md mx-auto bg-white h-screen overflow-hidden flex flex-col font-sans border shadow-xl">
       <div className="flex-1 px-6 py-12 flex flex-col animate-in slide-in-from-right duration-300">
@@ -28,7 +37,7 @@ export default function Linking({ isLinking, onLinkAccounts }: LinkingProps) {
           ))}
         </div>
 
-        <button onClick={onLinkAccounts} disabled={isLinking} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 mt-6 transition shadow-lg shadow-blue-200 active:scale-95">
+        <button onClick={handleLinkAccounts} disabled={isLinking} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 mt-6 transition shadow-lg shadow-blue-200 active:scale-95">
           {isLinking ? <><Loader2 className="w-5 h-5 animate-spin" /> 데이터를 불러오는 중...</> : '1분 만에 모두 연결하기'}
         </button>
       </div>

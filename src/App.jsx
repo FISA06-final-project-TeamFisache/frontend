@@ -1,77 +1,83 @@
-﻿import React, { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import Welcome from './screens/Welcome';
 import Login from './screens/Login';
 import Signup from './screens/Signup';
 import Linking from './screens/Linking';
 import SalarySelect from './screens/SalarySelect';
-import OnboardingSurvey from './screens/OnboardingSurvey';
-import AccountSetup from './screens/AccountSetup';
+import SeedMoneySurvey from './screens/SeedMoneySurvey';
 import Prompt from './screens/Prompt';
 import Main from './screens/Main';
 import { formatAmount, getGoalTitle } from './utils/helpers';
-import { ETF_CATALOG, LOAN_CATALOG } from './data/mockData';
+import { ETF_CATALOG } from './data/mockData';
+import { useAuth } from './contexts/AuthContext';
+import { useAccounts } from './contexts/AccountsContext';
+import { useWizard } from './contexts/WizardContext';
 
 
 export default function App() {
-  // App State
-  const [appState, setAppState] = useState('welcome');
-  const [loginData, setLoginData] = useState({ id: '', password: '' });
-  const [isLinking, setIsLinking] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  // 토큰 없으면 인증 라우트만 보여줌
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/" element={<Welcome />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  // 인증된 사용자: 라우트로 분리된 페이지 + 그 외는 state 기반 MainApp
+  return (
+    <Routes>
+      <Route path="/linking" element={<Linking />} />
+      <Route path="/salary-select" element={<SalarySelect />} />
+      <Route path="/seed-money-survey" element={<SeedMoneySurvey />} />
+      <Route path="/prompt" element={<Prompt />} />
+      <Route path="/*" element={<MainApp />} />
+    </Routes>
+  );
+}
+
+function MainApp() {
+  const { logout } = useAuth();
+  // 공유 state: AccountsContext에서 가져옴
+  const { availableAccounts, setAvailableAccounts, routingSetup, setRoutingSetup } = useAccounts();
+
+  // 위저드/목표 편집 state: WizardContext에서 가져옴
+  const {
+    goal, setGoal, goalAmount, setGoalAmount, goalPeriod, setGoalPeriod,
+    initialInvestment, setInitialInvestment, initialFundingAccount, setInitialFundingAccount,
+    goalRoutingPercent, setGoalRoutingPercent, tempRoutingSetup, setTempRoutingSetup,
+    monthlyContribution, setMonthlyContribution,
+    stock, setStock, bond, setBond, cash, setCash, loan, setLoan,
+    selectedStock, setSelectedStock, selectedLoan, setSelectedLoan, selectedBank, setSelectedBank,
+    editingGoalId, setEditingGoalId,
+    resetWizard,
+  } = useWizard();
+
+  // 회원 정보(추후 유저 API 연동) - signupData는 호환용으로 남겨둠
   const [signupData, setSignupData] = useState({ name: '', id: '', password: '' });
-  const [salaryAccount, setSalaryAccount] = useState(null); 
-  const [showWooriNudge, setShowWooriNudge] = useState(false); 
-  const [isTransferSetting, setIsTransferSetting] = useState(false); 
-  const [showTransferDateModal, setShowTransferDateModal] = useState(false);
-  const [transferDate, setTransferDate] = useState(25);
-  const [showReadOnlyWarningModal, setShowReadOnlyWarningModal] = useState(false);
 
-  // 동적 사용가능 계좌 목록
-  const [availableAccounts, setAvailableAccounts] = useState([
-    { id: 'acc_inv1', name: '한국투자증권 (종합CMA)', type: '주식' },
-    { id: 'acc_inv2', name: 'KB증권 (채권형)', type: '채권' },
-    { id: 'acc_inv3', name: '토스증권 (소수점)', type: '주식' },
-    { id: 'acc_bank1', name: '카카오뱅크 (입출금)', type: '현금' },
-    { id: 'acc_bank2', name: '신한은행 (주택청약)', type: '현금' },
-    { id: 'acc_bank3', name: '우리은행 (파킹통장)', type: '현금' }
-  ]);
+  // Goals (목표 목록은 메인앱 도메인이므로 여기 유지)
+  const [goals, setGoals] = useState([]);
+  const [activeGoalId, setActiveGoalId] = useState(null);
 
-  // 월급 분배 라우팅 설정 State (온보딩 및 글로벌)
-  const [routingSetup, setRoutingSetup] = useState([
-    { id: 1, accountId: 'acc_inv1', tag: '메인 투자 계좌', percent: 40 },
-    { id: 2, accountId: 'acc_inv2', tag: '안전 채권형', percent: 40 },
-    { id: 3, accountId: 'acc_bank1', tag: '비상금 파킹', percent: 20 }
-  ]);
-
-  // Multiple Goals State
-  const [goals, setGoals] = useState([]); 
-  const [activeGoalId, setActiveGoalId] = useState(null); 
-  const [editingGoalId, setEditingGoalId] = useState(null); 
-
-  // Navigation & Wizard State
-  const [activeTab, setActiveTab] = useState('home');
-  const [wizardStep, setWizardStep] = useState(1);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false); 
-  const [wizardPriority, setWizardPriority] = useState(1); 
-  
-  // Temporary Wizard/Simulator Data States
-  const [goal, setGoal] = useState('');
-  const [goalAmount, setGoalAmount] = useState(10000); 
-  const [goalPeriod, setGoalPeriod] = useState(4); 
-  
-  // 새로 추가된 자금 설정
-  const [initialInvestment, setInitialInvestment] = useState(0); 
-  const [initialFundingAccount, setInitialFundingAccount] = useState(availableAccounts[3]); 
-  const [goalRoutingPercent, setGoalRoutingPercent] = useState(0); 
-  const [tempRoutingSetup, setTempRoutingSetup] = useState([]); 
-  const [monthlyContribution, setMonthlyContribution] = useState(0); // 금액 자동 계산
-  
-  const [stock, setStock] = useState(40);
-  const [bond, setBond] = useState(40);
-  const [cash, setCash] = useState(20);
-  const [loan, setLoan] = useState(0); 
-  const [selectedStock, setSelectedStock] = useState(ETF_CATALOG[4]); 
-  const [selectedLoan, setSelectedLoan] = useState(LOAN_CATALOG[0]); 
-  const [selectedBank, setSelectedBank] = useState(availableAccounts[3]); 
+  // Navigation: activeTab은 URL로 동기화 - /wizard/* 도 wizard로 인식
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = location.pathname.startsWith('/wizard') ? 'wizard'
+                  : location.pathname === '/simulator' ? 'simulator'
+                  : 'home';
+  const setActiveTab = (tab) => {
+    if (tab === 'home') navigate('/');
+    else navigate(`/${tab}`);
+  };
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [wizardPriority, setWizardPriority] = useState(1);
   
   // Modal States
   const [showKafkaModal, setShowKafkaModal] = useState(false);
@@ -100,14 +106,11 @@ export default function App() {
   const [aiReport, setAiReport] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Survey States (MBTI)
+  // Survey States (MBTI) - survey 자체는 OnboardingSurvey 페이지에서 관리, 여기는 모달용
   const [showSurveyModal, setShowSurveyModal] = useState(false);
-  const [surveyStep, setSurveyStep] = useState(0); 
-  const [surveyAnswers, setSurveyAnswers] = useState([]);
-  const [pendingEditGoal, setPendingEditGoal] = useState(null); 
+  const [pendingEditGoal, setPendingEditGoal] = useState(null);
 
-  // 리밸런싱 다시 설정 흐름 제어용 State 추가
-  const [routingFlowContext, setRoutingFlowContext] = useState('onboarding'); // 'onboarding' 또는 'edit'
+  // 리밸런싱 다시 설정 흐름 - URL 쿼리(?context=edit)로 전달
   const [showRoutingChoiceModal, setShowRoutingChoiceModal] = useState(false);
 
   // 계좌 개설 Modal States
@@ -155,42 +158,9 @@ export default function App() {
     setTouchEndX(0);
   };
 
+  // 위저드 단계 간 이동은 브라우저 뒤로가기로 동작 (각 단계가 별도 라우트)
   const handleGoBack = () => {
-    if (activeTab === 'simulator') {
-      if (editingGoalId) {
-        setActiveTab('home');
-        setEditingGoalId(null);
-      } else {
-        setActiveTab('wizard');
-      }
-    } else if (activeTab === 'wizard') {
-      if (editingGoalId) {
-         if (wizardStep === 2) {
-           setActiveTab('home');
-           setEditingGoalId(null);
-         } else if (wizardStep === 3) {
-           setWizardStep(2);
-         } else if (wizardStep === 4) {
-           setWizardStep(3);
-         } else if (wizardStep === 6) {
-           setWizardStep(4);
-         }
-      } else {
-        if (wizardStep === 6) {
-          setWizardStep(4);
-        } else if (wizardStep === 5) {
-          setWizardStep(4);
-        } else if (wizardStep === 4) {
-          setWizardStep(3);
-        } else if (wizardStep === 3) {
-          setWizardStep(2);
-        } else if (wizardStep === 2) {
-          setWizardStep(1);
-        } else if (wizardStep === 1) {
-          setActiveTab('home');
-        }
-      }
-    }
+    navigate(-1);
   };
 
   const handleSliderChange = (type, newValue) => {
@@ -325,8 +295,7 @@ export default function App() {
     setSelectedBank(goalToEdit.selectedBank || availableAccounts[3]);
     
     setRevealedGoalId(null);
-    setWizardStep(2);
-    setActiveTab('wizard');
+    navigate('/wizard/budget');
   };
 
   const handleDeleteGoal = (goalId) => {
@@ -350,27 +319,17 @@ export default function App() {
       return;
     }
 
-    setGoal('');
-    setGoalAmount(10000);
-    setGoalPeriod(4);
-    
-    // 새로 추가된 자금 관련 초기화
-    setInitialInvestment(0);
+    // WizardContext의 모든 위저드 state 초기화
+    resetWizard();
+    // tempRoutingSetup은 현재 라우팅으로 시작
+    setTempRoutingSetup(routingSetup);
+    // 일부는 명시적으로 (현금 계좌 + 시장 ETF)
     setInitialFundingAccount(availableAccounts[3]);
-    setGoalRoutingPercent(0);
-    setTempRoutingSetup(routingSetup); // 현재 라우팅 설정을 임시 변수에 복사
-    setMonthlyContribution(0);
-    
-    setStock(40); setBond(40); setCash(20); setLoan(0);
     setSelectedStock(ETF_CATALOG.find(e => e.id === 'market1'));
-    setSelectedLoan(LOAN_CATALOG[0]);
     setSelectedBank(availableAccounts.find(a => a.type === '현금') || availableAccounts[3]);
-    setEditingGoalId(null); 
-    
-    setWizardStep(1); 
+
     setWizardPriority(1);
-    
-    setActiveTab('wizard');
+    navigate('/wizard');
   };
 
   const handleFinalConfirm = () => {
@@ -468,18 +427,10 @@ export default function App() {
     }
   };
 
-  const handleLinkAccounts = () => {
-    setIsLinking(true);
-    setTimeout(() => {
-      setIsLinking(false);
-      setAppState('salary_select'); 
-    }, 2000);
-  };
 
   const handleDeleteAccount = () => {
     // 모든 계정 정보 및 목표, 설정 초기화
     setSignupData({ name: '', id: '', password: '' });
-    setLoginData({ id: '', password: '' });
     setGoals([]);
     setRoutingSetup([
       { id: 1, accountId: 'acc_inv1', tag: '메인 투자 계좌', percent: 40 },
@@ -489,53 +440,30 @@ export default function App() {
     setSalaryAccount(null);
     setActiveGoalId(null);
     setEditingGoalId(null);
-    
-    // 모달 닫기 및 로그인 화면으로 이동
+
+    // 모달 닫기 및 로그아웃 (토큰 제거 → 인증 라우트로 자동 이동)
     setShowDeleteAccountModal(false);
     setIsDrawerOpen(false);
-    setAppState('welcome');
     setActiveTab('home');
+    logout();
   };
 
-  const handleWooriAutoTransfer = () => {
-    setIsTransferSetting(true);
-    setTimeout(() => {
-      setIsTransferSetting(false);
-      setShowWooriNudge(false);
-      setAppState('onboarding_survey'); 
-    }, 1500);
-  };
-
-  const handleWooriAutoTransferConfirm = () => {
-    setIsTransferSetting(true);
-    setTimeout(() => {
-      setIsTransferSetting(false);
-      setShowTransferDateModal(false);
-      setAppState('onboarding_survey'); 
-    }, 1500);
-  };
-
+  // 새 통장 개설 - 시뮬레이터/초기 자금 컨텍스트 (라우팅 컨텍스트는 AccountSetup 페이지가 자체 처리)
   const handleCreateNewAccount = () => {
     const newBaseAcc = { id: `toss_divide_${Date.now()}`, name: '토스뱅크 (나눠모으기)', type: '현금' };
-    let updatedAccounts = [...availableAccounts, newBaseAcc];
-
+    const updatedAccounts = [...availableAccounts, newBaseAcc];
     if (createFxAccount) {
-      const newFxAcc = { id: `toss_fx_${Date.now()}`, name: '토스뱅크 (외환)', type: '외환' };
-      updatedAccounts.push(newFxAcc);
+      updatedAccounts.push({ id: `toss_fx_${Date.now()}`, name: '토스뱅크 (외환)', type: '외환' });
     }
-
     setAvailableAccounts(updatedAccounts);
-    
-    if (newAccountContext === 'routing') {
-      setTempRoutingSetup(tempRoutingSetup.map(item => item.id === targetRoutingId ? { ...item, accountId: newBaseAcc.id } : item));
-      setRoutingSetup(routingSetup.map(item => item.id === targetRoutingId ? { ...item, accountId: newBaseAcc.id } : item));
-    } else if (newAccountContext === 'simulator') {
+
+    if (newAccountContext === 'simulator') {
       setSelectedBank(newBaseAcc);
       setShowBankModal(false);
     } else if (newAccountContext === 'initial_funding') {
       setInitialFundingAccount(newBaseAcc);
     }
-    
+
     setShowNewAccountModal(false);
     setCreateFxAccount(false);
     setNewAccountContext(null);
@@ -578,24 +506,6 @@ export default function App() {
       });
   };
 
-  const handleSurveyAnswer = (score) => {
-    const newAnswers = [...surveyAnswers, score];
-    setSurveyAnswers(newAnswers);
-
-    if (surveyStep === 0) {
-      setSurveyStep(1);
-    } else {
-      setSurveyStep(2); 
-    }
-  };
-
-  const getSurveyResult = () => {
-    const totalScore = surveyAnswers.reduce((a, b) => a + b, 0);
-    if (totalScore === 2) return { title: '야수의 심장 (공격투자형)', stock: 80, bond: 10, cash: 10, desc: '고수익을 위해 변동성을 감내하는 공격적 투자 성향입니다.' };
-    if (totalScore === 1) return { title: '신중한 호랑이 (중도형)', stock: 50, bond: 30, cash: 20, desc: '적절한 성장과 안정성을 동시에 추구하는 밸런스형 성향입니다.' };
-    return { title: '흔들리지 않는 바위 (안정형)', stock: 20, bond: 60, cash: 20, desc: '원금 보존과 안정적인 수익을 최우선으로 생각하는 성향입니다.' };
-  };
-
   const handleNotificationClick = (notif) => {
     // 읽음 처리
     setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
@@ -615,87 +525,17 @@ export default function App() {
     setShowNotificationsModal(false);
   };
 
-  // ==========================================
-  // 온보딩 뷰
-  // ==========================================
-  if (appState === 'welcome') {
-    return <Welcome setAppState={setAppState} />;
-  }
+  // Prompt에서 '자산 설계 시작' 클릭 시 ?action=wizard 로 진입 → 위저드 시작
+  // (위저드 단계 간 이동은 이제 라우트로 처리되므로 step/goal 파라미터는 불필요)
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('action') === 'wizard') {
+      startWizard();
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
-  if (appState === 'login') {
-    return <Login loginData={loginData} setLoginData={setLoginData} setAppState={setAppState} />;
-  }
-
-  if (appState === 'signup') {
-    return <Signup signupData={signupData} setSignupData={setSignupData} setAppState={setAppState} />;
-  }
-
-  if (appState === 'linking') {
-    return <Linking isLinking={isLinking} onLinkAccounts={handleLinkAccounts} />;
-  }
-
-  if (appState === 'salary_select') {
-    return (
-      <SalarySelect
-        salaryAccount={salaryAccount}
-        setSalaryAccount={setSalaryAccount}
-        showWooriNudge={showWooriNudge}
-        setShowWooriNudge={setShowWooriNudge}
-        showTransferDateModal={showTransferDateModal}
-        setShowTransferDateModal={setShowTransferDateModal}
-        showReadOnlyWarningModal={showReadOnlyWarningModal}
-        setShowReadOnlyWarningModal={setShowReadOnlyWarningModal}
-        transferDate={transferDate}
-        setTransferDate={setTransferDate}
-        isTransferSetting={isTransferSetting}
-        onWooriConfirm={handleWooriAutoTransferConfirm}
-        setAppState={setAppState}
-      />
-    );
-  }
-  if (appState === 'onboarding_survey') {
-    return (
-      <OnboardingSurvey
-        surveyStep={surveyStep}
-        surveyAnswers={surveyAnswers}
-        routingFlowContext={routingFlowContext}
-        availableAccounts={availableAccounts}
-        onSurveyAnswer={handleSurveyAnswer}
-        setRoutingSetup={setRoutingSetup}
-        setAppState={setAppState}
-        setRoutingFlowContext={setRoutingFlowContext}
-      />
-    );
-  }
-  if (appState === 'account_setup') {
-    return (
-      <AccountSetup
-        routingSetup={routingSetup}
-        setRoutingSetup={setRoutingSetup}
-        availableAccounts={availableAccounts}
-        routingFlowContext={routingFlowContext}
-        setRoutingFlowContext={setRoutingFlowContext}
-        showNewAccountModal={showNewAccountModal}
-        setShowNewAccountModal={setShowNewAccountModal}
-        createFxAccount={createFxAccount}
-        setCreateFxAccount={setCreateFxAccount}
-        setTargetRoutingId={setTargetRoutingId}
-        setNewAccountContext={setNewAccountContext}
-        onCreateNewAccount={handleCreateNewAccount}
-        setAppState={setAppState}
-      />
-    );
-  }
-  if (appState === 'prompt') {
-    return (
-      <Prompt
-        userName={signupData.name}
-        setAppState={setAppState}
-        startWizard={startWizard}
-        setActiveTab={setActiveTab}
-      />
-    );
-  }
   return (
     <Main
       signupData={signupData}
@@ -710,8 +550,6 @@ export default function App() {
       setNotifications={setNotifications}
       showNotificationsModal={showNotificationsModal}
       setShowNotificationsModal={setShowNotificationsModal}
-      wizardStep={wizardStep}
-      setWizardStep={setWizardStep}
       goal={goal}
       setGoal={setGoal}
       goalAmount={goalAmount}
@@ -796,10 +634,6 @@ export default function App() {
       setTargetRoutingId={setTargetRoutingId}
       selectedReport={selectedReport}
       setSelectedReport={setSelectedReport}
-      setSurveyStep={setSurveyStep}
-      setSurveyAnswers={setSurveyAnswers}
-      setAppState={setAppState}
-      setRoutingFlowContext={setRoutingFlowContext}
       startWizard={startWizard}
       handleGoBack={handleGoBack}
       handleFinalConfirm={handleFinalConfirm}

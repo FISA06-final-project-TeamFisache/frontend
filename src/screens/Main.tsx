@@ -6,11 +6,13 @@ import {
   UserPlus, Copy, MessageCircle, Globe, Lightbulb, Plus, Trash2, Brain, History,
   MoreHorizontal, Edit2
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Home from './Home';
 import Wizard from './Wizard';
 import Simulator from './Simulator';
 import { ETF_CATALOG, LOAN_CATALOG, MOCK_DISCOVERED_ACCOUNTS, TRANSFER_HISTORY } from '../data/mockData';
 import { getGoalTitle, formatAmount } from '../utils/helpers';
+import { useAuth } from '../contexts/AuthContext';
 
 type Account = { id: string; name: string; type: string };
 type ETF = { id: string; category: string; name: string; type: string; tag: string; color: string; bg: string; returnRate: number; mddRisk: number; rank: number };
@@ -32,8 +34,6 @@ type MainProps = {
   setNotifications: (n: Notification[]) => void;
   showNotificationsModal: boolean;
   setShowNotificationsModal: (v: boolean) => void;
-  wizardStep: number;
-  setWizardStep: (s: number) => void;
   goal: string;
   setGoal: (g: string) => void;
   goalAmount: number;
@@ -118,10 +118,6 @@ type MainProps = {
   setTargetRoutingId: (id: number | string | null) => void;
   selectedReport: string | null;
   setSelectedReport: (r: string | null) => void;
-  setSurveyStep: (s: number) => void;
-  setSurveyAnswers: (a: number[]) => void;
-  setAppState: (s: string) => void;
-  setRoutingFlowContext: (ctx: string) => void;
   startWizard: () => void;
   handleGoBack: () => void;
   handleFinalConfirm: () => void;
@@ -145,7 +141,6 @@ export default function Main({
   activeTab, setActiveTab,
   isDrawerOpen, setIsDrawerOpen,
   notifications, setNotifications, showNotificationsModal, setShowNotificationsModal,
-  wizardStep, setWizardStep,
   goal, setGoal, goalAmount, setGoalAmount, goalPeriod, setGoalPeriod,
   initialInvestment, setInitialInvestment, initialFundingAccount, setInitialFundingAccount,
   goalRoutingPercent, setGoalRoutingPercent,
@@ -173,13 +168,14 @@ export default function Main({
   showNewAccountModal, setShowNewAccountModal, createFxAccount, setCreateFxAccount,
   newAccountContext, setNewAccountContext, targetRoutingId, setTargetRoutingId,
   selectedReport, setSelectedReport,
-  setSurveyStep, setSurveyAnswers, setAppState, setRoutingFlowContext,
   startWizard, handleGoBack, handleFinalConfirm, handleEditPortfolio,
   handleFullEditGoal, handleDeleteGoal, handleCompleteGoal, handleDeleteAccount,
   onSliderChange, generateAiReport, handleNotificationClick,
   handleFindAccounts, handleSelectDiscoveredAccount, handleCreateNewAccount,
   canCreateMore, getPaydayAccounts,
 }: MainProps) {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const displayGoals = [...goals].sort((a, b) => a.priority - b.priority);
 
   const filteredCatalog = ETF_CATALOG.filter(etf => {
@@ -250,38 +246,7 @@ export default function Main({
             startWizard={startWizard}
           />
         )}
-        {activeTab === 'wizard' && (
-          <Wizard
-            wizardStep={wizardStep}
-            setWizardStep={setWizardStep}
-            goal={goal}
-            setGoal={setGoal}
-            goalAmount={goalAmount}
-            setGoalAmount={setGoalAmount}
-            goalPeriod={goalPeriod}
-            setGoalPeriod={setGoalPeriod}
-            initialInvestment={initialInvestment}
-            setInitialInvestment={setInitialInvestment}
-            initialFundingAccount={initialFundingAccount}
-            setInitialFundingAccount={setInitialFundingAccount}
-            goalRoutingPercent={goalRoutingPercent}
-            setGoalRoutingPercent={setGoalRoutingPercent}
-            tempRoutingSetup={tempRoutingSetup}
-            setTempRoutingSetup={setTempRoutingSetup}
-            monthlyContribution={monthlyContribution}
-            setMonthlyContribution={setMonthlyContribution}
-            availableAccounts={availableAccounts}
-            ETF_CATALOG={ETF_CATALOG}
-            setStock={v => onSliderChange('stock', v)}
-            setBond={v => onSliderChange('bond', v)}
-            setCash={v => onSliderChange('cash', v)}
-            setLoan={v => onSliderChange('loan', v)}
-            setSelectedStock={setSelectedStock}
-            setActiveTab={setActiveTab}
-            setLinkModalStep={setLinkModalStep}
-            setShowLinkNewAccountModal={setShowLinkNewAccountModal}
-          />
-        )}
+        {activeTab === 'wizard' && <Wizard />}
         {activeTab === 'simulator' && (
           <Simulator
             stock={stock}
@@ -407,7 +372,7 @@ export default function Main({
               </section>
             </div>
             <div className="p-5 border-t border-gray-100 flex justify-between items-center">
-              <button onClick={() => { setIsDrawerOpen(false); setAppState('welcome'); }} className="text-sm font-bold text-gray-400 hover:text-gray-600">로그아웃</button>
+              <button onClick={() => { setIsDrawerOpen(false); logout(); }} className="text-sm font-bold text-gray-400 hover:text-gray-600">로그아웃</button>
               <button onClick={() => setShowDeleteAccountModal(true)} className="text-xs font-medium text-red-400 hover:text-red-500 transition underline underline-offset-2">회원탈퇴</button>
             </div>
           </div>
@@ -576,7 +541,7 @@ export default function Main({
                 </p>
                 <div className="flex flex-col gap-2">
                   <button onClick={() => { if (displayGoals.length > 0) handleEditPortfolio(displayGoals[0], true); else setShowAiReportModal(true); }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl text-sm font-bold shadow-sm transition flex justify-center items-center gap-2 active:scale-95">✨ AI 추천 비율로 리밸런싱 적용</button>
-                  <button onClick={() => { if (displayGoals.length > 0) { handleEditPortfolio(displayGoals[0], false); } else { setSelectedReport(null); setAppState('account_setup'); } }} className="w-full bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 py-3 rounded-xl text-sm font-bold transition flex justify-center items-center gap-2 active:scale-95">⚖️ 내가 직접 비율/상품 수정하기</button>
+                  <button onClick={() => { if (displayGoals.length > 0) { handleEditPortfolio(displayGoals[0], false); } else { setSelectedReport(null); navigate('/wizard'); } }} className="w-full bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 py-3 rounded-xl text-sm font-bold transition flex justify-center items-center gap-2 active:scale-95">⚖️ 내가 직접 비율/상품 수정하기</button>
                 </div>
               </div>
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
@@ -915,8 +880,7 @@ export default function Main({
             <h3 className="font-bold text-xl text-gray-900 mb-2">월급 리밸런싱 설정</h3>
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">나만의 라이프스타일(추구미) 진단을 다시 진행하고 비율을 추천받을 수 있습니다.</p>
             <div className="flex flex-col gap-2">
-              <button onClick={() => { setShowRoutingChoiceModal(false); setRoutingFlowContext('edit'); setSurveyStep(0); setSurveyAnswers([]); setAppState('onboarding_survey'); }} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold transition shadow-md active:scale-95">진단 다시 받고 추천 비율 적용</button>
-              <button onClick={() => { setShowRoutingChoiceModal(false); setRoutingFlowContext('edit'); setAppState('account_setup'); }} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3.5 rounded-xl font-bold transition active:scale-95">기존 비율에서 직접 수정하기</button>
+              <button onClick={() => { setShowRoutingChoiceModal(false); navigate('/seed-money-survey'); }} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold transition shadow-md active:scale-95">진단 다시 받고 추천 비율 적용</button>
             </div>
             <button onClick={() => setShowRoutingChoiceModal(false)} className="mt-4 text-xs font-bold text-gray-400 hover:text-gray-600 underline underline-offset-2 p-2 transition">취소</button>
           </div>
