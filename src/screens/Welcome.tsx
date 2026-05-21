@@ -1,25 +1,31 @@
-import { ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import heroImg from '../assets/hero.png';
 
 export default function Welcome() {
   const navigate = useNavigate();
+
   return (
-    <div className="max-w-md mx-auto bg-gradient-to-br from-blue-900 to-gray-900 h-screen overflow-hidden flex flex-col items-center justify-center font-sans border shadow-xl relative text-white">
-      <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 text-center space-y-6 px-8 w-full">
-        <div className="w-20 h-20 bg-white/10 rounded-3xl backdrop-blur-md flex items-center justify-center mx-auto mb-8 border border-white/20">
-          <ShieldCheck className="w-10 h-10 text-blue-400" />
-        </div>
-        <h1 className="text-4xl font-bold tracking-tight">WooriPort</h1>
-        <p className="text-blue-200 text-sm leading-relaxed">
-          나의 모든 자산을 한곳에 모으고,<br/>AI가 제안하는 완벽한 미래를 만나보세요.
-        </p>
-        <div className="pt-12 space-y-4 w-full">
-          <button onClick={() => navigate('/login')} className="w-full bg-white hover:bg-gray-100 text-blue-900 py-4 rounded-xl font-bold transition shadow-lg active:scale-95">
-            로그인
-          </button>
-          <div className="pt-4">
-            <button onClick={() => navigate('/signup')} className="text-sm text-blue-300 hover:text-white underline underline-offset-4 transition">
-              아직 계정이 없으신가요? 회원가입
+    <div className="min-h-screen bg-gray-200 flex justify-center font-sans">
+      <div className="w-full max-w-[390px] min-h-screen bg-white flex flex-col items-center justify-center shadow-2xl relative overflow-hidden">
+        <div className="flex flex-col items-center justify-center flex-1 w-full px-10 gap-2">
+          <img src={heroImg} alt="WooriPort 마스코트" className="w-52 h-52 object-contain mb-4" />
+
+          <h1 className="text-3xl font-bold text-blue-500 tracking-tight">WooriPort</h1>
+          <p className="text-sm text-gray-400 mb-12">나의 첫 자산관리 !</p>
+
+          <div className="w-full flex flex-col items-center gap-4">
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full border border-gray-300 rounded-2xl py-4 text-gray-700 font-medium hover:bg-gray-50 active:scale-95 transition"
+            >
+              로그인
+            </button>
+
+            <button
+              onClick={() => navigate('/signup')}
+              className="text-sm text-blue-400 underline underline-offset-4 hover:text-blue-600 transition"
+            >
+              회원가입
             </button>
           </div>
         </div>
