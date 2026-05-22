@@ -97,11 +97,14 @@ const PRODUCT_CATALOG: ProductItem[] = [
 interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; }
 interface FlowProduct { productId: string; pct: number; barColor: string; }
 
+type FlowTerm = '단기' | '중기' | '장기';
+
 interface Flow {
   label: string;
   shortLabel: string;
   title: string;
   summary: string;
+  term: FlowTerm;
   kind: '일반' | 'IRP' | 'ISA';
   hubId: string;
   rate: string;
@@ -112,14 +115,21 @@ interface Flow {
   products: FlowProduct[];
 }
 
+const TERM_STYLE: Record<FlowTerm, { bg: string; color: string }> = {
+  단기: { bg: '#FEF3C7', color: '#92400E' },
+  중기: { bg: '#DBEAFE', color: '#1D4ED8' },
+  장기: { bg: '#E0E7FF', color: '#4338CA' },
+};
+
 type FlowKey = 'a' | 'b' | 'c' | 'd';
 type TabKey = 'all' | FlowKey;
 
 const INITIAL_FLOWS: Record<FlowKey, Flow> = {
   a: {
-    label: '흐름 A', shortLabel: '흐름A',
+    label: '알약 A', shortLabel: '알약A',
     title: '당장 쓸 돈 든든히 모으기',
     summary: '비상금·생활비 베이스를 단단히 다져요',
+    term: '단기',
     kind: '일반', hubId: 'toss-park',
     rate: '+8.4%', projected: '1.1억', badgeBg: '#EEEDFE', badgeColor: '#534AB7',
     sources: [
@@ -132,9 +142,10 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     ],
   },
   b: {
-    label: '흐름 B', shortLabel: '흐름B',
+    label: '알약 B', shortLabel: '알약B',
     title: '5년 안 목돈 만들기',
     summary: '중기 목표를 위한 균형 성장 전략',
+    term: '중기',
     kind: '일반', hubId: 'shinhan-cma',
     rate: '+7.1%', projected: '7,200만', badgeBg: '#E1F5EE', badgeColor: '#0F6E56',
     sources: [
@@ -147,9 +158,10 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     ],
   },
   c: {
-    label: '흐름 C', shortLabel: '흐름C',
+    label: '알약 C', shortLabel: '알약C',
     title: '노후 대비하며 세금 환급 받기',
     summary: 'IRP로 매년 연말정산 환급까지 챙겨요',
+    term: '장기',
     kind: 'IRP', hubId: 'mirae-irp',
     rate: '+6.2%', projected: '4,500만', badgeBg: '#FFF4E6', badgeColor: '#C45500',
     sources: [
@@ -161,9 +173,10 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     ],
   },
   d: {
-    label: '흐름 D', shortLabel: '흐름D',
+    label: '알약 D', shortLabel: '알약D',
     title: '절세하며 공격적으로 불리기',
     summary: 'ISA 비과세 한도로 수익률을 더 챙겨요',
+    term: '중기',
     kind: 'ISA', hubId: 'ki-isa',
     rate: '+9.1%', projected: '6,800만', badgeBg: '#FEF3C7', badgeColor: '#B45309',
     sources: [
@@ -179,10 +192,10 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'all', label: '전체' },
-  { key: 'a',   label: '흐름A' },
-  { key: 'b',   label: '흐름B' },
-  { key: 'c',   label: '흐름C' },
-  { key: 'd',   label: '흐름D' },
+  { key: 'a',   label: '알약A' },
+  { key: 'b',   label: '알약B' },
+  { key: 'c',   label: '알약C' },
+  { key: 'd',   label: '알약D' },
 ];
 
 const sourceTotal = (flow: Flow) => flow.sources.reduce((s, x) => s + x.amt, 0);
@@ -285,6 +298,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
       <div style={{ marginBottom: 14, padding: '12px 14px', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <span style={{ fontSize: 11, fontWeight: 700, background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: 99 }}>{flow.label}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, background: TERM_STYLE[flow.term].bg, color: TERM_STYLE[flow.term].color, padding: '3px 8px', borderRadius: 99 }}>{flow.term}</span>
           {flow.kind !== '일반' && (
             <span style={{ fontSize: 10, background: flow.badgeBg, color: flow.badgeColor, padding: '3px 8px', borderRadius: 99, fontWeight: 700 }}>{flow.kind}</span>
           )}
@@ -458,9 +472,12 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
 
 const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
 
+// TODO: 월급 리밸런싱(AssetPrescription) 결과에서 흐름별 분배액을 받아 교체
+const FLOW_MONTHLY_MOCK = 30; // 만원 단위, 임시 고정값
+
 function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; onSelectFlow: (k: FlowKey) => void }) {
   const entries = Object.entries(flows) as [FlowKey, Flow][];
-  const totalMonthly = entries.reduce((sum, [, f]) => sum + sourceTotal(f), 0);
+  const totalMonthly = entries.length * FLOW_MONTHLY_MOCK;
   const avgRate = entries.reduce((sum, [, f]) => sum + parseRatePct(f.rate), 0) / entries.length;
 
   return (
@@ -481,7 +498,7 @@ function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; on
 
       {entries.map(([key, f]) => {
         const hub = lookupHub(f.hubId);
-        const total = sourceTotal(f);
+        const total = FLOW_MONTHLY_MOCK;
         return (
           <button
             key={key}
@@ -492,6 +509,7 @@ function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; on
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, background: '#f1f5f9', color: '#475569', padding: '2px 7px', borderRadius: 99 }}>{f.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, background: TERM_STYLE[f.term].bg, color: TERM_STYLE[f.term].color, padding: '2px 7px', borderRadius: 99 }}>{f.term}</span>
                   {f.kind !== '일반' && (
                     <span style={{ fontSize: 10, background: f.badgeBg, color: f.badgeColor, padding: '2px 7px', borderRadius: 99, fontWeight: 700 }}>{f.kind}</span>
                   )}
@@ -885,12 +903,14 @@ export default function AssetPortfolio() {
           />
         )}
 
-        <div style={{ marginTop: 24 }}>
-          <button onClick={() => navigate('/dashboard')}
-            style={{ width: '100%', padding: '16px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}>
-            이 전략으로 관리 시작하기
-          </button>
-        </div>
+        {tab === 'all' && (
+          <div style={{ marginTop: 24 }}>
+            <button onClick={() => navigate('/dashboard')}
+              style={{ width: '100%', padding: '16px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}>
+              이 전략으로 관리 시작하기
+            </button>
+          </div>
+        )}
 
       </div>
 

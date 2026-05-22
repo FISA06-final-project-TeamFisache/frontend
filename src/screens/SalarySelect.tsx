@@ -49,7 +49,19 @@ const ACCOUNTS: Account[] = [
   },
 ];
 
-const WOORI_ACCOUNTS = ACCOUNTS.filter(a => a.isWoori);
+// 자동이체 입금받을 우리은행 계좌 후보 (TODO: 실제 사용자 보유 계좌 API 연동)
+interface WooriDestination {
+  id: string;
+  name: string;
+  number: string;
+  description: string;
+}
+
+const WOORI_DESTINATIONS: WooriDestination[] = [
+  { id: 'woori-salary', name: 'WON 우월한 월급 통장', number: '1002-***-345678', description: '주거래 우대 · 수수료 면제' },
+  { id: 'woori-park',   name: 'WON 파킹 통장',       number: '1002-***-998877', description: '연 2.0% · 수시입출금'  },
+  { id: 'woori-saving', name: 'WON 정기적금',        number: '1002-***-234567', description: '연 4.1% · 12개월 적금' },
+];
 
 function PhoneFrame({ children, bottomLabel }: { children: React.ReactNode; bottomLabel?: string }) {
   return (
@@ -72,7 +84,7 @@ export default function SalarySelect() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('account-select');
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [transferAccount, setTransferAccount] = useState<Account>(WOORI_ACCOUNTS[0]);
+  const [transferAccount, setTransferAccount] = useState<WooriDestination>(WOORI_DESTINATIONS[0]);
   const [transferDate, setTransferDate] = useState(25);
 
   // ── Step 1: 계좌 선택 ────────────────────────────────────
@@ -168,18 +180,17 @@ export default function SalarySelect() {
             </div>
             <ChevronRight className="w-4 h-4 text-blue-400 shrink-0" />
             <div className="flex-1 bg-blue-50 rounded-xl p-3 border border-blue-200">
-              <p className="text-[10px] text-blue-400 mb-0.5">{transferAccount.bank}</p>
+              <p className="text-[10px] text-blue-400 mb-0.5">우리은행</p>
               <p className="text-xs font-bold text-blue-700">{transferAccount.name}</p>
             </div>
           </div>
         </div>
 
-        {/* 입금 계좌 선택 (우리은행 계좌가 여러 개면 선택) */}
-        {WOORI_ACCOUNTS.length > 1 && (
-          <div className="mb-5">
-            <p className="text-sm font-bold text-gray-700 mb-3">입금받을 우리은행 계좌</p>
-            <div className="space-y-2">
-              {WOORI_ACCOUNTS.map(acc => (
+        {/* 입금 계좌 선택 */}
+        <div className="mb-5">
+          <p className="text-sm font-bold text-gray-700 mb-3">입금받을 우리은행 계좌</p>
+          <div className="space-y-2">
+            {WOORI_DESTINATIONS.map(acc => (
                 <button
                   key={acc.id}
                   onClick={() => setTransferAccount(acc)}
@@ -187,11 +198,12 @@ export default function SalarySelect() {
                     transferAccount.id === acc.id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-white'
                   }`}
                 >
-                  <div>
-                    <p className="text-xs text-gray-400">{acc.bank}</p>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-gray-800">{acc.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{acc.description}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{acc.number}</p>
                   </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ml-2 ${
                     transferAccount.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
                   }`}>
                     {transferAccount.id === acc.id && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -200,7 +212,6 @@ export default function SalarySelect() {
               ))}
             </div>
           </div>
-        )}
 
         {/* 자동이체일 선택 */}
         <div className="mb-5">

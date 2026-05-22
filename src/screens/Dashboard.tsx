@@ -190,8 +190,8 @@ function AccountManagePanel({ onClose }: { onClose: () => void }) {
   return (
     <div style={{
       background: '#fff', borderRadius: '20px 20px 0 0',
-      display: 'flex', flexDirection: 'column',
       maxWidth: 375, width: '100%', maxHeight: '85vh',
+      overflowY: 'auto',
       animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     }}>
       {/* 헤더 */}
@@ -207,7 +207,7 @@ function AccountManagePanel({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* 은행 아코디언 리스트 */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 12px 8px', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 12px 8px' }}>
         {banks.map(bank => {
           const expanded = !!expandedBanks[bank.id];
           return (
@@ -271,6 +271,70 @@ function AccountManagePanel({ onClose }: { onClose: () => void }) {
         >
           + 새 기관 연동하기
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── 설정 패널 ─────────────────────────────────────
+
+interface SettingsItem {
+  id: string;
+  icon: string;
+  title: string;
+  desc: string;
+  to: string;
+}
+
+const SETTINGS_ITEMS: SettingsItem[] = [
+  { id: 'salary-split', icon: '💰', title: '월급 나눈 비율 재설정', desc: '각 계좌별 분배 비율을 다시 정해요',         to: '/asset-prescription' },
+  { id: 'portfolio',    icon: '📊', title: '포트폴리오 재설정',     desc: '흐름·상품 구성을 처음부터 다시 짜요',     to: '/asset-portfolio' },
+];
+
+function SettingsPanel({ onClose, onNavigate }: { onClose: () => void; onNavigate: (to: string) => void }) {
+  return (
+    <div style={{
+      background: '#fff', borderRadius: '20px 20px 0 0',
+      maxWidth: 375, width: '100%', maxHeight: '85vh',
+      overflowY: 'auto',
+      animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+    }}>
+      {/* 헤더 */}
+      <div style={{ padding: '16px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>⚙️</span>
+          <span style={{ fontSize: 17, fontWeight: 500, color: '#0f172a' }}>설정</span>
+        </div>
+        <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }} aria-label="닫기">✕</button>
+      </div>
+
+      {/* 항목 리스트 */}
+      <div style={{ padding: '12px 12px 8px' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', padding: '4px 6px 8px' }}>자산 관리 재설정</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {SETTINGS_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.to)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px', background: '#fff', border: '0.5px solid #e2e8f0',
+                borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+                {item.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{item.title}</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{item.desc}</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -344,8 +408,8 @@ export default function Dashboard() {
   const [notiOpen, setNotiOpen] = useState(false);
   const [notiItems, setNotiItems] = useState<NotiItem[]>(NOTIFICATIONS);
   const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedPortfolio, setExpandedPortfolio] = useState<string | null>('jeju');
 
   const unreadCount = notiItems.filter(n => !n.read).length;
 
@@ -677,92 +741,22 @@ export default function Dashboard() {
             </div>
 
             <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '10px 16px 24px' }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', margin: '0 0 10px 4px' }}>내 포트폴리오 관리</p>
-
-              {/* 제주 여행 포트폴리오 */}
-              <div style={{ background: '#f8fafc', borderRadius: 14, border: '0.5px solid #e2e8f0', overflow: 'hidden', marginBottom: 10, transition: 'all 0.2s' }}>
-                <div onClick={() => setExpandedPortfolio(expandedPortfolio === 'jeju' ? null : 'jeju')}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 14px', cursor: 'pointer', background: expandedPortfolio === 'jeju' ? '#f1f5f9' : '#fff' }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>✈️ 6월 제주 여행 포트폴리오</span>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expandedPortfolio === 'jeju' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </div>
-
-                {expandedPortfolio === 'jeju' && (
-                  <div style={{ padding: '0 14px 14px' }}>
-                    <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ display: 'flex', gap: 2 }}>
-                          <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#FEE500', color: '#3C1E1E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 600 }}>K</div>
-                          <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#3182F6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 600 }}>T</div>
-                        </div>
-                        <span style={{ fontSize: 12, color: '#64748b' }}>에서 가져와서</span>
-                      </div>
-
-                      <div style={{ width: 2, height: 8, background: '#cbd5e1', marginLeft: 21 }} />
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#EEEDFE', color: '#534AB7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600 }}>T</div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>토스뱅크에 모으고</span>
-                      </div>
-
-                      <div style={{ width: 2, height: 8, background: '#cbd5e1', marginLeft: 21 }} />
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: '#fff', padding: '8px 10px', borderRadius: 8, border: '0.5px solid #e2e8f0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: 12, color: '#475569' }}><span style={{ color: '#A32D2D', fontWeight: 600 }}>ETF</span> (70%)</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>147만원</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: 12, color: '#475569' }}><span style={{ color: '#185FA5', fontWeight: 600 }}>적금</span> (30%)</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>63만원</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button style={{ width: '100%', marginTop: 14, padding: '10px 0', fontSize: 12, fontWeight: 600, background: '#3182F6', border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 6px rgba(49,130,246,0.2)' }}>
-                      상세 보기 →
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 맥북 구매 포트폴리오 */}
-              <div style={{ background: '#f8fafc', borderRadius: 14, border: '0.5px solid #e2e8f0', overflow: 'hidden', marginBottom: 10, transition: 'all 0.2s' }}>
-                <div onClick={() => setExpandedPortfolio(expandedPortfolio === 'macbook' ? null : 'macbook')}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 14px', cursor: 'pointer', background: expandedPortfolio === 'macbook' ? '#f1f5f9' : '#fff' }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>💻 연말 맥북 구매 포트폴리오</span>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expandedPortfolio === 'macbook' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </div>
-
-                {expandedPortfolio === 'macbook' && (
-                  <div style={{ padding: '0 14px 14px' }}>
-                    <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: 14 }}>
-                      <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: '12px 0', background: '#fff', borderRadius: 8, border: '0.5px solid #e2e8f0' }}>
-                        신한은행에서 모아<br />CMA(100%)에 넣고 있어요.
-                      </div>
-                    </div>
-
-                    <button style={{ width: '100%', marginTop: 14, padding: '10px 0', fontSize: 12, fontWeight: 600, background: '#3182F6', border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 6px rgba(49,130,246,0.2)' }}>
-                      상세 보기 →
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20, paddingLeft: 6, paddingBottom: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingLeft: 6, paddingBottom: 20 }}>
                 <button
                   onClick={() => { setSidebarOpen(false); setAccountMgmtOpen(true); }}
                   style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
                 >
                   내 계좌 연결 관리
                 </button>
+                <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>목표 이력</span>
                 <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>월간 리포트</span>
                 <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>관심사 재설정</span>
-                <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>설정</span>
+                <button
+                  onClick={() => { setSidebarOpen(false); setSettingsOpen(true); }}
+                  style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                >
+                  내 포트폴리오 변경하기
+                </button>
               </div>
             </div>
           </div>
@@ -799,6 +793,26 @@ export default function Dashboard() {
         >
           <div style={{ width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
             <AccountManagePanel onClose={() => setAccountMgmtOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* 설정 패널 */}
+      {settingsOpen && (
+        <div
+          onClick={() => setSettingsOpen(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.4)', zIndex: 999,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div style={{ width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+            <SettingsPanel
+              onClose={() => setSettingsOpen(false)}
+              onNavigate={(to) => { setSettingsOpen(false); navigate(to); }}
+            />
           </div>
         </div>
       )}

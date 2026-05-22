@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Wallet, Info, Pin, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
+import { ChevronLeft, Wallet, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
 
 const TOTAL_SALARY = 3_200_000;
+const FIXED_EXPENSE = 245_000;
+// TODO: AssetPortfolio 흐름 합계에서 받아와 교체 (현재 4개 흐름 × 30만원 = 120만원 mock)
+const INVESTMENT_AMOUNT = 1_200_000;
 const USER_NAME = '서태형'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 
 interface Account {
@@ -51,9 +54,7 @@ const MY_ACCOUNTS: LinkedAccount[] = [
 
 const INITIAL_ACCOUNTS: Account[] = [
   { id: 0, bank: '입출금통장',   tag: '생활비',     amount: 1_500_000, percent: 47, isPinned: true,  color: TAG_COLORS[0] },
-  { id: 1, bank: 'WON 적금',     tag: '나의 저축',  amount: 600_000,   percent: 19, isPinned: false, color: TAG_COLORS[1] },
-  { id: 2, bank: '종합매매계좌', tag: '증권',       amount: 600_000,   percent: 19, isPinned: false, color: TAG_COLORS[2] },
-  { id: 3, bank: '파킹통장',     tag: '비상금',     amount: 300_000,   percent: 9,  isPinned: false, color: TAG_COLORS[3] },
+  { id: 1, bank: '파킹통장',     tag: '비상금',     amount: 300_000,   percent: 9,  isPinned: false, color: TAG_COLORS[3] },
 ];
 
 const formatNumber = (n: number) => n.toLocaleString('ko-KR');
@@ -80,20 +81,14 @@ export default function AssetPrescription() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
 
-  const totalPct = accounts.reduce((sum, a) => sum + a.percent, 0);
   const totalAmount = accounts.reduce((sum, a) => sum + a.amount, 0);
-  const remain = TOTAL_SALARY - totalAmount;
-  const isOver = totalPct > 100;
+  // 남은 금액 = 월급 - 투자할 금액 - 계좌 분배 합계
+  const remain = TOTAL_SALARY - INVESTMENT_AMOUNT - totalAmount;
+  const isOver = remain < 0;
 
   const updateAmount = (idx: number, amount: number) => {
     setAccounts(prev => prev.map((a, i) => i === idx
       ? { ...a, amount, percent: Math.round((amount / TOTAL_SALARY) * 100) }
-      : a));
-  };
-
-  const updatePercent = (idx: number, percent: number) => {
-    setAccounts(prev => prev.map((a, i) => i === idx
-      ? { ...a, percent, amount: Math.round((percent / 100) * TOTAL_SALARY) }
       : a));
   };
 
@@ -189,23 +184,44 @@ export default function AssetPrescription() {
 
         <main className="p-5 pt-2">
           {/* 헤더 텍스트 */}
-          <h2 className="text-2xl font-bold leading-tight mb-8 text-slate-800">
+          <h2 className="text-2xl font-bold leading-tight mb-5 text-slate-800">
             <span className="text-blue-600">Pori</span>가 {USER_NAME} 님의<br />
             소비·저축 패턴을 보고<br />
             이번 월급을 나눠봤어요.
           </h2>
 
-          {/* 최상단: 급여 통장 */}
-          <div className="relative z-10 mb-4">
-            <p className="text-sm font-semibold text-slate-500 ml-2 mb-1 flex items-center gap-1">
-              <Wallet className="w-4 h-4" /> 우리은행 급여통장
-            </p>
-            <div className="inline-block border-2 border-slate-700 rounded-2xl px-5 py-3 shadow-sm bg-white">
-              <span className="text-2xl font-extrabold tracking-tight">
-                {formatNumber(TOTAL_SALARY)}<span className="text-lg font-bold text-slate-600 ml-1">원</span>
-              </span>
+          {/* 고정 지출 안내 - 상단으로 이동 */}
+          <div className="mb-5 bg-slate-100 p-4 rounded-xl text-sm text-slate-600 leading-relaxed">
+            <Info className="w-4 h-4 inline-block mb-1 mr-1 text-slate-400" />
+            고정 지출(월세, 보험, 통신비) <span className="font-bold text-slate-700">{formatNumber(FIXED_EXPENSE)}원</span>은 신한 고정지출 통장에 먼저 빼놨어요. 변동을 원하시면 수동 조정이 가능해요.
+          </div>
+
+          {/* 급여 통장 + 투자할 금액 */}
+          <div className="relative z-10 mb-5 flex items-end gap-3 flex-wrap">
+            {/* 급여통장 */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 ml-1 mb-1 flex items-center gap-1">
+                <Wallet className="w-3.5 h-3.5" /> 우리은행 급여통장
+              </p>
+              <div className="inline-block border-2 border-slate-700 rounded-2xl px-4 py-2.5 shadow-sm bg-white">
+                <span className="text-xl font-extrabold tracking-tight">
+                  {formatNumber(TOTAL_SALARY)}<span className="text-sm font-bold text-slate-600 ml-1">원</span>
+                </span>
+              </div>
+            </div>
+            {/* 투자할 금액 */}
+            <div>
+              <p className="text-xs font-semibold text-blue-600 ml-1 mb-1">투자할 금액</p>
+              <div className="inline-block border-2 border-blue-400 rounded-2xl px-4 py-2.5 shadow-sm bg-blue-50">
+                <span className="text-xl font-extrabold tracking-tight text-blue-800">
+                  {formatNumber(INVESTMENT_AMOUNT)}<span className="text-sm font-bold text-blue-600 ml-1">원</span>
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* 소비 영역 라벨 */}
+          <p className="text-xs font-semibold text-slate-500 ml-1 mb-2">소비할 금액 나누기</p>
 
           {/* 계좌 리스트 트리 영역 */}
           <div className="relative mt-2">
@@ -238,16 +254,17 @@ export default function AssetPrescription() {
                           className={`${acc.color} px-2 py-0.5 rounded-md text-xs font-bold outline-none focus:ring-2 focus:ring-blue-300 w-20`}
                         />
                       </div>
-                      {/* 핀 버튼 */}
+                      {/* 잠금 버튼 */}
                       <button
                         onClick={(e) => togglePin(index, e)}
                         className={`p-1.5 rounded-full transition-colors shrink-0 ${acc.isPinned ? 'bg-rose-50' : 'hover:bg-slate-100'}`}
-                        aria-label="핀 고정"
+                        aria-label={acc.isPinned ? '잠금 해제' : '잠금'}
                       >
-                        <Pin
-                          className={`w-5 h-5 ${acc.isPinned ? 'text-rose-500' : 'text-slate-400'}`}
-                          fill={acc.isPinned ? 'currentColor' : 'none'}
-                        />
+                        {acc.isPinned ? (
+                          <Lock className="w-5 h-5 text-rose-500" />
+                        ) : (
+                          <LockOpen className="w-5 h-5 text-slate-400" />
+                        )}
                       </button>
                       {/* 삭제 버튼 */}
                       <button
@@ -271,17 +288,6 @@ export default function AssetPrescription() {
                         />
                         <span className="absolute right-3 top-3.5 text-slate-400 text-sm font-semibold">원</span>
                       </div>
-                      {/* 퍼센트 입력란 */}
-                      <div className="relative w-24">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={acc.percent}
-                          onChange={(e) => updatePercent(index, parseDigits(e.target.value))}
-                          className={`w-full bg-slate-50 border ${acc.isPinned ? 'border-rose-100' : 'border-slate-200'} rounded-xl py-3 pr-7 pl-3 text-right font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-lg`}
-                        />
-                        <span className="absolute right-3 top-3.5 text-slate-400 text-sm font-semibold">%</span>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -304,23 +310,18 @@ export default function AssetPrescription() {
             </div>
           </div>
 
-          {/* 고정 지출 안내 문구 */}
-          <div className="mt-8 bg-slate-100 p-4 rounded-xl text-sm text-slate-600 leading-relaxed">
-            <Info className="w-4 h-4 inline-block mb-1 mr-1 text-slate-400" />
-            고정 지출(월세, 보험, 통신비) <span className="font-bold text-slate-700">245,000원</span>은 신한 고정지출 통장에 먼저 빼놨어요. 변동을 원하시면 수동 조정이 가능해요.
-          </div>
         </main>
 
-        {/* 하단 고정 바 (진행률 및 완료 버튼) */}
+        {/* 하단 고정 바 (남은 금액 및 완료 버튼) */}
         <div className="fixed bottom-0 max-w-[390px] w-full bg-white border-t border-slate-200 p-4 pb-6 z-20 flex justify-between items-center shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
           <div className="flex flex-col">
-            <span className="text-xs font-semibold text-slate-500 mb-0.5">총 배분 비율</span>
+            <span className="text-xs font-semibold text-slate-500 mb-0.5">남은 금액</span>
             <div className="text-2xl font-extrabold flex items-baseline gap-1">
-              <span className={isOver ? 'text-red-500' : 'text-blue-600'}>{totalPct}</span>
-              <span className="text-lg text-slate-400">%</span>
+              <span className={isOver ? 'text-red-500' : 'text-blue-600'}>{formatNumber(remain)}</span>
+              <span className="text-lg text-slate-400">원</span>
             </div>
             <span className={`text-[10px] text-red-500 font-medium h-3 mt-0.5 transition-opacity ${isOver ? 'opacity-100' : 'opacity-0'}`}>
-              100%를 초과할 수 없습니다
+              월급보다 많이 배분했어요
             </span>
           </div>
           <button
