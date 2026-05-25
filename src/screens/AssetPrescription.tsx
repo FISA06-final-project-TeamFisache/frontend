@@ -1,16 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Wallet, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
+import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
+import kakaoLogo    from '../assets/banks/kakao.png';
+import tossLogo     from '../assets/banks/toss.png';
+import shinhanLogo  from '../assets/banks/shinhan.png';
+import wooriLogo    from '../assets/banks/woori.png';
+import kbLogo       from '../assets/banks/kb.png';
+import hanaLogo     from '../assets/banks/hana.png';
+import miraeLogo    from '../assets/banks/mirae.png';
+
+const BANK_LOGOS: Record<string, string> = {
+  '카카오뱅크': kakaoLogo,
+  '토스뱅크':   tossLogo,
+  '신한은행':   shinhanLogo,
+  '우리은행':   wooriLogo,
+  '국민은행':   kbLogo,
+  '하나은행':   hanaLogo,
+  '미래에셋증권': miraeLogo,
+};
 
 const TOTAL_SALARY = 3_200_000;
 const FIXED_EXPENSE = 245_000;
 // TODO: AssetPortfolio 흐름 합계에서 받아와 교체 (현재 4개 흐름 × 30만원 = 120만원 mock)
 const INVESTMENT_AMOUNT = 1_200_000;
-const USER_NAME = '서태형'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
+const USER_NAME = '회원'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 
 interface Account {
   id: number;
-  bank: string;
+  bank: string;      // 계좌 상품명 (예: 입출금통장)
+  bankName: string;  // 은행 기관명 (예: 카카오뱅크)
   tag: string;
   amount: number;
   percent: number;
@@ -53,8 +71,8 @@ const MY_ACCOUNTS: LinkedAccount[] = [
 ];
 
 const INITIAL_ACCOUNTS: Account[] = [
-  { id: 0, bank: '입출금통장',   tag: '생활비',     amount: 1_500_000, percent: 47, isPinned: true,  color: TAG_COLORS[0] },
-  { id: 1, bank: '파킹통장',     tag: '비상금',     amount: 300_000,   percent: 9,  isPinned: false, color: TAG_COLORS[3] },
+  { id: 0, bank: '입출금통장', bankName: '카카오뱅크', tag: '생활비', amount: 1_500_000, percent: 47, isPinned: true,  color: TAG_COLORS[0] },
+  { id: 1, bank: '파킹통장',   bankName: '토스뱅크',   tag: '비상금', amount: 300_000,   percent: 9,  isPinned: false, color: TAG_COLORS[3] },
 ];
 
 const formatNumber = (n: number) => n.toLocaleString('ko-KR');
@@ -98,7 +116,7 @@ export default function AssetPrescription() {
 
   const pickBankFor = (linked: LinkedAccount) => {
     if (bankPickerForIdx === null) return;
-    setAccounts(prev => prev.map((a, i) => i === bankPickerForIdx ? { ...a, bank: linked.name } : a));
+    setAccounts(prev => prev.map((a, i) => i === bankPickerForIdx ? { ...a, bank: linked.name, bankName: linked.bank } : a));
     setBankPickerForIdx(null);
   };
 
@@ -142,7 +160,7 @@ export default function AssetPrescription() {
     const color = TAG_COLORS[accounts.length % TAG_COLORS.length];
     setAccounts(prev => [
       ...prev,
-      { id: nextId, bank: linked.name, tag, amount: 0, percent: 0, isPinned: false, color },
+      { id: nextId, bank: linked.name, bankName: linked.bank, tag, amount: 0, percent: 0, isPinned: false, color },
     ]);
     setShowAddModal(false);
   };
@@ -178,7 +196,7 @@ export default function AssetPrescription() {
           <button className="p-2" onClick={() => navigate(-1)}>
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="font-semibold text-lg">자산 재설계</h1>
+          <h1 className="font-semibold text-lg">월급 관리</h1>
           <div className="w-10" />
         </header>
 
@@ -201,7 +219,8 @@ export default function AssetPrescription() {
             {/* 급여통장 */}
             <div>
               <p className="text-xs font-semibold text-slate-500 ml-1 mb-1 flex items-center gap-1">
-                <Wallet className="w-3.5 h-3.5" /> 우리은행 급여통장
+                <img src={wooriLogo} alt="우리은행" className="w-4 h-4 rounded-full object-contain" />
+                우리은행 급여통장
               </p>
               <div className="inline-block border-2 border-slate-700 rounded-2xl px-4 py-2.5 shadow-sm bg-white">
                 <span className="text-xl font-extrabold tracking-tight">
@@ -221,7 +240,7 @@ export default function AssetPrescription() {
           </div>
 
           {/* 소비 영역 라벨 */}
-          <p className="text-xs font-semibold text-slate-500 ml-1 mb-2">소비할 금액 나누기</p>
+          <p className="text-xs font-semibold text-slate-500 ml-1 mb-2">지출 배분</p>
 
           {/* 계좌 리스트 트리 영역 */}
           <div className="relative mt-2">
@@ -238,42 +257,55 @@ export default function AssetPrescription() {
 
                   <div className={`bg-white border ${acc.isPinned ? 'border-rose-200 shadow-sm' : 'border-slate-200'} rounded-2xl p-4 transition-all duration-300`}>
                     <div className="flex justify-between items-center mb-3 gap-2">
+                      {/* 왼쪽: 로고 + 통장명 */}
                       <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {BANK_LOGOS[acc.bankName] ? (
+                          <img
+                            src={BANK_LOGOS[acc.bankName]}
+                            alt={acc.bankName}
+                            className="w-7 h-7 rounded-full object-contain border border-slate-100 bg-white shrink-0"
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-bold text-slate-500 shrink-0">
+                            {acc.bankName?.slice(0, 2)}
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => setBankPickerForIdx(index)}
-                          className="font-bold text-slate-700 bg-transparent border-b border-dashed border-slate-300 hover:border-blue-400 hover:bg-slate-50 outline-none rounded px-1 py-0.5 text-sm transition-colors truncate max-w-[140px] text-left"
+                          className="font-bold text-slate-700 bg-transparent border-b border-dashed border-slate-300 hover:border-blue-400 hover:bg-slate-50 outline-none rounded px-1 py-0.5 text-sm transition-colors text-left"
                         >
                           {acc.bank}
                         </button>
+                      </div>
+                      {/* 오른쪽: 태그 + 잠금 + 삭제 */}
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <input
                           type="text"
                           value={acc.tag}
                           onChange={(e) => updateTag(index, e.target.value)}
                           placeholder="태그"
-                          className={`${acc.color} px-2 py-0.5 rounded-md text-xs font-bold outline-none focus:ring-2 focus:ring-blue-300 w-20`}
+                          className={`${acc.isPinned ? acc.color : 'bg-blue-100 text-blue-500'} px-2 py-0.5 rounded-md text-xs font-bold outline-none focus:ring-2 focus:ring-blue-300 w-16 text-center transition-colors`}
                         />
+                        <button
+                          onClick={(e) => togglePin(index, e)}
+                          className={`p-1.5 rounded-full transition-colors ${acc.isPinned ? 'bg-rose-50' : 'hover:bg-slate-100'}`}
+                          aria-label={acc.isPinned ? '잠금 해제' : '잠금'}
+                        >
+                          {acc.isPinned ? (
+                            <Lock className="w-5 h-5 text-rose-500" />
+                          ) : (
+                            <LockOpen className="w-5 h-5 text-blue-400" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setDeleteTargetIdx(index)}
+                          className="p-1.5 rounded-full hover:bg-rose-50 transition-colors"
+                          aria-label="계좌 삭제"
+                        >
+                          <Trash2 className="w-5 h-5 text-slate-400 hover:text-rose-500 transition-colors" />
+                        </button>
                       </div>
-                      {/* 잠금 버튼 */}
-                      <button
-                        onClick={(e) => togglePin(index, e)}
-                        className={`p-1.5 rounded-full transition-colors shrink-0 ${acc.isPinned ? 'bg-rose-50' : 'hover:bg-slate-100'}`}
-                        aria-label={acc.isPinned ? '잠금 해제' : '잠금'}
-                      >
-                        {acc.isPinned ? (
-                          <Lock className="w-5 h-5 text-rose-500" />
-                        ) : (
-                          <LockOpen className="w-5 h-5 text-slate-400" />
-                        )}
-                      </button>
-                      {/* 삭제 버튼 */}
-                      <button
-                        onClick={() => setDeleteTargetIdx(index)}
-                        className="p-1.5 rounded-full hover:bg-rose-50 transition-colors shrink-0"
-                        aria-label="계좌 삭제"
-                      >
-                        <Trash2 className="w-5 h-5 text-slate-400 hover:text-rose-500 transition-colors" />
-                      </button>
                     </div>
 
                     <div className="flex gap-2 items-center">
@@ -447,9 +479,7 @@ export default function AssetPrescription() {
                   ) : (
                     <div className="p-3 rounded-xl border-2 border-blue-300 bg-blue-50/60 space-y-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-bold shrink-0">
-                          우리
-                        </div>
+                        <img src={wooriLogo} alt="우리은행" className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0" />
                         <div className="min-w-0">
                           <p className="text-[10px] text-slate-500 font-medium">우리은행 · 신규 통장</p>
                           <p className="text-xs text-slate-600">월급을 나눠 담을 통장을 만들어요</p>
@@ -460,7 +490,7 @@ export default function AssetPrescription() {
                         value={newWooriName}
                         onChange={(e) => setNewWooriName(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') createNewWooriAccount(); }}
-                        placeholder="새 통장 이름 (예: 여행 자금 통장)"
+                        placeholder="새 통장 이름 (예: 유럽 여행 자금)"
                         autoFocus
                         className="w-full bg-white border border-blue-200 rounded-lg py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -491,7 +521,7 @@ export default function AssetPrescription() {
                   type="text"
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="예: 여행 자금"
+                  placeholder="예: 비상금"
                   onKeyDown={(e) => { if (e.key === 'Enter') addAccount(); }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
@@ -548,9 +578,17 @@ export default function AssetPrescription() {
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acc.badgeBg} ${acc.badgeColor}`}>
-                          {acc.short}
-                        </div>
+                        {BANK_LOGOS[acc.bank] ? (
+                          <img
+                            src={BANK_LOGOS[acc.bank]}
+                            alt={acc.bank}
+                            className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0"
+                          />
+                        ) : (
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acc.badgeBg} ${acc.badgeColor}`}>
+                            {acc.short}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="text-[10px] text-slate-400 font-medium">{acc.bank}</p>
                           <p className="text-sm font-bold text-slate-800 truncate">{acc.name}</p>

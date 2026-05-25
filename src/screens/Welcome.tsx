@@ -10,20 +10,20 @@ export default function Welcome() {
         <div className="flex flex-col items-center justify-center flex-1 w-full px-10 gap-2">
           <img src={heroImg} alt="WooriPort 마스코트" className="w-52 h-52 object-contain mb-4" />
 
-          <h1 className="text-3xl font-bold text-blue-500 tracking-tight">WooriPort</h1>
-          <p className="text-sm text-gray-400 mb-12">나의 첫 자산관리 !</p>
+          <h1 className="text-4xl font-bold text-blue-500 tracking-tight font-wooridaum">WooriPort</h1>
+          <p className="text-md text-gray-600 mb-12 font-wooridaum">나의 첫 자산관리</p>
 
           <div className="w-full flex flex-col items-center gap-4">
             <button
               onClick={() => navigate('/login')}
-              className="w-full border border-gray-300 rounded-2xl py-4 text-gray-700 font-medium hover:bg-gray-50 active:scale-95 transition"
+              className="w-full border border-gray-300 rounded-2xl py-4 text-gray-500 font-medium hover:bg-gray-50 active:scale-95 transition"
             >
               로그인
             </button>
 
             <button
               onClick={() => navigate('/signup')}
-              className="text-sm text-blue-400 underline underline-offset-4 hover:text-blue-600 transition"
+              className="text-sm text-gray-500 underline underline-offset-4 hover:text-blue-600 transition"
             >
               회원가입
             </button>

@@ -5,7 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        wooridaum: ['Wooridaum', 'sans-serif'],
+      },
+    },
   },
   plugins: [require("tailwindcss-animate")],
 }

@@ -1,3 +1,21 @@
+@font-face {
+  font-family: 'Wooridaum';
+  src: url('/fonts/WooridaumL.otf') format('opentype');
+  font-weight: 300;
+}
+
+@font-face {
+  font-family: 'Wooridaum';
+  src: url('/fonts/WooridaumR.otf') format('opentype');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Wooridaum';
+  src: url('/fonts/WooridaumB.otf') format('opentype');
+  font-weight: 700;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

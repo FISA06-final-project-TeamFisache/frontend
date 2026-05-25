@@ -105,7 +105,7 @@ export default function Login() {
           <button
             onClick={handleLogin}
             disabled={!canSubmit}
-            className="w-full bg-blue-800 hover:bg-blue-900 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold transition active:scale-95 flex items-center justify-center gap-2"
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold transition active:scale-95 flex items-center justify-center gap-2"
           >
             {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> 로그인 중...</> : '로그인'}
           </button>

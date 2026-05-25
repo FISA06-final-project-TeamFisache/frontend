@@ -119,7 +119,7 @@ export default function Signup() {
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="w-full bg-blue-800 hover:bg-blue-900 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold transition active:scale-95"
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold transition active:scale-95"
           >
             회원가입
           </button>

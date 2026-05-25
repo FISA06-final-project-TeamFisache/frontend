@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import heroImg from '../assets/hero.png';
 
 const USER_NAME = '서태형'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 const DISPLAY_MS = 3500;
@@ -19,34 +20,44 @@ export default function PrescriptionIntro() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center font-sans overflow-hidden">
-      <main className={`px-6 text-center w-full max-w-md mx-auto relative flex flex-col items-center ${exiting ? 'page-exit' : ''}`}>
-
-        {/* 고래 아이콘 영역 */}
-        <div className="mb-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto shadow-sm">
-            <span className="text-4xl animate-floating">🐳</span>
-          </div>
-        </div>
-
-        {/* 메인 타이틀 */}
-        <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-5 animate-slide-up text-slate-800" style={{ animationDelay: '0.4s' }}>
-          "{USER_NAME} 님을 파악했어요!"
+    <div className="min-h-screen bg-white flex justify-center font-sans overflow-hidden">
+      <div
+        className={`w-full max-w-[390px] min-h-screen flex flex-col items-center justify-center px-10 gap-6 transition-opacity duration-500 ${exiting ? 'opacity-0' : 'opacity-100'}`}
+      >
+        {/* 제목 */}
+        <h1
+          className="text-2xl font-bold text-slate-800 text-center animate-slide-up"
+          style={{ animationDelay: '0.1s' }}
+        >
+          {USER_NAME}님을&nbsp; 파악했어요
         </h1>
 
         {/* 서브 텍스트 */}
-        <p className="text-[1.1rem] sm:text-lg text-slate-600 leading-relaxed animate-slide-up font-medium" style={{ animationDelay: '0.7s' }}>
+        <p
+          className="text-base text-slate-500 text-center leading-relaxed animate-slide-up"
+          style={{ animationDelay: '0.4s' }}
+        >
           매달 월급이 들어올 때<br />
-          어느 통장에 얼마씩 넣으면 좋을지<br />
-          <span className="text-blue-600 font-bold">Pori</span>가 먼저 나눠드릴게요.
+          어느 통장에 얼마씩 넣으면 좋을지
         </p>
 
-        {/* 로딩 스피너 */}
-        <div className="mt-14 animate-slide-up" style={{ animationDelay: '1s' }}>
-          <div className="w-8 h-8 border-[3px] border-slate-100 border-t-blue-500 rounded-full animate-spin" />
+        {/* 점선 원 + 마스코트 */}
+        <div
+          className="relative flex items-center justify-center w-52 h-52 animate-slide-up"
+          style={{ animationDelay: '0.6s' }}
+        >
+          <div className="absolute inset-0 rounded-full border-4 border-dashed border-blue-300 animate-spin [animation-duration:6s]" />
+          <img src={heroImg} alt="Pori" className="w-36 h-36 object-contain relative z-10" />
         </div>
 
-      </main>
+        {/* 하단 텍스트 */}
+        <p
+          className="text-lg font-semibold text-slate-700 text-center animate-slide-up"
+          style={{ animationDelay: '0.9s' }}
+        >
+          <span className="text-blue-600 font-bold">Pori</span>가 먼저 나눠드릴게요.
+        </p>
+      </div>
     </div>
   );
 }

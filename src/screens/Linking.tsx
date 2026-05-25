@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Check } from 'lucide-react';
+import wooriLogo   from '../assets/banks/woori.png';
+import kbLogo      from '../assets/banks/kb.png';
+import kakaoLogo   from '../assets/banks/kakao.png';
+import tossLogo    from '../assets/banks/toss.png';
+import shinhanLogo from '../assets/banks/shinhan.png';
+import hanaLogo    from '../assets/banks/hana.png';
 
 type Step = 'consent' | 'select' | 'linking' | 'account-pick';
 type LinkStatus = 'waiting' | 'linking' | 'done';
 
 const BANK_LIST = [
-  { id: 'woori',   name: '우리은행' },
-  { id: 'kb',      name: '국민은행' },
-  { id: 'kakao',   name: '카카오뱅크' },
-  { id: 'toss',    name: '토스뱅크' },
-  { id: 'shinhan', name: '신한은행' },
-  { id: 'hana',    name: '하나은행' },
+  { id: 'woori',   name: '우리은행',   logo: wooriLogo   },
+  { id: 'kb',      name: '국민은행',   logo: kbLogo      },
+  { id: 'kakao',   name: '카카오뱅크', logo: kakaoLogo   },
+  { id: 'toss',    name: '토스뱅크',   logo: tossLogo    },
+  { id: 'shinhan', name: '신한은행',   logo: shinhanLogo },
+  { id: 'hana',    name: '하나은행',   logo: hanaLogo    },
 ];
 
 interface LinkedAccount {
@@ -25,29 +31,29 @@ interface LinkedAccount {
 // 각 은행에서 마이데이터 연동 시 가져오는 계좌 목록 (mock)
 const BANK_ACCOUNTS: Record<string, LinkedAccount[]> = {
   woori: [
-    { id: 'woori-1', bankId: 'woori', name: 'WON 파킹 통장',    type: '입출금',   balance: 3_850_000 },
-    { id: 'woori-2', bankId: 'woori', name: 'WON 적금',         type: '예·적금', balance: 12_000_000 },
+    { id: 'woori-1', bankId: 'woori', name: '우월한 월급 통장',  type: '입출금',   balance: 3_850_000 },
+    { id: 'woori-2', bankId: 'woori', name: 'WON적금',          type: '예·적금', balance: 12_000_000 },
   ],
   kb: [
-    { id: 'kb-1',    bankId: 'kb',    name: 'Star 입출금통장',  type: '입출금',   balance: 1_200_000 },
-    { id: 'kb-2',    bankId: 'kb',    name: 'KB 정기예금',       type: '예·적금', balance: 8_000_000 },
+    { id: 'kb-1', bankId: 'kb', name: 'KB Star*t 통장',         type: '입출금',   balance: 1_200_000 },
+    { id: 'kb-2', bankId: 'kb', name: 'KB Star 정기예금',        type: '예·적금', balance: 8_000_000 },
   ],
   kakao: [
-    { id: 'kakao-1', bankId: 'kakao', name: '입출금통장',        type: '입출금',   balance: 1_500_000 },
-    { id: 'kakao-2', bankId: 'kakao', name: '26주 적금',         type: '예·적금', balance: 2_400_000 },
+    { id: 'kakao-1', bankId: 'kakao', name: '입출금통장',         type: '입출금',   balance: 1_500_000 },
+    { id: 'kakao-2', bankId: 'kakao', name: '26주 적금',          type: '예·적금', balance: 2_400_000 },
   ],
   toss: [
-    { id: 'toss-1',  bankId: 'toss',  name: '파킹통장',          type: '입출금',   balance: 2_300_000 },
-    { id: 'toss-2',  bankId: 'toss',  name: '나눠모으기 통장',   type: '입출금',   balance: 500_000 },
-    { id: 'toss-3',  bankId: 'toss',  name: '토스증권 계좌',     type: '증권',     balance: 4_120_000 },
+    { id: 'toss-1', bankId: 'toss', name: '토스뱅크 통장',        type: '입출금',   balance: 2_300_000 },
+    { id: 'toss-2', bankId: 'toss', name: '나눠모으기 통장',      type: '입출금',   balance: 500_000 },
+    { id: 'toss-3', bankId: 'toss', name: '토스증권 계좌',        type: '증권',     balance: 4_120_000 },
   ],
   shinhan: [
-    { id: 'shinhan-1', bankId: 'shinhan', name: 'Tops 직장인 플랜 통장', type: '입출금',   balance: 3_200_000 },
-    { id: 'shinhan-2', bankId: 'shinhan', name: '쏠편한 적금',            type: '예·적금', balance: 6_540_000 },
+    { id: 'shinhan-1', bankId: 'shinhan', name: '쏠편한 입출금통장', type: '입출금',   balance: 3_200_000 },
+    { id: 'shinhan-2', bankId: 'shinhan', name: '신한 알.쏠 적금',  type: '예·적금', balance: 6_540_000 },
   ],
   hana: [
-    { id: 'hana-1',  bankId: 'hana',  name: '하나원큐 입출금',   type: '입출금',   balance: 950_000 },
-    { id: 'hana-2',  bankId: 'hana',  name: '하나원큐 적금',     type: '예·적금', balance: 3_600_000 },
+    { id: 'hana-1', bankId: 'hana', name: '달달 하나 통장',       type: '입출금',   balance: 950_000 },
+    { id: 'hana-2', bankId: 'hana', name: '급여하나 월복리 적금', type: '예·적금', balance: 3_600_000 },
   ],
 };
 
@@ -163,7 +169,7 @@ export default function Linking() {
       <button
         onClick={() => setStep('select')}
         disabled={!allRequired}
-        className="w-full bg-blue-800 hover:bg-blue-900 disabled:opacity-40 text-white py-4 rounded-2xl font-bold mt-6 transition active:scale-95"
+        className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white py-4 rounded-2xl font-bold mt-6 transition active:scale-95"
       >
         모두 동의하고 시작
       </button>
@@ -172,20 +178,36 @@ export default function Linking() {
 
   // ── Step 2: 계좌 선택 ────────────────────────────────────
   if (step === 'select') return (
-    <PhoneFrame bottomLabel="계좌 선택">
-      <h2 className="text-xl font-bold text-gray-800 mb-1">연동할 기관을 선택해주세요</h2>
-      <p className="text-sm text-gray-400 mb-6">선택한 기관의 자산이 자동으로 연결됩니다</p>
+    <PhoneFrame bottomLabel="자산 연결">
+      <h2 className="text-xl font-bold text-gray-800 mb-1">연결할 기관을 선택해 주세요</h2>
+      <p className="text-sm text-gray-400 mb-4">선택한 기관의 자산이 자동으로 연결됩니다</p>
+
+      {/* 전체 선택 */}
+      <button
+        onClick={() => setSelected(
+          selected.length === BANK_LIST.length ? [] : BANK_LIST.map(b => b.id)
+        )}
+        className="flex items-center justify-between w-full bg-blue-50 rounded-xl px-4 py-3 mb-3 active:scale-[0.99] transition"
+      >
+        <span className="text-sm font-bold text-blue-700">전체 선택</span>
+        <Checkbox checked={selected.length === BANK_LIST.length} />
+      </button>
 
       <div className="space-y-3 flex-1">
         {BANK_LIST.map(bank => (
           <button
             key={bank.id}
             onClick={() => toggleBank(bank.id)}
-            className={`w-full flex items-center justify-between px-4 py-4 rounded-2xl border transition active:scale-95 ${
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition active:scale-95 ${
               selected.includes(bank.id) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
             }`}
           >
-            <span className="text-sm font-medium text-gray-700">{bank.name}</span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                <img src={bank.logo} alt={bank.name} className="w-7 h-7 object-contain" />
+              </div>
+              <span className="text-sm font-medium text-gray-700">{bank.name}</span>
+            </div>
             <Checkbox checked={selected.includes(bank.id)} />
           </button>
         ))}
@@ -194,16 +216,16 @@ export default function Linking() {
       <button
         onClick={() => setStep('linking')}
         disabled={selected.length === 0}
-        className="w-full bg-blue-800 hover:bg-blue-900 disabled:opacity-40 text-white py-4 rounded-2xl font-bold mt-6 transition active:scale-95"
+        className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white py-4 rounded-2xl font-bold mt-6 transition active:scale-95"
       >
-        {selected.length > 0 ? `${selected.length}개 기관 연동하기` : '기관을 선택해주세요'}
+        {selected.length > 0 ? `${selected.length}개 기관 연결하기` : '기관을 선택해주세요'}
       </button>
     </PhoneFrame>
   );
 
   // ── Step 3: 연동 중 ──────────────────────────────────────
   if (step === 'linking') return (
-    <PhoneFrame bottomLabel="연동 중">
+    <PhoneFrame bottomLabel="연결 중">
       <div className="flex flex-col items-center w-full">
         <h2 className="text-xl font-bold text-gray-800 mb-6">자산 불러오는 중</h2>
 
@@ -239,7 +261,7 @@ export default function Linking() {
                                         'text-gray-400'
                 }`}>
                   {bank.name}&nbsp;
-                  {status === 'done' ? '완료' : status === 'linking' ? '연동 중' : '대기 중'}
+                  {status === 'done' ? '완료' : status === 'linking' ? '연결 중' : '대기 중'}
                 </span>
               </div>
             );
@@ -253,14 +275,29 @@ export default function Linking() {
   return (
     <PhoneFrame bottomLabel="계좌 선택">
       <div className="flex items-center gap-2 mb-1">
-        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
           <Check className="w-4 h-4 text-white" strokeWidth={3} />
         </div>
-        <h2 className="text-lg font-bold text-gray-800">연동 완료!</h2>
+        <h2 className="text-lg font-bold text-gray-800">연결 완료!</h2>
       </div>
-      <p className="text-sm text-gray-400 mb-5">
+      <p className="text-sm text-gray-700 mb-4">
         가져온 계좌 중 사용할 계좌를 선택해주세요
       </p>
+
+      {/* 전체 선택 */}
+      {(() => {
+        const allIds = selected.flatMap(bankId => (BANK_ACCOUNTS[bankId] ?? []).map(a => a.id));
+        const isAll = allIds.length > 0 && allIds.every(id => pickedAccounts.includes(id));
+        return (
+          <button
+            onClick={() => setPickedAccounts(isAll ? [] : allIds)}
+            className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-4 active:scale-[0.99] transition"
+          >
+            <span className="text-sm font-bold text-blue-700">전체 선택</span>
+            <Checkbox checked={isAll} />
+          </button>
+        );
+      })()}
 
       <div className="flex-1 overflow-y-auto space-y-5 -mx-2 px-2">
         {selected.map(bankId => {
@@ -300,9 +337,13 @@ export default function Linking() {
       </div>
 
       <button
-        onClick={() => navigate('/salary-select')}
+        onClick={() => {
+          const linkedAccountObjects = selected
+            .flatMap(bankId => (BANK_ACCOUNTS[bankId] ?? []).filter(acc => pickedAccounts.includes(acc.id)));
+          navigate('/salary-select', { state: { linkedAccounts: linkedAccountObjects } });
+        }}
         disabled={pickedAccounts.length === 0}
-        className="w-full bg-blue-800 hover:bg-blue-900 disabled:opacity-40 text-white py-4 rounded-2xl font-bold mt-6 transition active:scale-95"
+        className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white py-4 rounded-2xl font-bold mt-6 transition active:scale-95"
       >
         {pickedAccounts.length > 0
           ? `${pickedAccounts.length}개 계좌 연결하고 급여통장 설정하기 →`
