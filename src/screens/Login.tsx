@@ -26,9 +26,10 @@ export default function Login() {
     setIsLoading(true);
     try {
       // ─── 백엔드 연동 시 아래 한 줄만 살리고, mock 라인은 지우세요 ───
-      // const token = await loginApi(email, password);
+      // const { token, name } = await loginApi(email, password);
+      // setAuthToken(token, name);  // name을 두 번째 인자로 전달
       const token = `mock-token-${Date.now()}`;
-      setAuthToken(token);
+      setAuthToken(token); // 로그인 시엔 이름 모름 → 회원가입 때 저장된 이름 유지
       navigate('/linking');
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인 중 오류가 발생했습니다.');

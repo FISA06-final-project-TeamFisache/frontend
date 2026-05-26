@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import heroImg from '../assets/hero.png';
+import { useAuth } from '../contexts/AuthContext';
 
-const USER_NAME = '서태형'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 const DISPLAY_MS = 3500;
 const FADE_MS = 500;
 
 export default function PrescriptionIntro() {
+  const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
   const [exiting, setExiting] = useState(false);
 

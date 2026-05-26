@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-const USER_NAME = '서태형'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 
 const STEP_COLORS = [
   { bg: '#FAEEDA', color: '#854F0B' },
@@ -790,6 +790,7 @@ function ProductPickerModal({ currentId, mode, onClose, onPick }: { currentId?: 
 // ─── 메인 컴포넌트 ─────────────────────────────────
 
 export default function AssetPortfolio() {
+  const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>('all');
   const [flows, setFlows] = useState<Record<FlowKey, Flow>>(INITIAL_FLOWS);

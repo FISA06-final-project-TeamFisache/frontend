@@ -2,24 +2,38 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 
 type AuthContextValue = {
   token: string | null;
+  userName: string;
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: (token: string, name?: string) => void;
   logout: () => void;
+  setUserName: (name: string) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [userName, setUserNameState] = useState<string>(() => localStorage.getItem('userName') ?? '회원');
 
-  const login = (newToken: string) => {
+  const login = (newToken: string, name?: string) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
+    if (name) {
+      localStorage.setItem('userName', name);
+      setUserNameState(name);
+    }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userName');
     setToken(null);
+    setUserNameState('회원');
+  };
+
+  const setUserName = (name: string) => {
+    localStorage.setItem('userName', name);
+    setUserNameState(name);
   };
 
   // client.ts에서 401 응답 시 dispatch하는 이벤트 수신
@@ -30,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, isAuthenticated: !!token, login, logout }}>
+    <AuthContext.Provider value={{ token, userName, isAuthenticated: !!token, login, logout, setUserName }}>
       {children}
     </AuthContext.Provider>
   );

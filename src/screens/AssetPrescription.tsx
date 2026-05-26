@@ -8,6 +8,7 @@ import wooriLogo    from '../assets/banks/woori.png';
 import kbLogo       from '../assets/banks/kb.png';
 import hanaLogo     from '../assets/banks/hana.png';
 import miraeLogo    from '../assets/banks/mirae.png';
+import { useAuth } from '../contexts/AuthContext';
 
 const BANK_LOGOS: Record<string, string> = {
   '카카오뱅크': kakaoLogo,
@@ -19,11 +20,11 @@ const BANK_LOGOS: Record<string, string> = {
   '미래에셋증권': miraeLogo,
 };
 
+// [AI 자동생성 필요] 월급 · 고정지출 · 투자금액 — 백엔드 마이데이터 API 연동 시 교체
 const TOTAL_SALARY = 3_200_000;
 const FIXED_EXPENSE = 245_000;
 // TODO: AssetPortfolio 흐름 합계에서 받아와 교체 (현재 4개 흐름 × 30만원 = 120만원 mock)
 const INVESTMENT_AMOUNT = 1_200_000;
-const USER_NAME = '회원'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 
 interface Account {
   id: number;
@@ -70,6 +71,7 @@ const MY_ACCOUNTS: LinkedAccount[] = [
   { id: 'mirae-1',   bank: '미래에셋증권',  name: '종합매매계좌',       short: '미래', badgeBg: 'bg-orange-100', badgeColor: 'text-orange-700' },
 ];
 
+// [AI 자동생성 필요] 초기 계좌 배분 목록 — AI 처방 결과로 자동 생성 (통장 종류·금액·태그)
 const INITIAL_ACCOUNTS: Account[] = [
   { id: 0, bank: '입출금통장', bankName: '카카오뱅크', tag: '생활비', amount: 1_500_000, percent: 47, isPinned: true,  color: TAG_COLORS[0] },
   { id: 1, bank: '파킹통장',   bankName: '토스뱅크',   tag: '비상금', amount: 300_000,   percent: 9,  isPinned: false, color: TAG_COLORS[3] },
@@ -79,6 +81,7 @@ const formatNumber = (n: number) => n.toLocaleString('ko-KR');
 const parseDigits = (s: string) => parseInt(s.replace(/[^0-9]/g, ''), 10) || 0;
 
 export default function AssetPrescription() {
+  const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
   const [showModal, setShowModal] = useState(false);

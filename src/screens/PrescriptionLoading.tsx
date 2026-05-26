@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
-const USER_NAME = '서태형'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 
 interface StepRowProps {
   shown: boolean;
@@ -34,6 +34,7 @@ function StepRow({ shown, checked, label }: StepRowProps) {
 }
 
 export default function PrescriptionLoading() {
+  const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
   const [mainText, setMainText] = useState(`${USER_NAME}님이 입력하신 목표를\n이해하는 중이에요`);
   const [mainVisible, setMainVisible] = useState(true);

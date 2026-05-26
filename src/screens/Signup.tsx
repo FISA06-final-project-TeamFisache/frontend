@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ChevronLeft } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const hasNum     = (pw: string) => /\d/.test(pw);
 const hasLower   = (pw: string) => /[a-z]/.test(pw);
@@ -10,6 +11,7 @@ const hasLength  = (pw: string) => pw.length >= 8;
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { setUserName } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +25,8 @@ export default function Signup() {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+    // 이름을 컨텍스트에 저장 (백엔드 연동 시 API 응답에서 받아와 login() 호출로 대체)
+    setUserName(name.trim());
     navigate('/login');
   };
 

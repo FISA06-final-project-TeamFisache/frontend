@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-const USER_NAME = '서태형'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 
 interface Goal {
   id: number;
@@ -60,13 +60,6 @@ const PORTFOLIO_DETAILS: PortfolioDetail[] = [
   { category: 'IRP',    pct: 10, color: '#085041', items: [{ name: '미래에셋 퇴직연금', pct: 10 }] },
 ];
 
-const NOTIFICATIONS: NotiItem[] = [
-  { id: 'n1', icon: '💳', iconBg: '#E6F1FB', title: '월급이 들어왔네요!',                       body: '새로 나눴어요! 확인하고 자동이체할게요.',                                                  time: '방금 전', read: false },
-  { id: 'n2', icon: '📉', iconBg: '#FCEBEB', title: '밸런싱 붕괴 조짐이 보여요',                body: '이번 달 소비 속도가 빠르게 올라가고 있어요. 지금 추세면 월말 전에 생활비가 소진될 수 있어요.', time: '2시간 전', read: false },
-  { id: 'n3', icon: '📋', iconBg: '#E1F5EE', title: '2026년 5월 월간 리포트가 도착했어요!',     body: `${USER_NAME}님만을 위한 5월 종합 리포트가 준비됐어요. 지난 한 달을 돌아볼게요.`,         time: '1일 전',   read: false },
-  { id: 'n4', icon: '🎵', iconBg: '#EEEDFE', title: '이번 달 관심받고 있는 공연 소식이에요!',    body: `${USER_NAME}님의 취향을 기반으로 골라왔어요. 6월 뮤지컬 선예매가 열렸어요.`,             time: '1일 전',   read: false },
-  { id: 'n5', icon: '🏦', iconBg: '#E1F5EE', title: `${USER_NAME}님만을 위한 정부 정책을 가져왔어요`, body: '자격증 지원금을 신청해보세요! 최대 50만원을 돌려받을 수 있어요.',                          time: '2일 전',   read: true },
-];
 
 const DONUT_R = 28;
 const CIRC = 2 * Math.PI * DONUT_R;
@@ -397,7 +390,17 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
+  const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
+
+  // [AI 자동생성 필요] 알림 메시지 본문
+  const NOTIFICATIONS: NotiItem[] = [
+    { id: 'n1', icon: '💳', iconBg: '#E6F1FB', title: '월급이 들어왔네요!',                       body: '새로 나눴어요! 확인하고 자동이체할게요.',                                                  time: '방금 전', read: false },
+    { id: 'n2', icon: '📉', iconBg: '#FCEBEB', title: '밸런싱 붕괴 조짐이 보여요',                body: '이번 달 소비 속도가 빠르게 올라가고 있어요. 지금 추세면 월말 전에 생활비가 소진될 수 있어요.', time: '2시간 전', read: false },
+    { id: 'n3', icon: '📋', iconBg: '#E1F5EE', title: '2026년 5월 월간 리포트가 도착했어요!',     body: `${USER_NAME}님만을 위한 5월 종합 리포트가 준비됐어요. 지난 한 달을 돌아볼게요.`,         time: '1일 전',   read: false },
+    { id: 'n4', icon: '🎵', iconBg: '#EEEDFE', title: '이번 달 관심받고 있는 공연 소식이에요!',    body: `${USER_NAME}님의 취향을 기반으로 골라왔어요. 6월 뮤지컬 선예매가 열렸어요.`,             time: '1일 전',   read: false },
+    { id: 'n5', icon: '🏦', iconBg: '#E1F5EE', title: `${USER_NAME}님만을 위한 정부 정책을 가져왔어요`, body: '자격증 지원금을 신청해보세요! 최대 50만원을 돌려받을 수 있어요.',                          time: '2일 전',   read: true },
+  ];
   const [bannerVisible, setBannerVisible] = useState(true);
   const [goalInputOpen, setGoalInputOpen] = useState(false);
   const [anomalyOpen, setAnomalyOpen] = useState(false);

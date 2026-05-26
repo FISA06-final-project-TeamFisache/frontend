@@ -9,6 +9,7 @@ import cycleporiImg   from '../assets/CyclePori.png';
 import judoporiImg    from '../assets/JudoPori.png';
 import fencingporiImg from '../assets/FencingPori.png';
 import archeryporiImg from '../assets/Archerypori.png';
+import { useAuth } from '../contexts/AuthContext';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -191,9 +192,9 @@ function calcResult(answers: Record<number, 'A' | 'B'>): ResultType {
 
 type Step = 'intro' | 'question' | 'loading' | 'result';
 
-const USER_NAME = '회원'; // TODO: 인증 컨텍스트에서 실제 이름 가져오기
 
 export default function PortiSurvey() {
+  const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('intro');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -518,6 +519,7 @@ export default function PortiSurvey() {
               {openDetail.spending ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {openDetail.spending && (
+              // [AI 자동생성 필요] 소비 분석 텍스트 — 사용자 마이데이터 기반 자동 생성
               <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
                 매월 고정적으로 나가는 지출(24.5만 원) 외의 변동 지출 통제를 잘하고 계세요! 다만, 변동 지출 중 가장 큰 비중을 차지하는 <strong>식비(특히 배달앱)</strong>가 유독 눈에 띄네요. 규칙적인 수영 페이스처럼 배달 횟수도 일주일에 1번으로 규칙을 정해보는 건 어떨까요?
               </div>
@@ -558,6 +560,7 @@ export default function PortiSurvey() {
               {openDetail.investment ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {openDetail.investment && (
+              // [AI 자동생성 필요] 투자 성향 분석 텍스트 — 설문 결과 + 마이데이터 비교 기반 자동 생성
               <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
                 설문에서는 <strong>'원금 손실을 두려워하는 성향'</strong>이셨는데, 현재 마이데이터를 보면 주식 비중이 75%로 변동성이 다소 큰 상태예요. 수영 타입답게 예적금이나 배당 ETF 비중을 늘려 레인을 튼튼하게 만들어볼까요?
               </div>
@@ -601,6 +604,7 @@ export default function PortiSurvey() {
               {openDetail.saving ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {openDetail.saving && (
+              // [AI 자동생성 필요] 저축 안전망 분석 텍스트 — 계좌 유동성 비율 기반 자동 생성
               <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
                 설문에서 나타난 <strong>'안전 지향'</strong> 성향이 실제 계좌에도 뚜렷하게 보이고 있어요. 전체 저축의 92%가 예적금과 청약에 단단히 묶여 있어 기본기가 매우 탄탄합니다.<br />
                 반면, 언제든 쓸 수 있는 유동성 자산(비상금)은 8%로, 단기적인 유연성보다는 돈을 확실하게 묶어두는 방식을 선호하고 계시네요.
