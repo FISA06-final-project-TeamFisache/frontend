@@ -205,9 +205,8 @@ export default function AssetPrescription() {
 
         <main className="p-5 pt-2">
           {/* 헤더 텍스트 */}
-          <h2 className="text-2xl font-bold leading-tight mb-5 text-slate-800">
-            <span className="text-blue-600">Pori</span>가 {USER_NAME} 님의<br />
-            소비·저축 패턴을 보고<br />
+          <h2 className="text-lg font-bold leading-snug mb-5 text-slate-800">
+            <span className="text-blue-600">Pori</span>가 {USER_NAME} 님의 소비·저축 패턴을 보고<br />
             이번 월급을 나눠봤어요.
           </h2>
 

@@ -449,12 +449,12 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <span style={{ fontSize: 14 }}>🔔</span>
                     <span style={{ fontSize: 12, fontWeight: 500, color: '#854F0B' }}>
-                      월급 320만 원이 들어왔어요
+                      월급이 들어왔어요
                     </span>
                     <span style={{ fontSize: 10, color: '#BA7517' }}>방금 전</span>
                   </div>
                   <p style={{ fontSize: 12, color: '#633806', margin: '0 0 10px', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                    월급이 들어왔어요! Pori가 자동으로 분배 계획을 세웠어요.{'\n'}확인하고 자동이체를 시작해볼까요?
+                    Pori가 자동으로 이번 달 분배 계획을 세웠어요.{'\n'}확인하고 자동이체를 시작해볼까요?
                   </p>
                   <button style={{ fontSize: 12, fontWeight: 500, padding: '6px 12px', background: '#854F0B', color: '#FAEEDA', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
                     분배 계획 확인하기 →
@@ -635,14 +635,24 @@ export default function Dashboard() {
           )}
 
           {/* 목표 펼침 */}
-          {goalOpen && (
+          {goalOpen && GOALS[0] && (
             <Card>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>이벤트 · 목표</span>
-                <SmallBtn onClick={() => setGoalInputOpen(!goalInputOpen)}>+ 목표 추가</SmallBtn>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 22 }}>{GOALS[0].icon}</span>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{GOALS[0].label}</p>
+                    <p style={{ fontSize: 10, color: '#64748b', margin: '1px 0 0' }}>목표 {GOALS[0].target}</p>
+                  </div>
+                </div>
+                <Pill bg={GOALS[0].color.badge} color={GOALS[0].color.badgeText}>D-{GOALS[0].dday}</Pill>
               </div>
-              {goalInputOpen && (
-                <div style={{ background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: '12px 14px', marginBottom: 8 }}>
+              <div style={{ height: 7, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 4 }}>
+                <div style={{ width: `${GOALS[0].progress}%`, height: '100%', background: GOALS[0].color.bar, borderRadius: 99 }} />
+              </div>
+              <p style={{ fontSize: 11, color: GOALS[0].color.text, fontWeight: 500, margin: '0 0 14px' }}>{GOALS[0].progress}% 달성</p>
+              {goalInputOpen ? (
+                <div style={{ background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: '12px 14px' }}>
                   <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 7px' }}>어떤 목표를 이루고 싶으세요?</p>
                   <input value={goalText} onChange={e => setGoalText(e.target.value)} placeholder="예: 내년 5월에 유럽 여행 가고 싶어요" style={{ width: '100%', boxSizing: 'border-box', marginBottom: 7, fontSize: 13, padding: '8px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, background: '#fff', color: '#0f172a' }} />
                   <button
@@ -653,27 +663,9 @@ export default function Dashboard() {
                     Pori가 목표 설정해드릴게요 →
                   </button>
                 </div>
+              ) : (
+                <SmallBtn onClick={() => setGoalInputOpen(true)}>+ 목표 변경</SmallBtn>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 7 }}>
-                {GOALS.map(g => (
-                  <Card key={g.id} style={{ padding: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 20 }}>{g.icon}</span>
-                      <Pill bg={g.color.badge} color={g.color.badgeText}>D-{g.dday}</Pill>
-                    </div>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', margin: '0 0 2px' }}>{g.label}</p>
-                    <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 8px' }}>목표 {g.target}</p>
-                    <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                      <div style={{ width: `${g.progress}%`, height: '100%', background: g.color.bar, borderRadius: 99 }} />
-                    </div>
-                    <p style={{ fontSize: 10, color: g.color.text, margin: '4px 0 0', fontWeight: 500 }}>{g.progress}% 달성</p>
-                  </Card>
-                ))}
-                <div onClick={() => setGoalInputOpen(true)} style={{ background: '#f8fafc', border: '0.5px dashed #e2e8f0', borderRadius: 14, padding: 12, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 120 }}>
-                  <span style={{ fontSize: 22, color: '#94a3b8' }}>+</span>
-                  <span style={{ fontSize: 11, color: '#64748b', textAlign: 'center', lineHeight: 1.4 }}>새 목표 추가<br />자연어로 말해줘요</span>
-                </div>
-              </div>
             </Card>
           )}
         </div>
