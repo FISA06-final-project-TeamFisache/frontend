@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import pillImg from '../assets/pill.png';
 
 
 const STEP_COLORS = [
@@ -109,6 +110,7 @@ interface Flow {
   hubId: string;
   rate: string;
   projected: string;
+  projectedPeriod: string;   // '6개월' | '1년' | '4년'
   badgeBg: string;
   badgeColor: string;
   sources: FlowSource[];
@@ -116,13 +118,15 @@ interface Flow {
 }
 
 const TERM_STYLE: Record<FlowTerm, { bg: string; color: string }> = {
-  단기: { bg: '#FEF3C7', color: '#92400E' },
-  중기: { bg: '#DBEAFE', color: '#1D4ED8' },
-  장기: { bg: '#E0E7FF', color: '#4338CA' },
+  단기: { bg: '#FECACA', color: '#991B1B' },
+  중기: { bg: '#FDE68A', color: '#92400E' },
+  장기: { bg: '#BBF7D0', color: '#166534' },
 };
 
 type FlowKey = 'a' | 'b' | 'c' | 'd';
-type TabKey = 'all' | FlowKey;
+type TermTab = 'all' | '단기' | '중기' | '장기1' | '장기2';
+
+const FLOW_TERM_LABELS: Record<FlowKey, string> = { a: '단기', b: '중기', c: '장기1', d: '장기2' };
 
 const INITIAL_FLOWS: Record<FlowKey, Flow> = {
   a: {
@@ -131,7 +135,7 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     summary: '비상금·생활비 베이스를 단단히 다져요',
     term: '단기',
     kind: '일반', hubId: 'toss-park',
-    rate: '+8.4%', projected: '1.1억', badgeBg: '#EEEDFE', badgeColor: '#534AB7',
+    rate: '+8.4%', projected: '1.1억', projectedPeriod: '6개월', badgeBg: '#EEEDFE', badgeColor: '#534AB7',
     sources: [
       { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장',   number: '3333-01-****567', amt: 150 },
       { logo: 'T', bg: '#3182F6', color: '#fff',    bank: '토스증권',   name: '종합매매계좌', number: '5601-01-****234', amt: 60  },
@@ -147,7 +151,7 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     summary: '중기 목표를 위한 균형 성장 전략',
     term: '중기',
     kind: '일반', hubId: 'shinhan-cma',
-    rate: '+7.1%', projected: '7,200만', badgeBg: '#E1F5EE', badgeColor: '#0F6E56',
+    rate: '+7.1%', projected: '7,200만', projectedPeriod: '1년', badgeBg: '#E1F5EE', badgeColor: '#0F6E56',
     sources: [
       { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜',  number: '110-***-456789', amt: 60 },
       { logo: 'H', bg: '#009F6B', color: '#fff', bank: '하나은행', name: '하나원큐 입출금',   number: '623-******-501', amt: 40 },
@@ -163,7 +167,7 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     summary: 'IRP로 매년 연말정산 환급까지 챙겨요',
     term: '장기',
     kind: 'IRP', hubId: 'mirae-irp',
-    rate: '+6.2%', projected: '4,500만', badgeBg: '#FFF4E6', badgeColor: '#C45500',
+    rate: '+6.2%', projected: '4,500만', projectedPeriod: '4년', badgeBg: '#FFF4E6', badgeColor: '#C45500',
     sources: [
       { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장', number: '3333-01-****567', amt: 50 },
     ],
@@ -176,9 +180,9 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     label: '알약 D', shortLabel: '알약D',
     title: '절세하며 공격적으로 불리기',
     summary: 'ISA 비과세 한도로 수익률을 더 챙겨요',
-    term: '중기',
+    term: '장기',
     kind: 'ISA', hubId: 'ki-isa',
-    rate: '+9.1%', projected: '6,800만', badgeBg: '#FEF3C7', badgeColor: '#B45309',
+    rate: '+9.1%', projected: '6,800만', projectedPeriod: '4년', badgeBg: '#FEF3C7', badgeColor: '#B45309',
     sources: [
       { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜', number: '110-***-456789',   amt: 50 },
       { logo: 'N', bg: '#19CE60', color: '#fff', bank: 'NH농협',   name: '주거래 통장',      number: '352-****-1122-99', amt: 30 },
@@ -190,12 +194,12 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
   },
 };
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'all', label: '전체' },
-  { key: 'a',   label: '알약A' },
-  { key: 'b',   label: '알약B' },
-  { key: 'c',   label: '알약C' },
-  { key: 'd',   label: '알약D' },
+const TERM_TABS: { key: TermTab; label: string }[] = [
+  { key: 'all',  label: '전체' },
+  { key: '단기', label: '단기' },
+  { key: '중기', label: '중기' },
+  { key: '장기1', label: '장기1' },
+  { key: '장기2', label: '장기2' },
 ];
 
 const sourceTotal = (flow: Flow) => flow.sources.reduce((s, x) => s + x.amt, 0);
@@ -297,8 +301,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
       {/* 흐름 헤더 */}
       <div style={{ marginBottom: 14, padding: '12px 14px', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: 99 }}>{flow.label}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, background: TERM_STYLE[flow.term].bg, color: TERM_STYLE[flow.term].color, padding: '3px 8px', borderRadius: 99 }}>{flow.term}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, background: TERM_STYLE[flow.term].bg, color: TERM_STYLE[flow.term].color, padding: '3px 8px', borderRadius: 99 }}>{FLOW_TERM_LABELS[flowKey]}</span>
           {flow.kind !== '일반' && (
             <span style={{ fontSize: 10, background: flow.badgeBg, color: flow.badgeColor, padding: '3px 8px', borderRadius: 99, fontWeight: 700 }}>{flow.kind}</span>
           )}
@@ -459,7 +462,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
             <div style={{ fontSize: 20, fontWeight: 600, color: '#3B6D11' }}>{flow.rate}</div>
           </div>
           <div style={{ background: '#f8fafc', borderRadius: 8, padding: 11, textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>4년 후 예상</div>
+            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>{flow.projectedPeriod} 후 예상</div>
             <div style={{ fontSize: 20, fontWeight: 600, color: '#0f172a' }}>{flow.projected}</div>
           </div>
         </div>
@@ -472,72 +475,167 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
 
 const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
 
-// TODO: 월급 리밸런싱(AssetPrescription) 결과에서 흐름별 분배액을 받아 교체
-const FLOW_MONTHLY_MOCK = 30; // 만원 단위, 임시 고정값
+// 파스텔 톤
+const PIE_TERM_COLORS: Record<FlowTerm, string> = { 단기: '#FECACA', 중기: '#FDE68A', 장기: '#BBF7D0' };
+
+// 탭·배지 색상
+const TERM_COLORS: Record<string, { bg: string; text: string }> = {
+  all:   { bg: '#ffffff', text: '#0f172a' },
+  단기:  { bg: '#FECACA', text: '#991B1B' },
+  중기:  { bg: '#FDE68A', text: '#92400E' },
+  장기1: { bg: '#BBF7D0', text: '#166534' },
+  장기2: { bg: '#BBF7D0', text: '#166534' },
+};
+
+function PieChart({ data }: { data: { pct: number; color: string; label: string }[] }) {
+  const cx = 50, cy = 50, r = 44;
+  let cum = 0;
+  const toXY = (pct: number) => {
+    const a = (pct / 100) * 2 * Math.PI - Math.PI / 2;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
+  };
+  return (
+    <svg width="80" height="80" viewBox="0 0 100 100">
+      {data.map((d, i) => {
+        const start = cum;
+        cum += d.pct;
+        const [x1, y1] = toXY(start);
+        const [x2, y2] = toXY(cum);
+        const large = d.pct > 50 ? 1 : 0;
+        const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+        return <path key={i} d={path} fill={d.color} />;
+      })}
+    </svg>
+  );
+}
+
+function ProductBar({ products }: { products: FlowProduct[] }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const hoveredName = hoveredIdx !== null ? lookupProduct(products[hoveredIdx].productId).name : null;
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 4 }}>
+        {products.map((p, i) => (
+          <div
+            key={i}
+            onMouseEnter={() => setHoveredIdx(i)}
+            onMouseLeave={() => setHoveredIdx(null)}
+            style={{ width: `${p.pct}%`, background: p.barColor, cursor: 'default' }}
+          />
+        ))}
+      </div>
+      <div style={{ fontSize: 10, minHeight: 14, color: '#64748b' }}>
+        {hoveredName && (
+          <span style={{ background: '#f1f5f9', padding: '1px 7px', borderRadius: 4 }}>
+            {hoveredName}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; onSelectFlow: (k: FlowKey) => void }) {
-  const entries = Object.entries(flows) as [FlowKey, Flow][];
-  const totalMonthly = entries.length * FLOW_MONTHLY_MOCK;
-  const avgRate = entries.reduce((sum, [, f]) => sum + parseRatePct(f.rate), 0) / entries.length;
+  const allEntries = Object.entries(flows) as [FlowKey, Flow][];
+
+  // 항상 전체 기준으로 요약 계산
+  const totalMonthly = allEntries.reduce((sum, [, f]) => sum + sourceTotal(f), 0);
+  const avgRate = allEntries.reduce((sum, [, f]) => sum + parseRatePct(f.rate), 0) / allEntries.length;
+
+  // 파이 차트 — 기간별 비중
+  const termAmounts: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
+  allEntries.forEach(([, f]) => { termAmounts[f.term] += sourceTotal(f); });
+  const pieData = (['단기', '중기', '장기'] as FlowTerm[])
+    .filter(t => termAmounts[t] > 0)
+    .map(t => ({ pct: (termAmounts[t] / totalMonthly) * 100, color: PIE_TERM_COLORS[t], label: t }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+      {/* 요약 카드 */}
       <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 10 }}>한 달 자산 흐름 요약</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 7 }}>
-          <div style={{ background: '#f8fafc', borderRadius: 8, padding: 11, textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>월 총 투자액</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{totalMonthly}만원</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 12 }}>투자 포트폴리오</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <PieChart data={pieData} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* [AI 자동생성 필요] 사용자 맞춤형 포트폴리오 구성 이유 설명 */}
+            <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.5, margin: 0, padding: '8px 10px', background: '#f8fafc', borderRadius: 8, borderLeft: '3px solid #3182F6', minHeight: 64 }}>
+              이렇게 구성한 이유 AI 분석
+            </p>
           </div>
-          <div style={{ background: '#f8fafc', borderRadius: 8, padding: 11, textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>평균 수익률(예상)</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#3B6D11' }}>+{avgRate.toFixed(1)}%</div>
+        </div>
+        {/* 하단: 범례(왼쪽) + 투자액·수익률(오른쪽 아래, 작게) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {pieData.map(d => (
+              <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.color }} />
+                <span style={{ fontSize: 10, color: '#64748b' }}>{d.label}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginRight: 14 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8' }}>월 투자액</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{totalMonthly}만원</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 9, color: '#94a3b8' }}>평균 수익률</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>+{avgRate.toFixed(1)}%</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {entries.map(([key, f]) => {
+      {/* 흐름 카드 목록 */}
+      {allEntries.map(([key, f]) => {
         const hub = lookupHub(f.hubId);
-        const total = FLOW_MONTHLY_MOCK;
+        const total = sourceTotal(f);
+        const termLabel = FLOW_TERM_LABELS[key];
+        const tc = TERM_COLORS[termLabel] ?? TERM_COLORS.all;
         return (
           <button
             key={key}
             onClick={() => onSelectFlow(key)}
-            style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: 14 }}
+            style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 16, padding: '12px 14px' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 8 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, background: '#f1f5f9', color: '#475569', padding: '2px 7px', borderRadius: 99 }}>{f.label}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, background: TERM_STYLE[f.term].bg, color: TERM_STYLE[f.term].color, padding: '2px 7px', borderRadius: 99 }}>{f.term}</span>
-                  {f.kind !== '일반' && (
-                    <span style={{ fontSize: 10, background: f.badgeBg, color: f.badgeColor, padding: '2px 7px', borderRadius: 99, fontWeight: 700 }}>{f.kind}</span>
-                  )}
-                </div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.3 }}>{f.title}</p>
-                <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0', lineHeight: 1.3 }}>{f.summary}</p>
+            {/* Row 1: 기간 배지 + kind 배지 | 자세히 보기 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, background: tc.bg, color: tc.text, padding: '3px 9px', borderRadius: 99 }}>
+                  {termLabel}
+                </span>
+                {f.kind !== '일반' && (
+                  <span style={{ fontSize: 10, fontWeight: 700, background: f.badgeBg, color: f.badgeColor, padding: '2px 7px', borderRadius: 99 }}>
+                    {f.kind}
+                  </span>
+                )}
               </div>
-              <span style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap', paddingTop: 2 }}>자세히 ›</span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>자세히 보기 ›</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
-              {f.sources.map((s, i) => <Logo key={i} letter={s.logo} bg={s.bg} color={s.color} size={22} />)}
-              <svg width="14" height="10" viewBox="0 0 14 10" fill="none" style={{ margin: '0 2px', flexShrink: 0 }}>
-                <path d="M1 5h10M8 2l3 3-3 3" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={22} />
-              <span style={{ fontSize: 11, color: '#64748b', marginLeft: 6 }}>{hub.hubLabel}</span>
+            {/* Row 2: 소스 → 허브 | 월 금액 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                {f.sources.map((s, i) => <Logo key={i} letter={s.logo} bg={s.bg} color={s.color} size={20} />)}
+                <svg width="12" height="9" viewBox="0 0 14 10" fill="none" style={{ margin: '0 2px', flexShrink: 0 }}>
+                  <path d="M1 5h10M8 2l3 3-3 3" stroke="#94a3b8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={20} />
+                <span style={{ fontSize: 11, color: '#64748b', marginLeft: 3 }}>{hub.hubLabel}</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {total}만원</span>
             </div>
 
-            <div style={{ display: 'flex', height: 5, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 8 }}>
-              {f.products.map((p, i) => <div key={i} style={{ width: `${p.pct}%`, background: p.barColor }} />)}
-            </div>
+            {/* Row 3: 상품 바 */}
+            <ProductBar products={f.products} />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: 10 }}>
-              <span style={{ fontSize: 11, color: '#64748b' }}>월 <strong style={{ color: '#0f172a', fontWeight: 600 }}>{total}만원</strong></span>
+            {/* Row 4: 수익률 | 기간 후 금액 */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>{f.rate}</span>
+              <span style={{ fontSize: 10, color: '#cbd5e1' }}>·</span>
               <span style={{ fontSize: 11, color: '#64748b' }}>
-                예상 <span style={{ color: '#3B6D11', fontWeight: 700 }}>{f.rate}</span>
-                <span style={{ marginLeft: 6 }}>· 4년 후 <strong style={{ color: '#0f172a', fontWeight: 600 }}>{f.projected}</strong></span>
+                {f.projectedPeriod} 후 <strong style={{ color: '#0f172a' }}>{f.projected}</strong>
               </span>
             </div>
           </button>
@@ -792,7 +890,8 @@ function ProductPickerModal({ currentId, mode, onClose, onPick }: { currentId?: 
 export default function AssetPortfolio() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<TabKey>('all');
+  const [termTab, setTermTab] = useState<TermTab>('all');
+  const [detailFlowKey, setDetailFlowKey] = useState<FlowKey | null>(null);
   const [flows, setFlows] = useState<Record<FlowKey, Flow>>(INITIAL_FLOWS);
   const [editor, setEditor] = useState<EditorMode>(null);
 
@@ -865,54 +964,109 @@ export default function AssetPortfolio() {
     }));
   };
 
+  // 단기/중기/장기1/장기2 모두 단일 flow — 탭 클릭 시 바로 FlowDetail 진입
+  const TERM_DIRECT: Partial<Record<string, FlowKey>> = { 단기: 'a', 중기: 'b', 장기1: 'c', 장기2: 'd' };
+  const directKey = termTab !== 'all' ? (TERM_DIRECT[termTab] ?? null) : null;
+  const activeFlowKey = directKey ?? detailFlowKey;
+  const showDetail = activeFlowKey !== null;
+
+  const handleBack = () => {
+    if (directKey) {
+      // 단기/중기 직접 탭 → 전체 탭으로
+      setTermTab('all');
+    } else if (detailFlowKey) {
+      // 장기 또는 전체 탭의 상세 → 목록으로
+      setDetailFlowKey(null);
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
-    <div style={{ fontFamily: "'Pretendard', sans-serif", background: '#f8fafc', minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '24px 16px 48px' }}>
+    <div style={{ fontFamily: "'Pretendard', sans-serif", background: '#f8fafc', minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '0 0 48px' }}>
       <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
-      <div style={{ width: '100%', maxWidth: 375 }}>
+      <div style={{ width: '100%', maxWidth: 390 }}>
 
-        <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', margin: '0 0 4px' }}>Pori의 자산 처방전</p>
-        <p style={{ fontSize: 20, fontWeight: 500, color: '#0f172a', lineHeight: 1.35, margin: '0 0 18px' }}>
-          {USER_NAME} 님의 돈,<br />이렇게 불려드릴게요
-        </p>
-
-        {/* 탭 */}
-        <div style={{ display: 'flex', background: '#f1f5f9', padding: 3, borderRadius: 14, marginBottom: 20, gap: 2 }}>
-          {TABS.map(({ key, label }) => (
-            <button key={key} onClick={() => setTab(key)}
-              style={{
-                flex: 1, padding: '8px 0', borderRadius: 11, border: 'none', cursor: 'pointer',
-                fontSize: 12, fontWeight: 600, transition: 'all .15s',
-                background: tab === key ? '#fff' : 'transparent',
-                color: tab === key ? '#0f172a' : '#94a3b8',
-                boxShadow: tab === key ? '0 1px 3px rgba(0,0,0,.07)' : 'none',
-              }}>
-              {label}
-            </button>
-          ))}
+        {/* 헤더 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: '16px 16px 0' }}>
+          <button
+            onClick={handleBack}
+            style={{ position: 'absolute', left: 16, background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: '#64748b', display: 'flex', alignItems: 'center' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>자산 처방전</h1>
         </div>
 
-        {tab === 'all' && <AllOverview flows={flows} onSelectFlow={setTab} />}
-        {tab !== 'all' && (
-          <FlowDetail
-            flowKey={tab}
-            flow={flows[tab]}
-            onEdit={setEditor}
-            onAmount={(idx, amt) => handleAmount(tab, idx, amt)}
-            onRemoveSource={(idx) => handleRemoveSource(tab, idx)}
-            onPct={(idx, pct) => handlePct(tab, idx, pct)}
-            onRemoveProduct={(idx) => handleRemoveProduct(tab, idx)}
-          />
-        )}
+        <div style={{ padding: '12px 16px 0' }}>
+          {!showDetail && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+              <p style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, margin: 0 }}>
+                {USER_NAME}님의 자산<br />이렇게 불려드릴게요
+              </p>
+              <img src={pillImg} alt="처방전" style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
+            </div>
+          )}
 
-        {tab === 'all' && (
-          <div style={{ marginTop: 24 }}>
-            <button onClick={() => navigate('/dashboard')}
-              style={{ width: '100%', padding: '16px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}>
-              이 전략으로 관리 시작하기
-            </button>
-          </div>
-        )}
+          {/* 탭 — 상세 뷰일 때 숨김 */}
+          {!showDetail && (
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: 3, borderRadius: 14, marginBottom: 16, gap: 2 }}>
+              {TERM_TABS.map(({ key, label }) => {
+                const isActive = termTab === key;
+                const c = TERM_COLORS[key] ?? TERM_COLORS.all;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setTermTab(key); setDetailFlowKey(null); }}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 11, border: 'none', cursor: 'pointer',
+                      fontSize: 11, fontWeight: 700, transition: 'all .15s',
+                      background: key === 'all'
+                        ? (isActive ? '#fff' : 'transparent')
+                        : (isActive ? c.bg : 'transparent'),
+                      color: key === 'all'
+                        ? (isActive ? '#0f172a' : '#94a3b8')
+                        : (isActive ? c.text : '#b0b8c4'),
+                      boxShadow: isActive ? '0 1px 4px rgba(0,0,0,.08)' : 'none',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
+          {/* 개요 — 전체·장기 탭에서 상세 미선택 */}
+          {!showDetail && (
+            <AllOverview flows={flows} onSelectFlow={setDetailFlowKey} />
+          )}
+
+          {/* 상세 — 단기/중기 직접 진입 or 카드 클릭 진입 */}
+          {showDetail && activeFlowKey && (
+            <FlowDetail
+              flowKey={activeFlowKey}
+              flow={flows[activeFlowKey]}
+              onEdit={setEditor}
+              onAmount={(idx, amt) => handleAmount(activeFlowKey, idx, amt)}
+              onRemoveSource={(idx) => handleRemoveSource(activeFlowKey, idx)}
+              onPct={(idx, pct) => handlePct(activeFlowKey, idx, pct)}
+              onRemoveProduct={(idx) => handleRemoveProduct(activeFlowKey, idx)}
+            />
+          )}
+
+          {/* 하단 버튼 — overview일 때만 */}
+          {!showDetail && (
+            <div style={{ marginTop: 24 }}>
+              <button onClick={() => navigate('/dashboard')}
+                style={{ width: '100%', padding: '16px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}>
+                관리 시작하기
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 편집 모달들 */}
