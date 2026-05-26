@@ -187,7 +187,7 @@ export default function Linking() {
         onClick={() => setSelected(
           selected.length === BANK_LIST.length ? [] : BANK_LIST.map(b => b.id)
         )}
-        className="flex items-center justify-between w-full bg-blue-50 rounded-xl px-4 py-3 mb-3 active:scale-[0.99] transition"
+        className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-3 active:scale-[0.99] transition"
       >
         <span className="text-sm font-bold text-blue-700">전체 선택</span>
         <Checkbox checked={selected.length === BANK_LIST.length} />

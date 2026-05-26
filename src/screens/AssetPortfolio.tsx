@@ -2,6 +2,13 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import pillImg from '../assets/pill.png';
+import kakaoImg  from '../assets/banks/kakao.png';
+import tossImg   from '../assets/banks/toss.png';
+import shinhanImg from '../assets/banks/shinhan.png';
+import hanaImg   from '../assets/banks/hana.png';
+import wooriImg  from '../assets/banks/woori.png';
+import kbImg     from '../assets/banks/kb.png';
+import miraeImg  from '../assets/banks/mirae.png';
 
 
 const STEP_COLORS = [
@@ -21,17 +28,18 @@ interface AccountItem {
   logo: string;
   bg: string;
   color: string;
+  imgSrc?: string;
 }
 
 const SOURCE_CATALOG: AccountItem[] = [
-  { id: 'kakao-1',   bank: '카카오뱅크', name: '입출금통장',          number: '3333-01-****567',  logo: 'K', bg: '#FEE500', color: '#3C1E1E' },
-  { id: 'kakao-2',   bank: '카카오뱅크', name: '세이프박스',          number: '3333-02-****890',  logo: 'K', bg: '#FEE500', color: '#3C1E1E' },
-  { id: 'toss-1',    bank: '토스증권',   name: '종합매매계좌',        number: '5601-01-****234',  logo: 'T', bg: '#3182F6', color: '#fff'    },
-  { id: 'shinhan-1', bank: '신한은행',   name: 'Tops 직장인 플랜',    number: '110-***-456789',   logo: 'S', bg: '#0046FF', color: '#fff'    },
-  { id: 'hana-1',    bank: '하나은행',   name: '하나원큐 입출금',     number: '623-******-501',   logo: 'H', bg: '#009F6B', color: '#fff'    },
-  { id: 'woori-1',   bank: '우리은행',   name: 'WON 우월한 월급통장', number: '1002-***-345678',  logo: 'W', bg: '#0067AC', color: '#fff'    },
+  { id: 'kakao-1',   bank: '카카오뱅크', name: '입출금통장',          number: '3333-01-****567',  logo: 'K', bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg  },
+  { id: 'kakao-2',   bank: '카카오뱅크', name: '세이프박스',          number: '3333-02-****890',  logo: 'K', bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg  },
+  { id: 'toss-1',    bank: '토스증권',   name: '종합매매계좌',        number: '5601-01-****234',  logo: 'T', bg: '#3182F6', color: '#fff',    imgSrc: tossImg   },
+  { id: 'shinhan-1', bank: '신한은행',   name: 'Tops 직장인 플랜',    number: '110-***-456789',   logo: 'S', bg: '#0046FF', color: '#fff',    imgSrc: shinhanImg },
+  { id: 'hana-1',    bank: '하나은행',   name: '하나원큐 입출금',     number: '623-******-501',   logo: 'H', bg: '#009F6B', color: '#fff',    imgSrc: hanaImg   },
+  { id: 'woori-1',   bank: '우리은행',   name: 'WON 우월한 월급통장', number: '1002-***-345678',  logo: 'W', bg: '#0067AC', color: '#fff',    imgSrc: wooriImg  },
   { id: 'nh-1',      bank: 'NH농협',     name: '주거래 통장',         number: '352-****-1122-99', logo: 'N', bg: '#19CE60', color: '#fff'    },
-  { id: 'kb-1',      bank: '국민은행',   name: 'Star 입출금통장',     number: '004-**-7788-12',   logo: 'K', bg: '#FFCD00', color: '#3C1E1E' },
+  { id: 'kb-1',      bank: '국민은행',   name: 'Star 입출금통장',     number: '004-**-7788-12',   logo: 'K', bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg     },
   { id: 'ibk-1',     bank: '기업은행',   name: '급여 자동이체',       number: '202-******-001',   logo: 'I', bg: '#005BAC', color: '#fff'    },
 ];
 
@@ -49,15 +57,16 @@ interface HubItem {
   subColor: string;
   kind: '일반' | 'IRP' | 'ISA';
   hubLabel: string;
+  imgSrc?: string;
 }
 
 const HUB_CATALOG: HubItem[] = [
-  { id: 'toss-park',   logo: 'T',   logoBg: '#3182F6', logoColor: '#fff',    name: '토스뱅크 파킹통장',     number: '1000-12-****345', sub: '연 2.5% · 수시입출금',         cardBg: '#EEEDFE', border: '#AFA9EC', nameColor: '#3C3489', subColor: '#534AB7', kind: '일반', hubLabel: '토스뱅크' },
-  { id: 'shinhan-cma', logo: '증권', logoBg: '#085041', logoColor: '#9FE1CB', name: '투자증권 CMA',          number: '8001-77-****092', sub: '연 3.1% · 수시입출금',         cardBg: '#E1F5EE', border: '#5DCAA5', nameColor: '#085041', subColor: '#0F6E56', kind: '일반', hubLabel: '투자증권' },
-  { id: 'kakao-park',  logo: 'K',   logoBg: '#FEE500', logoColor: '#3C1E1E', name: '카카오뱅크 세이프박스',  number: '3333-09-****123', sub: '연 2.2% · 수시입출금',         cardBg: '#FEF9C3', border: '#FCD34D', nameColor: '#854D0E', subColor: '#A16207', kind: '일반', hubLabel: '카카오뱅크' },
-  { id: 'mirae-irp',   logo: '미래', logoBg: '#FF8200', logoColor: '#fff',    name: '미래에셋증권 IRP',     number: '910-22-****678',  sub: '연 16.5% 세액공제 · 노후 대비', cardBg: '#FFF4E6', border: '#FFB873', nameColor: '#9A4D00', subColor: '#C45500', kind: 'IRP',  hubLabel: '미래에셋 IRP' },
+  { id: 'toss-park',   logo: 'T',   logoBg: '#3182F6', logoColor: '#fff',    name: '토스뱅크 파킹통장',     number: '1000-12-****345', sub: '연 2.5% · 수시입출금',         cardBg: '#EEEDFE', border: '#AFA9EC', nameColor: '#3C3489', subColor: '#534AB7', kind: '일반', hubLabel: '토스뱅크',    imgSrc: tossImg   },
+  { id: 'shinhan-cma', logo: '증권', logoBg: '#085041', logoColor: '#9FE1CB', name: '투자증권 CMA',          number: '8001-77-****092', sub: '연 3.1% · 수시입출금',         cardBg: '#E1F5EE', border: '#5DCAA5', nameColor: '#085041', subColor: '#0F6E56', kind: '일반', hubLabel: '투자증권',  imgSrc: shinhanImg },
+  { id: 'kakao-park',  logo: 'K',   logoBg: '#FEE500', logoColor: '#3C1E1E', name: '카카오뱅크 세이프박스',  number: '3333-09-****123', sub: '연 2.2% · 수시입출금',         cardBg: '#FEF9C3', border: '#FCD34D', nameColor: '#854D0E', subColor: '#A16207', kind: '일반', hubLabel: '카카오뱅크',  imgSrc: kakaoImg  },
+  { id: 'mirae-irp',   logo: '미래', logoBg: '#FF8200', logoColor: '#fff',    name: '미래에셋증권 IRP',     number: '910-22-****678',  sub: '연 16.5% 세액공제 · 노후 대비', cardBg: '#FFF4E6', border: '#FFB873', nameColor: '#9A4D00', subColor: '#C45500', kind: 'IRP',  hubLabel: '미래에셋 IRP', imgSrc: miraeImg  },
   { id: 'samsung-irp', logo: '삼성', logoBg: '#1428A0', logoColor: '#fff',    name: '삼성증권 IRP',         number: '550-15-****321',  sub: '연 16.5% 세액공제 · 안정형',   cardBg: '#E0E7FF', border: '#818CF8', nameColor: '#3730A3', subColor: '#4338CA', kind: 'IRP',  hubLabel: '삼성 IRP' },
-  { id: 'ki-isa',      logo: 'ISA', logoBg: '#1F2937', logoColor: '#FBBF24', name: '한국투자 중개형 ISA',   number: '720-88-****456',  sub: '비과세 200만원 한도 · 절세',   cardBg: '#FEF3C7', border: '#F59E0B', nameColor: '#92400E', subColor: '#B45309', kind: 'ISA',  hubLabel: '중개형 ISA' },
+  { id: 'ki-isa',      logo: 'ISA', logoBg: '#1F2937', logoColor: '#FBBF24', name: '한국투자 중개형 ISA',   number: '720-88-****456',  sub: '비과세 200만 원 한도 · 절세',   cardBg: '#FEF3C7', border: '#F59E0B', nameColor: '#92400E', subColor: '#B45309', kind: 'ISA',  hubLabel: '중개형 ISA' },
   { id: 'kiwoom-isa',  logo: 'ISA', logoBg: '#FF2C2C', logoColor: '#fff',    name: '키움증권 중개형 ISA',   number: '630-44-****789',  sub: '비과세 한도 활용 · 절세',      cardBg: '#FEE2E2', border: '#FCA5A5', nameColor: '#991B1B', subColor: '#B91C1C', kind: 'ISA',  hubLabel: '키움 ISA' },
 ];
 
@@ -95,7 +104,7 @@ const PRODUCT_CATALOG: ProductItem[] = [
 
 // ─── Flow 타입 ───────────────────────────────────────
 
-interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; }
+interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; imgSrc?: string; }
 interface FlowProduct { productId: string; pct: number; barColor: string; }
 
 type FlowTerm = '단기' | '중기' | '장기';
@@ -137,8 +146,8 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     kind: '일반', hubId: 'toss-park',
     rate: '+8.4%', projected: '1.1억', projectedPeriod: '6개월', badgeBg: '#EEEDFE', badgeColor: '#534AB7',
     sources: [
-      { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장',   number: '3333-01-****567', amt: 150 },
-      { logo: 'T', bg: '#3182F6', color: '#fff',    bank: '토스증권',   name: '종합매매계좌', number: '5601-01-****234', amt: 60  },
+      { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장',   number: '3333-01-****567', amt: 150, imgSrc: kakaoImg },
+      { logo: 'T', bg: '#3182F6', color: '#fff',    bank: '토스증권',   name: '종합매매계좌', number: '5601-01-****234', amt: 60,  imgSrc: tossImg  },
     ],
     products: [
       { productId: 'etf-tiger-snp', pct: 70, barColor: '#E24B4A' },
@@ -153,8 +162,8 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     kind: '일반', hubId: 'shinhan-cma',
     rate: '+7.1%', projected: '7,200만', projectedPeriod: '1년', badgeBg: '#E1F5EE', badgeColor: '#0F6E56',
     sources: [
-      { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜',  number: '110-***-456789', amt: 60 },
-      { logo: 'H', bg: '#009F6B', color: '#fff', bank: '하나은행', name: '하나원큐 입출금',   number: '623-******-501', amt: 40 },
+      { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜',  number: '110-***-456789', amt: 60, imgSrc: shinhanImg },
+      { logo: 'H', bg: '#009F6B', color: '#fff', bank: '하나은행', name: '하나원큐 입출금',   number: '623-******-501', amt: 40, imgSrc: hanaImg    },
     ],
     products: [
       { productId: 'etf-kodex-nas', pct: 60, barColor: '#E24B4A' },
@@ -169,7 +178,7 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     kind: 'IRP', hubId: 'mirae-irp',
     rate: '+6.2%', projected: '4,500만', projectedPeriod: '4년', badgeBg: '#FFF4E6', badgeColor: '#C45500',
     sources: [
-      { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장', number: '3333-01-****567', amt: 50 },
+      { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장', number: '3333-01-****567', amt: 50, imgSrc: kakaoImg },
     ],
     products: [
       { productId: 'tdf-mirae-2045', pct: 50, barColor: '#534AB7' },
@@ -184,7 +193,7 @@ const INITIAL_FLOWS: Record<FlowKey, Flow> = {
     kind: 'ISA', hubId: 'ki-isa',
     rate: '+9.1%', projected: '6,800만', projectedPeriod: '4년', badgeBg: '#FEF3C7', badgeColor: '#B45309',
     sources: [
-      { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜', number: '110-***-456789',   amt: 50 },
+      { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜', number: '110-***-456789',   amt: 50, imgSrc: shinhanImg },
       { logo: 'N', bg: '#19CE60', color: '#fff', bank: 'NH농협',   name: '주거래 통장',      number: '352-****-1122-99', amt: 30 },
     ],
     products: [
@@ -208,14 +217,18 @@ const lookupProduct = (id: string) => PRODUCT_CATALOG.find(p => p.id === id) ?? 
 
 // ─── 공통 서브컴포넌트 ─────────────────────────────
 
-function Logo({ letter, bg, color, size = 20 }: { letter: string; bg: string; color: string; size?: number }) {
+function Logo({ letter, bg, color, size = 20, imgSrc }: { letter: string; bg: string; color: string; size?: number; imgSrc?: string }) {
   return (
     <span style={{
-      width: size, height: size, borderRadius: Math.round(size * 0.28), background: bg, color,
+      width: size, height: size, borderRadius: Math.round(size * 0.28),
+      background: imgSrc ? '#fff' : bg, color,
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.44, fontWeight: 500, flexShrink: 0,
+      fontSize: size * 0.44, fontWeight: 500, flexShrink: 0, overflow: 'hidden',
+      border: imgSrc ? '0.5px solid #e2e8f0' : 'none',
     }}>
-      {letter}
+      {imgSrc
+        ? <img src={imgSrc} alt={letter} style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+        : letter}
     </span>
   );
 }
@@ -331,7 +344,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
                 onClick={() => onEdit({ type: 'source-pick', flowKey, sourceIdx: i })}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', minWidth: 0, flex: 1 }}
               >
-                <Logo letter={s.logo} bg={s.bg} color={s.color} size={26} />
+                <Logo letter={s.logo} bg={s.bg} color={s.color} size={26} imgSrc={s.imgSrc} />
                 <div style={{ minWidth: 0, textAlign: 'left' }}>
                   <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500, lineHeight: 1.2 }}>{s.bank}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', borderBottom: '1px dashed #cbd5e1', display: 'inline-block', lineHeight: 1.3, marginTop: 1 }}>
@@ -359,7 +372,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
             </div>
           ))}
         </div>
-        <MiniCard label="소계" value={`${total}만원`} />
+        <MiniCard label="소계" value={`${total}만 원`} />
       </StepCard>
       <Connector />
 
@@ -381,7 +394,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
           onClick={() => onEdit({ type: 'hub-pick', flowKey })}
           style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: hub.cardBg, border: `1px solid ${hub.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}
         >
-          <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={30} />
+          <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={30} imgSrc={hub.imgSrc} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: hub.nameColor }}>{hub.name}</div>
             <div style={{ fontSize: 10, color: hub.subColor, fontFamily: 'monospace', marginTop: 1 }}>{hub.number}</div>
@@ -487,24 +500,49 @@ const TERM_COLORS: Record<string, { bg: string; text: string }> = {
   장기2: { bg: '#BBF7D0', text: '#166534' },
 };
 
-function PieChart({ data }: { data: { pct: number; color: string; label: string }[] }) {
-  const cx = 50, cy = 50, r = 44;
-  let cum = 0;
-  const toXY = (pct: number) => {
+function PieChart({ data }: { data: { pct: number; color: string; label: string; amt: number }[] }) {
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const cx = 50, cy = 50, R = 44, r = 21;
+
+  const toXY = (pct: number, radius: number) => {
     const a = (pct / 100) * 2 * Math.PI - Math.PI / 2;
-    return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
+    return [cx + radius * Math.cos(a), cy + radius * Math.sin(a)] as const;
   };
+
+  let cum = 0;
+  const selected = selectedIdx !== null ? data[selectedIdx] : null;
+
   return (
-    <svg width="80" height="80" viewBox="0 0 100 100">
+    <svg width="72" height="72" viewBox="0 0 100 100" style={{ flexShrink: 0, cursor: 'pointer' }}>
       {data.map((d, i) => {
         const start = cum;
         cum += d.pct;
-        const [x1, y1] = toXY(start);
-        const [x2, y2] = toXY(cum);
+        const [ox1, oy1] = toXY(start, R);
+        const [ox2, oy2] = toXY(cum, R);
+        const [ix2, iy2] = toXY(cum, r);
+        const [ix1, iy1] = toXY(start, r);
         const large = d.pct > 50 ? 1 : 0;
-        const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
-        return <path key={i} d={path} fill={d.color} />;
+        const path = `M ${ox1} ${oy1} A ${R} ${R} 0 ${large} 1 ${ox2} ${oy2} L ${ix2} ${iy2} A ${r} ${r} 0 ${large} 0 ${ix1} ${iy1} Z`;
+        return (
+          <path
+            key={i}
+            d={path}
+            fill={d.color}
+            opacity={selectedIdx === null || selectedIdx === i ? 1 : 0.3}
+            onClick={() => setSelectedIdx(prev => prev === i ? null : i)}
+          />
+        );
       })}
+      {/* 도넛 중앙 원 */}
+      <circle cx={cx} cy={cy} r={r} fill="white" onClick={() => setSelectedIdx(null)} />
+      {/* 중앙 텍스트 */}
+      {selected ? (
+        <>
+          <text x={cx} y={cy - 7} textAnchor="middle" fontSize="9" fontWeight="700" fill="#0f172a">{selected.label}</text>
+          <text x={cx} y={cy + 3} textAnchor="middle" fontSize="8" fill="#64748b">{selected.pct.toFixed(0)}%</text>
+          <text x={cx} y={cy + 13} textAnchor="middle" fontSize="8" fontWeight="600" fill="#0f172a">{selected.amt}만</text>
+        </>
+      ) : null}
     </svg>
   );
 }
@@ -540,48 +578,46 @@ function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; on
 
   // 항상 전체 기준으로 요약 계산
   const totalMonthly = allEntries.reduce((sum, [, f]) => sum + sourceTotal(f), 0);
-  const avgRate = allEntries.reduce((sum, [, f]) => sum + parseRatePct(f.rate), 0) / allEntries.length;
+  // 투자액 가중 평균 수익률 — 각 플로우의 연 수익률을 투자 비중으로 가중
+  const weightedRate = totalMonthly > 0
+    ? allEntries.reduce((sum, [, f]) => sum + parseRatePct(f.rate) * sourceTotal(f), 0) / totalMonthly
+    : 0;
 
   // 파이 차트 — 기간별 비중
   const termAmounts: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
   allEntries.forEach(([, f]) => { termAmounts[f.term] += sourceTotal(f); });
   const pieData = (['단기', '중기', '장기'] as FlowTerm[])
     .filter(t => termAmounts[t] > 0)
-    .map(t => ({ pct: (termAmounts[t] / totalMonthly) * 100, color: PIE_TERM_COLORS[t], label: t }));
+    .map(t => ({ pct: (termAmounts[t] / totalMonthly) * 100, color: PIE_TERM_COLORS[t], label: t, amt: termAmounts[t] }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* 요약 카드 */}
-      <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 12 }}>투자 포트폴리오</div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+      <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: '10px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <PieChart data={pieData} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* [AI 자동생성 필요] 사용자 맞춤형 포트폴리오 구성 이유 설명 */}
-            <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.5, margin: 0, padding: '8px 10px', background: '#f8fafc', borderRadius: 8, borderLeft: '3px solid #3182F6', minHeight: 64 }}>
-              이렇게 구성한 이유 AI 분석
-            </p>
-          </div>
-        </div>
-        {/* 하단: 범례(왼쪽) + 투자액·수익률(오른쪽 아래, 작게) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {pieData.map(d => (
-              <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.color }} />
-                <span style={{ fontSize: 10, color: '#64748b' }}>{d.label}</span>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 72 }}>
+            {/* 통계: 2열 그리드 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+              <div>
+                <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>월 총 투자액</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{totalMonthly}만 원</div>
               </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginRight: 14 }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 9, color: '#94a3b8' }}>월 투자액</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{totalMonthly}만원</div>
+              <div>
+                <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>예상 1년 수익</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', lineHeight: 1.2 }}>+{weightedRate.toFixed(1)}%</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {Math.round(totalMonthly * weightedRate / 100)}만 원</div>
+              </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 9, color: '#94a3b8' }}>평균 수익률</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>+{avgRate.toFixed(1)}%</div>
+            {/* 범례 */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {pieData.map(d => (
+                <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: d.color }} />
+                  <span style={{ fontSize: 9, color: '#94a3b8' }}>{d.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -617,14 +653,14 @@ function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; on
             {/* Row 2: 소스 → 허브 | 월 금액 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                {f.sources.map((s, i) => <Logo key={i} letter={s.logo} bg={s.bg} color={s.color} size={20} />)}
+                {f.sources.map((s, i) => <Logo key={i} letter={s.logo} bg={s.bg} color={s.color} size={20} imgSrc={s.imgSrc} />)}
                 <svg width="12" height="9" viewBox="0 0 14 10" fill="none" style={{ margin: '0 2px', flexShrink: 0 }}>
                   <path d="M1 5h10M8 2l3 3-3 3" stroke="#94a3b8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={20} />
+                <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={20} imgSrc={hub.imgSrc} />
                 <span style={{ fontSize: 11, color: '#64748b', marginLeft: 3 }}>{hub.hubLabel}</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {total}만원</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {total}만 원</span>
             </div>
 
             {/* Row 3: 상품 바 */}
@@ -681,7 +717,7 @@ function SourcePickerModal({ currentName, onClose, onPick }: { currentName?: str
                   borderRadius: 12, cursor: 'pointer', textAlign: 'left',
                 }}
               >
-                <Logo letter={a.logo} bg={a.bg} color={a.color} size={32} />
+                <Logo letter={a.logo} bg={a.bg} color={a.color} size={32} imgSrc={a.imgSrc} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>{a.bank}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 1 }}>{a.name}</div>
@@ -735,7 +771,7 @@ function HubPickerModal({ currentId, onClose, onPick }: { currentId: string; onC
                   borderRadius: 12, cursor: 'pointer', textAlign: 'left',
                 }}
               >
-                <Logo letter={h.logo} bg={h.logoBg} color={h.logoColor} size={36} />
+                <Logo letter={h.logo} bg={h.logoBg} color={h.logoColor} size={36} imgSrc={h.imgSrc} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{h.name}</span>
@@ -925,11 +961,11 @@ export default function AssetPortfolio() {
     const { flowKey, sourceIdx } = editor;
     updateFlow(flowKey, f => {
       if (sourceIdx === 'new') {
-        return { ...f, sources: [...f.sources, { logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, amt: 0 }] };
+        return { ...f, sources: [...f.sources, { logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, amt: 0, imgSrc: a.imgSrc }] };
       }
       return {
         ...f,
-        sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number } : s),
+        sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, imgSrc: a.imgSrc } : s),
       };
     });
     setEditor(null);

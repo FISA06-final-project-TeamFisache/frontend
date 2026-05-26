@@ -34,16 +34,16 @@ export default function PrescriptionComplete() {
         </h1>
 
         {/* 마스코트 — 진입 후 위아래 float 애니메이션 */}
-        <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+        <div className="flex justify-center items-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
           <img
             src={doctorImg}
             alt="Pori 의사"
-            className="w-52 h-52 object-contain animate-floating"
+            className="w-32 h-32 object-contain animate-floating"
           />
         </div>
 
         {/* 메인 텍스트 */}
-        <div className="space-y-4 text-center animate-slide-up" style={{ animationDelay: '0.6s' }}>
+        <div className="flex flex-col items-center justify-center space-y-4 text-center animate-slide-up" style={{ animationDelay: '0.6s' }}>
           <p className="text-xl font-semibold text-slate-800 leading-snug">
             {USER_NAME} 님의 자산을<br />
             <span className="text-blue-500">어떻게 불릴지 고민중이에요</span>
