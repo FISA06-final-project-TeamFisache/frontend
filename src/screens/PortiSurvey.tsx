@@ -10,6 +10,7 @@ import judoporiImg    from '../assets/JudoPori.png';
 import fencingporiImg from '../assets/FencingPori.png';
 import archeryporiImg from '../assets/Archerypori.png';
 import { useAuth } from '../contexts/AuthContext';
+import { savePortiType, type PortiType } from '../api/userApi';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -268,12 +269,36 @@ export default function PortiSurvey() {
   const currentQ = QUESTIONS[currentIndex];
   const progress = completing ? 100 : (currentIndex / TOTAL_QUESTIONS) * 100;
 
-  // 로딩 → 결과 자동 전환
+  // 로딩 → 결과 자동 전환 및 API 저장
   useEffect(() => {
     if (step !== 'loading') return;
-    const timer = setTimeout(() => setStep('result'), 2800);
+
+    // 1. 클라이언트에서 결과 계산 (API 의존 없음)
+    const localResult = calcResult(answers);
+
+    const PORTI_TYPE_MAP: Record<string, PortiType> = {
+      '수영하는 Pori': 'SWIMMING',
+      '골프 치는 Pori': 'RHYTHMIC',
+      '사이클 타는 Pori': 'CYCLING',
+      '유도하는 Pori': 'JUDO',
+      '펜싱하는 Pori': 'FENCING',
+      '양궁 쏘는 Pori': 'ARCHERY',
+    };
+    const portiType = PORTI_TYPE_MAP[localResult.typeName] ?? 'SWIMMING';
+
+    // 2. 백엔드에 저장 (PATCH /users/porti-survey) — 실패해도 화면 전환은 진행
+    savePortiType(portiType).catch((err) => {
+      console.error('[PortiSurvey] portiType 저장 실패:', err);
+    });
+
+    // 3. 최소 로딩 시간(2.8초) 후 결과 화면으로 전환
+    const timer = setTimeout(() => {
+      setResult(localResult);
+      setStep('result');
+    }, 2800);
+
     return () => clearTimeout(timer);
-  }, [step]);
+  }, [step, answers]);
 
   const handleAnswer = (choice: 'A' | 'B') => {
     const newAnswers = { ...answers, [currentQ.id]: choice };
@@ -284,7 +309,6 @@ export default function PortiSurvey() {
     } else {
       // 마지막 문항: 게이지 100% 채우고 로딩으로 이동
       setCompleting(true);
-      setResult(calcResult(newAnswers));
       setTimeout(() => setStep('loading'), 700);
     }
   };

@@ -1,10 +1,12 @@
-import { useState, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { withdrawAccount } from '../api/userApi';
+import { getDashboard, type DashboardData } from '../api/dashboardApi';
 
 
 interface Goal {
-  id: number;
+  id: number | string;
   icon: string;
   label: string;
   target: string;
@@ -13,11 +15,9 @@ interface Goal {
   color: { bg: string; bar: string; text: string; badge: string; badgeText: string };
 }
 
-interface SpendingItem { label: string; pct: number; color: string; anomaly?: boolean; opacity?: number; }
-interface SpendingDetail { category: string; amount: string; sub: string; alert?: boolean; }
+interface SpendingItem { label: string; pct: number; color: string; }
 interface PopularProduct { rank: number; name: string; sub: string; pct: number; }
 interface PortfolioSlice { label: string; pct: number; color: string; rate?: string; }
-interface PortfolioDetail { category: string; pct: number; color: string; rate?: string; items: { name: string; pct: number; rate?: string }[]; }
 interface NotiItem { id: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; }
 
 const GOAL_COLORS: Goal['color'][] = [
@@ -36,50 +36,12 @@ function pickGoalIcon(text: string): string {
   return '🎯';
 }
 
-const SPENDING: SpendingItem[] = [
-  { label: '식비',       pct: 42, color: '#D85A30' },
-  { label: '문화/여가',  pct: 18, color: '#D85A30', opacity: 0.7 },
-  { label: '온라인쇼핑', pct: 21, color: '#A32D2D', anomaly: true },
-  { label: '교통',       pct: 8,  color: '#D85A30', opacity: 0.5 },
-  { label: '기타',       pct: 11, color: '#D85A30', opacity: 0.35 },
-];
-
-const SPENDING_DETAILS: SpendingDetail[] = [
-  { category: '식비',       amount: '1,029,000원', sub: '배달의민족 외 24건' },
-  { category: '온라인쇼핑', amount: '514,500원',   sub: '쿠팡 외 12건', alert: true },
-  { category: '문화/여가',  amount: '441,000원',   sub: 'CGV 외 5건' },
-  { category: '기타',       amount: '269,500원',   sub: '편의점 외 18건' },
-  { category: '교통',       amount: '196,000원',   sub: '티머니 외 1건' },
-];
-
+// (하드) 또래비교 인기상품 — API 미제공
 const POPULAR_PRODUCTS: PopularProduct[] = [
   { rank: 1, name: 'TIGER 미국S&P500',  sub: 'ETF · 가입률 68%',  pct: 68 },
   { rank: 2, name: '우리은행 정기적금', sub: '적금 · 가입률 54%', pct: 54 },
   { rank: 3, name: '토스뱅크 파킹통장', sub: '파킹 · 가입률 47%', pct: 47 },
 ];
-
-const PORTFOLIO: PortfolioSlice[] = [
-  { label: 'ETF',    pct: 40, color: '#1D9E75', rate: '+4%' },
-  { label: '현금성', pct: 35, color: '#5DCAA5', rate: '+2%' },
-  { label: '적금',   pct: 15, color: '#9FE1CB' },
-  { label: 'IRP',    pct: 10, color: '#085041' },
-];
-
-const PORTFOLIO_DETAILS: PortfolioDetail[] = [
-  { category: 'ETF',    pct: 40, color: '#1D9E75', rate: '+4%', items: [{ name: 'TIGER 미국S&P500', pct: 25, rate: '+4%' }, { name: 'KODEX 나스닥100', pct: 15, rate: '-' }] },
-  { category: '현금성', pct: 35, color: '#5DCAA5', rate: '+2%', items: [{ name: '토스뱅크 파킹통장', pct: 20, rate: '+2%' }, { name: '신한은행 입출금', pct: 15, rate: '+2%' }] },
-  { category: '적금',   pct: 15, color: '#9FE1CB',              items: [{ name: '우리 Super 정기적금', pct: 15, rate: '-' }] },
-  { category: 'IRP',    pct: 10, color: '#085041',              items: [{ name: '미래에셋 퇴직연금', pct: 10, rate: '-' }] },
-];
-
-const SALARY_SLICES: PortfolioSlice[] = [
-  { label: '생활비', pct: 47, color: '#EF9F27' },
-  { label: '저축',   pct: 19, color: '#7F77DD' },
-  { label: '투자',   pct: 19, color: '#378ADD' },
-  { label: '비상금', pct:  9, color: '#1D9E75' },
-  { label: '기타',   pct:  6, color: '#e2e8f0' },
-];
-
 
 const DONUT_R = 28;
 const CIRC = 2 * Math.PI * DONUT_R;
@@ -230,7 +192,7 @@ interface LinkedBank {
   accounts: LinkedAccount[];
 }
 
-// TODO: 백엔드 연동 시 fetch로 교체
+// (하드) 계좌 연결 관리 — 별도 API 연동 전까지 mock 사용
 const LINKED_BANKS_MOCK: LinkedBank[] = [
   {
     id: 'woori', name: '우리은행', short: '우리', badgeBg: '#DBEAFE', badgeColor: '#1E40AF',
@@ -487,10 +449,28 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
-  const { userName: USER_NAME } = useAuth();
+  const { userName: USER_NAME, logout } = useAuth();
   const navigate = useNavigate();
 
-  // ── 알림 데이터 ──────────────────────────────────────────
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleWithdraw = async () => {
+    if (window.confirm('정말로 회원 탈퇴를 하시겠습니까?\n탈퇴 시 모든 자산 정보 및 설정이 영구 삭제되며 복구할 수 없습니다.')) {
+      try {
+        await withdrawAccount();
+        alert('회원 탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.');
+        logout();
+        navigate('/login');
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '회원 탈퇴 처리 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
+  // ── 알림 데이터 (하드) — 별도 API 미제공 ───────────────
   const NOTIFICATIONS: NotiItem[] = [
     { id: 'n1', icon: '💳', iconBg: '#E6F1FB', title: '월급이 들어왔네요!', body: '새로 나눴어요! 확인하고 자동이체할게요.', time: '방금 전', read: false },
     { id: 'n2', icon: '📉', iconBg: '#FCEBEB', title: '밸런싱 붕괴 조짐이 보여요', body: '이번 달 소비 속도가 빠르게 올라가고 있어요...', time: '2시간 전', read: false },
@@ -498,6 +478,19 @@ export default function Dashboard() {
     { id: 'n4', icon: '🎵', iconBg: '#EEEDFE', title: '이번 달 관심받고 있는 공연 소식이에요!', body: `${USER_NAME}님의 취향을 기반으로...`, time: '1일 전', read: false },
     { id: 'n5', icon: '🏦', iconBg: '#E1F5EE', title: `${USER_NAME}님만을 위한 정부 정책을 가져왔어요`, body: '자격증 지원금을 신청해보세요! 최대 50만 원을 돌려받을 수 있어요.', time: '2일 전', read: true },
   ];
+
+  // ── 대시보드 API 상태 ────────────────────────────────────
+  const [dashboard,           setDashboard]           = useState<DashboardData | null>(null);
+  const [loadError,           setLoadError]           = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError(null);
+    getDashboard()
+      .then(d => { if (!cancelled) setDashboard(d); })
+      .catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : '대시보드 조회 실패'); });
+    return () => { cancelled = true; };
+  }, []);
 
   // ── UI 상태 ──────────────────────────────────────────────
   const [bannerVisible,       setBannerVisible]       = useState(true);
@@ -509,13 +502,74 @@ export default function Dashboard() {
   const [accountMgmtOpen,     setAccountMgmtOpen]     = useState(false);
   const [settingsOpen,        setSettingsOpen]        = useState(false);
   const [sidebarOpen,         setSidebarOpen]         = useState(false);
-  const [assetTooltip,        setAssetTooltip]        = useState(false);
   const [peerTab,             setPeerTab]             = useState<'asset' | 'product'>('asset');
   const [goals,               setGoals]               = useState<Goal[]>(() => {
     try { return JSON.parse(sessionStorage.getItem('user:goals') ?? '[]'); } catch { return []; }
   });
   const [goalModalOpen,       setGoalModalOpen]       = useState(false);
   const [goalText,            setGoalText]            = useState('');
+
+  // 대시보드 fetch 결과로 목표 카드 채우기 (events[0] 우선)
+  useEffect(() => {
+    if (!dashboard || dashboard.events.length === 0) return;
+    const e = dashboard.events[0];
+    setGoals([{
+      id: e.id,
+      icon: pickGoalIcon(e.title),
+      label: e.title,
+      target: `${e.currentAmount.toLocaleString()} / ${e.targetAmount.toLocaleString()}원`,
+      progress: e.progressRate,
+      dday: e.dday,
+      color: GOAL_COLORS[0],
+    }]);
+  }, [dashboard]);
+
+  // ── 표시용 헬퍼 ─────────────────────────────────────────
+  const fmtManwon = (n: number) => `${Math.round(n / 10000).toLocaleString()}만 원`;
+
+  // 월급 분배 도넛 데이터 (API allocations → SalaryDonutChart 슬라이스)
+  const SALARY_PALETTE = ['#EF9F27', '#7F77DD', '#378ADD', '#1D9E75', '#e2e8f0'];
+  const salarySlices: PortfolioSlice[] = dashboard
+    ? dashboard.salaryPlan.allocations.map((a, i) => ({
+        label: a.purpose ?? '기타',
+        pct: dashboard.salaryPlan.monthlyIncome > 0
+          ? Math.round(a.plannedAmount / dashboard.salaryPlan.monthlyIncome * 100)
+          : 0,
+        color: SALARY_PALETTE[i % SALARY_PALETTE.length],
+      }))
+    : [];
+
+  // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑, (하드))
+  const SPENDING_COLOR: Record<string, string> = {
+    '식비':       '#D85A30',
+    '문화/여가':  '#D85A30',
+    '온라인쇼핑': '#A32D2D',
+    '교통':       '#D85A30',
+    '기타':       '#D85A30',
+  };
+  const spendingItems: SpendingItem[] = dashboard
+    ? dashboard.consumption.categories.map(c => ({
+        label: c.categoryName,
+        pct: c.percentage,
+        color: SPENDING_COLOR[c.categoryName] ?? '#D85A30',
+      }))
+    : [];
+
+  // 포트폴리오 카테고리별 색상 (categoryLabel → 색상)
+  const PORTFOLIO_COLOR: Record<string, string> = {
+    'ETF':    '#1D9E75',
+    '현금성': '#5DCAA5',
+    '적금':   '#9FE1CB',
+    'IRP':    '#085041',
+  };
+  const portfolioSlices: PortfolioSlice[] = dashboard
+    ? dashboard.portfolio.map(p => ({
+        label: p.categoryLabel,
+        pct: p.ratio,
+        color: PORTFOLIO_COLOR[p.categoryLabel] ?? '#94a3b8',
+        rate: p.rate,
+      }))
+    : [];
 
   const handleGoalSubmit = () => {
     const text = goalText.trim();
@@ -540,6 +594,31 @@ export default function Dashboard() {
 
   const unreadCount = notiItems.filter(n => !n.read).length;
 
+  // ── 로딩 / 에러 화면 ────────────────────────────────────
+  if (loadError) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f8fafc', fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
+        <p style={{ fontSize: 14, color: '#A32D2D', margin: 0 }}>{loadError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{ fontSize: 12, fontWeight: 600, padding: '8px 16px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+        >다시 시도</button>
+      </div>
+    );
+  }
+  if (!dashboard) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          border: '3px solid #e2e8f0', borderTopColor: '#0f172a',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+      </div>
+    );
+  }
+
   return (
     <div style={{
       fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif",
@@ -560,7 +639,7 @@ export default function Dashboard() {
       <div style={{ maxWidth: 375, margin: '0 auto' }}>
         <div style={{ height: 8 }} />
 
-        {/* 월급 알림 배너 */}
+        {/* 월급 알림 배너 (하드) — 별도 API 미제공 */}
         {bannerVisible && (
           <div style={{ padding: '0 16px', marginBottom: 10 }}>
             <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: 14, padding: '12px 14px', position: 'relative' }}>
@@ -634,24 +713,13 @@ export default function Dashboard() {
           <div style={{ background: '#f1f5f9', borderRadius: 14, padding: '14px 16px' }}>
             <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 4px' }}>총 자산</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 26, fontWeight: 500, color: '#0f172a' }}>3,245만 원</span>
-              <span style={{ fontSize: 12, color: '#3B6D11' }}>+2.4%</span>
-              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <button
-                  onClick={() => setAssetTooltip(v => !v)}
-                  style={{ width: 15, height: 15, borderRadius: '50%', background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: 9, fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0 }}
-                  aria-label="증감률 설명"
-                >?</button>
-                {assetTooltip && (
-                  <div style={{ position: 'absolute', bottom: 22, left: '50%', transform: 'translateX(-50%)', background: '#1e293b', color: '#f1f5f9', fontSize: 10, lineHeight: 1.5, padding: '8px 10px', borderRadius: 8, width: 180, zIndex: 10, whiteSpace: 'normal' }}>
-                    지난달 대비 총 자산 증감률이에요. 마이데이터 기반 전월 스냅샷과 비교해요.
-                    <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderWidth: '5px 5px 0', borderStyle: 'solid', borderColor: '#1e293b transparent transparent' }} />
-                  </div>
-                )}
-              </div>
+              <span style={{ fontSize: 26, fontWeight: 500, color: '#0f172a' }}>{fmtManwon(dashboard.assetsSummary.totalBalance)}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 7 }}>
-              {[{ label: '투자 자산', value: '1,980만 원' }, { label: '현금성 자산', value: '1,265만 원' }].map(item => (
+              {[
+                { label: '투자 자산',   value: fmtManwon(dashboard.assetsSummary.investmentBalance) },
+                { label: '현금성 자산', value: fmtManwon(dashboard.assetsSummary.cashBalance) },
+              ].map(item => (
                 <div key={item.label} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px' }}>
                   <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 2px' }}>{item.label}</p>
                   <p style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.value}</p>
@@ -665,9 +733,13 @@ export default function Dashboard() {
         <div style={{ padding: '0 16px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
           {/* 월급 */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <SectionHeader icon="💸" title="월급" right={<span style={{ fontSize: 10, color: '#64748b' }}>D-14</span>} />
+            <SectionHeader icon="💸" title="월급" />
             <Card style={{ flex: 1, padding: '12px 10px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <SalaryDonutChart data={SALARY_SLICES} total="320만 원" totalAmt={3200000} />
+              <SalaryDonutChart
+                data={salarySlices}
+                total={fmtManwon(dashboard.salaryPlan.monthlyIncome)}
+                totalAmt={dashboard.salaryPlan.monthlyIncome}
+              />
             </Card>
           </div>
 
@@ -700,16 +772,21 @@ export default function Dashboard() {
 
         {/* 2. 소비 */}
         <div style={{ padding: '0 16px', marginBottom: recapOpen ? 0 : 16 }}>
-          <SectionHeader icon="🧾" title="소비" right={<Pill bg="#FCEBEB" color="#A32D2D">예산 초과 +8%</Pill>} />
+          <SectionHeader
+            icon="🧾" title="소비"
+            right={dashboard.consumption.isBudgetExceeded
+              ? <Pill bg="#FCEBEB" color="#A32D2D">예산 초과 +{dashboard.consumption.budgetExceedRate}%</Pill>
+              : undefined}
+          />
           <div
             onClick={() => setRecapOpen(v => !v)}
             style={{ background: '#fff', border: `0.5px solid ${recapOpen ? '#378ADD' : '#e2e8f0'}`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <p style={{ fontSize: 9, color: '#64748b', margin: 0 }}>5월 총 지출</p>
+              <p style={{ fontSize: 9, color: '#64748b', margin: 0 }}>{dashboard.consumption.referenceMonth}월 총 지출</p>
               <span style={{ fontSize: 10, color: '#94a3b8' }}>{recapOpen ? '↑' : '↓'}</span>
             </div>
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>245만 원</p>
+            <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>{fmtManwon(dashboard.consumption.totalExpense)}</p>
           </div>
         </div>
 
@@ -728,28 +805,28 @@ export default function Dashboard() {
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 20 }}>
-                {SPENDING.map(s => (
+                {spendingItems.map(s => (
                   <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 11, color: '#64748b', width: 60, flexShrink: 0 }}>{s.label}</span>
                     <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', flex: 1 }}>
-                      <div style={{ width: `${s.pct}%`, height: '100%', background: s.color, borderRadius: 99, opacity: s.opacity ?? 1 }} />
+                      <div style={{ width: `${s.pct}%`, height: '100%', background: s.color, borderRadius: 99 }} />
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: s.anomaly ? '#A32D2D' : '#0f172a', width: 32, textAlign: 'right', flexShrink: 0 }}>{s.pct}%{s.anomaly ? ' ↑' : ''}</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: '#0f172a', width: 32, textAlign: 'right', flexShrink: 0 }}>{s.pct}%</span>
                   </div>
                 ))}
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>상세 지출 내역</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {SPENDING_DETAILS.map((item, idx) => (
+                {dashboard.consumption.categories.map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 4, height: 4, borderRadius: '50%', background: item.alert ? '#A32D2D' : '#cbd5e1' }} />
+                      <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1' }} />
                       <div>
-                        <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.category}</p>
-                        <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>{item.sub}</p>
+                        <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.categoryName}</p>
+                        <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>{item.sub ?? '-'}</p>
                       </div>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: item.alert ? '#A32D2D' : '#0f172a', margin: 0 }}>{item.amount}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{item.expenseAmount.toLocaleString()}원</p>
                   </div>
                 ))}
               </div>
@@ -762,16 +839,16 @@ export default function Dashboard() {
           <SectionHeader icon="📊" title="투자 포트폴리오" right={<SmallBtn onClick={() => setPortfolioDetailOpen(!portfolioDetailOpen)}>현황보기 {portfolioDetailOpen ? '↑' : '↓'}</SmallBtn>} />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <DonutChart data={PORTFOLIO} />
+              <DonutChart data={portfolioSlices} />
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {PORTFOLIO.map(p => (
+                {portfolioSlices.map(p => (
                   <div key={p.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0, display: 'inline-block' }} />
                       <span style={{ fontSize: 12, color: '#0f172a' }}>{p.label}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {p.rate && (
+                      {p.rate && p.rate !== '-' && (
                         <span style={{ fontSize: 11, fontWeight: 600, color: p.rate.startsWith('+') ? '#A32D2D' : '#64748b' }}>{p.rate}</span>
                       )}
                       <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>{p.pct}%</span>
@@ -781,41 +858,46 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* 상품별 비중 상세 — API portfolio[].items */}
             {portfolioDetailOpen && (
               <div style={{ marginTop: 16, borderTop: '1px dashed #e2e8f0', paddingTop: 14 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>상품별 비중 상세</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {PORTFOLIO_DETAILS.map((cat, idx) => (
-                    <div key={idx}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: cat.color }} />
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{cat.category} (총 {cat.pct}%)</span>
-                        {cat.rate && (
-                          <span style={{ fontSize: 11, fontWeight: 600, color: cat.rate.startsWith('+') ? '#A32D2D' : '#94a3b8', marginLeft: 2 }}>{cat.rate}</span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {cat.items.map((item, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 10px', borderRadius: 8 }}>
-                            <span style={{ fontSize: 12, color: '#0f172a' }}>{item.name}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              {item.rate && (
-                                <span style={{ fontSize: 11, fontWeight: 600, color: item.rate === '-' ? '#94a3b8' : item.rate.startsWith('+') ? '#A32D2D' : '#94a3b8' }}>{item.rate}</span>
-                              )}
-                              <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{item.pct}%</span>
+                  {dashboard.portfolio.map((cat, idx) => {
+                    const catColor = PORTFOLIO_COLOR[cat.categoryLabel] ?? '#94a3b8';
+                    const showRate = cat.rate && cat.rate !== '-';
+                    return (
+                      <div key={idx}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: catColor }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{cat.categoryLabel} (총 {cat.ratio}%)</span>
+                          {showRate && (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: cat.rate.startsWith('+') ? '#A32D2D' : '#94a3b8', marginLeft: 2 }}>{cat.rate}</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {cat.items.map((item, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 10px', borderRadius: 8 }}>
+                              <span style={{ fontSize: 12, color: '#0f172a' }}>{item.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {item.rate && item.rate !== '-' && (
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: item.rate.startsWith('+') ? '#A32D2D' : '#94a3b8' }}>{item.rate}</span>
+                                )}
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{item.ratio}%</span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
           </Card>
         </div>
 
-        {/* 5. 또래 비교 */}
+        {/* 5. 또래 비교 (하드) — API 미제공, 화면 전체 mock 값 */}
         <div style={{ padding: '0 16px' }}>
           <SectionHeader icon="👥" title="또래 비교" right={<Pill bg="#E6F1FB" color="#185FA5">30대 초반 · 2~4천만 원</Pill>} />
           <Card>
@@ -969,6 +1051,21 @@ export default function Dashboard() {
                   내 포트폴리오 변경하기
                 </button>
               </div>
+            </div>
+
+            <div style={{ padding: '20px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 16, flexShrink: 0 }}>
+              <button
+                onClick={handleLogout}
+                style={{ fontSize: 13, color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+              >
+                로그아웃
+              </button>
+              <button
+                onClick={handleWithdraw}
+                style={{ fontSize: 13, color: '#ef4444', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+              >
+                회원탈퇴
+              </button>
             </div>
           </div>
 
