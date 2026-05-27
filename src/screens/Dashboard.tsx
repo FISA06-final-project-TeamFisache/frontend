@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { withdrawAccount } from '../api/userApi';
 
 
 interface Goal {
@@ -487,8 +488,26 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
-  const { userName: USER_NAME } = useAuth();
+  const { userName: USER_NAME, logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const handleWithdraw = async () => {
+    if (window.confirm('정말로 회원 탈퇴를 하시겠습니까?\n탈퇴 시 모든 자산 정보 및 설정이 영구 삭제되며 복구할 수 없습니다.')) {
+      try {
+        await withdrawAccount();
+        alert('회원 탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.');
+        logout();
+        navigate('/login');
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '회원 탈퇴 처리 중 오류가 발생했습니다.');
+      }
+    }
+  };
 
   // ── 알림 데이터 ──────────────────────────────────────────
   const NOTIFICATIONS: NotiItem[] = [
@@ -969,6 +988,21 @@ export default function Dashboard() {
                   내 포트폴리오 변경하기
                 </button>
               </div>
+            </div>
+
+            <div style={{ padding: '20px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 16, flexShrink: 0 }}>
+              <button
+                onClick={handleLogout}
+                style={{ fontSize: 13, color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+              >
+                로그아웃
+              </button>
+              <button
+                onClick={handleWithdraw}
+                style={{ fontSize: 13, color: '#ef4444', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+              >
+                회원탈퇴
+              </button>
             </div>
           </div>
 

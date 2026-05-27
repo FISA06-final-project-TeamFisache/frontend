@@ -10,6 +10,7 @@ import judoporiImg    from '../assets/JudoPori.png';
 import fencingporiImg from '../assets/FencingPori.png';
 import archeryporiImg from '../assets/Archerypori.png';
 import { useAuth } from '../contexts/AuthContext';
+import { submitSurvey } from '../api/userApi';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -268,12 +269,64 @@ export default function PortiSurvey() {
   const currentQ = QUESTIONS[currentIndex];
   const progress = completing ? 100 : (currentIndex / TOTAL_QUESTIONS) * 100;
 
-  // 로딩 → 결과 자동 전환
+  // 로딩 → 결과 자동 전환 및 API 연동
   useEffect(() => {
     if (step !== 'loading') return;
-    const timer = setTimeout(() => setStep('result'), 2800);
+
+    let isApiDone = false;
+    let isTimerDone = false;
+    let fetchedResult: ResultType | null = null;
+    let apiError: Error | null = null;
+
+    const PORTI_IMAGES: Record<string, string> = {
+      SWIMMING: swimporiImg,
+      RHYTHMIC: golfporiImg,
+      CYCLING: cycleporiImg,
+      JUDO: judoporiImg,
+      FENCING: fencingporiImg,
+      ARCHERY: archeryporiImg,
+    };
+
+    const checkAndTransition = () => {
+      if (isApiDone && isTimerDone) {
+        if (apiError) {
+          alert(apiError.message || '설문 제출 중 오류가 발생했습니다.');
+          setStep('question');
+          setCompleting(false);
+        } else if (fetchedResult) {
+          setResult(fetchedResult);
+          setStep('result');
+        }
+      }
+    };
+
+    const answerArray = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => answers[i + 1] || 'A');
+    submitSurvey(answerArray)
+      .then((data) => {
+        fetchedResult = {
+          typeName: data.typeName,
+          img: PORTI_IMAGES[data.portiType] || swimporiImg,
+          subtitle: data.description,
+          spending: data.managementStyle,
+          investment: data.investTendency,
+          saving: data.timePerspective,
+        };
+        isApiDone = true;
+        checkAndTransition();
+      })
+      .catch((err) => {
+        apiError = err instanceof Error ? err : new Error('설문 제출 중 오류가 발생했습니다.');
+        isApiDone = true;
+        checkAndTransition();
+      });
+
+    const timer = setTimeout(() => {
+      isTimerDone = true;
+      checkAndTransition();
+    }, 2800);
+
     return () => clearTimeout(timer);
-  }, [step]);
+  }, [step, answers]);
 
   const handleAnswer = (choice: 'A' | 'B') => {
     const newAnswers = { ...answers, [currentQ.id]: choice };
@@ -284,7 +337,6 @@ export default function PortiSurvey() {
     } else {
       // 마지막 문항: 게이지 100% 채우고 로딩으로 이동
       setCompleting(true);
-      setResult(calcResult(newAnswers));
       setTimeout(() => setStep('loading'), 700);
     }
   };
