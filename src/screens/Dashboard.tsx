@@ -955,7 +955,12 @@ export default function Dashboard() {
                   내 계좌 연결 관리
                 </button>
                 <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>목표 이력</span>
-                <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>월간 리포트</span>
+                <button
+                  onClick={() => { setSidebarOpen(false); navigate('/monthly-report'); }}
+                  style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                >
+                  월간 리포트
+                </button>
                 <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>관심사 재설정</span>
                 <button
                   onClick={() => { setSidebarOpen(false); setSettingsOpen(true); }}

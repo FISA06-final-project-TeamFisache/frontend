@@ -11,6 +11,7 @@ import PrescriptionLoading from './screens/PrescriptionLoading';
 import PrescriptionComplete from './screens/PrescriptionComplete';
 import AssetPortfolio from './screens/AssetPortfolio';
 import Dashboard from './screens/Dashboard';
+import MonthlyReport from './screens/MonthlyReport';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/prescription-complete" element={<PrescriptionComplete />} />
       <Route path="/asset-portfolio" element={<AssetPortfolio />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/monthly-report" element={<MonthlyReport />} />
     </Routes>
   );
 }
