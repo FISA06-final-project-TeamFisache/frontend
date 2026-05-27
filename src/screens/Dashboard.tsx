@@ -20,9 +20,21 @@ interface PortfolioSlice { label: string; pct: number; color: string; rate?: str
 interface PortfolioDetail { category: string; pct: number; color: string; rate?: string; items: { name: string; pct: number; rate?: string }[]; }
 interface NotiItem { id: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; }
 
-const GOALS: Goal[] = [
-  { id: 1, icon: '✈', label: '제주 여행', target: '50만 원', progress: 67, dday: 45, color: { bg: '#EEEDFE', bar: '#7F77DD', text: '#534AB7', badge: '#EEEDFE', badgeText: '#534AB7' } },
+const GOAL_COLORS: Goal['color'][] = [
+  { bg: '#EEEDFE', bar: '#7F77DD', text: '#534AB7', badge: '#EEEDFE', badgeText: '#534AB7' },
+  { bg: '#E1F5EE', bar: '#1D9E75', text: '#0F6E56', badge: '#E1F5EE', badgeText: '#0F6E56' },
+  { bg: '#FAEEDA', bar: '#EF9F27', text: '#854F0B', badge: '#FAEEDA', badgeText: '#854F0B' },
+  { bg: '#FCEBEB', bar: '#E24B4A', text: '#A32D2D', badge: '#FCEBEB', badgeText: '#A32D2D' },
 ];
+
+function pickGoalIcon(text: string): string {
+  if (/여행|해외|비행|유럽|제주|일본/.test(text)) return '✈';
+  if (/집|주택|전세|매매|부동산/.test(text))      return '🏠';
+  if (/차|자동차/.test(text))                     return '🚗';
+  if (/결혼|웨딩/.test(text))                     return '💍';
+  if (/공부|학위|자격증|교육/.test(text))          return '📚';
+  return '🎯';
+}
 
 const SPENDING: SpendingItem[] = [
   { label: '식비',       pct: 42, color: '#D85A30' },
@@ -60,6 +72,14 @@ const PORTFOLIO_DETAILS: PortfolioDetail[] = [
   { category: 'IRP',    pct: 10, color: '#085041',              items: [{ name: '미래에셋 퇴직연금', pct: 10, rate: '-' }] },
 ];
 
+const SALARY_SLICES: PortfolioSlice[] = [
+  { label: '생활비', pct: 47, color: '#EF9F27' },
+  { label: '저축',   pct: 19, color: '#7F77DD' },
+  { label: '투자',   pct: 19, color: '#378ADD' },
+  { label: '비상금', pct:  9, color: '#1D9E75' },
+  { label: '기타',   pct:  6, color: '#e2e8f0' },
+];
+
 
 const DONUT_R = 28;
 const CIRC = 2 * Math.PI * DONUT_R;
@@ -77,6 +97,83 @@ function DonutChart({ data }: { data: PortfolioSlice[] }) {
         return el;
       })}
     </svg>
+  );
+}
+
+function pctToXY(cx: number, cy: number, r: number, pct: number) {
+  const rad = (pct / 100) * 2 * Math.PI - Math.PI / 2;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function SalaryDonutChart({ data, total, totalAmt }: {
+  data: PortfolioSlice[];
+  total: string;
+  totalAmt: number;
+}) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const cx = 64, cy = 64, outerR = 56, innerR = 36, midR = (outerR + innerR) / 2;
+
+  let cum = 0;
+  const segments = data.map((d) => {
+    const start = cum;
+    cum += d.pct;
+    const o1 = pctToXY(cx, cy, outerR, start);
+    const o2 = pctToXY(cx, cy, outerR, cum);
+    const i2 = pctToXY(cx, cy, innerR, cum);
+    const i1 = pctToXY(cx, cy, innerR, start);
+    const large = d.pct > 50 ? 1 : 0;
+    const path = `M ${o1.x} ${o1.y} A ${outerR} ${outerR} 0 ${large} 1 ${o2.x} ${o2.y} L ${i2.x} ${i2.y} A ${innerR} ${innerR} 0 ${large} 0 ${i1.x} ${i1.y} Z`;
+    const labelPos = pctToXY(cx, cy, midR, start + d.pct / 2);
+    return { path, labelPos };
+  });
+
+  const active = activeIdx !== null ? data[activeIdx] : null;
+  const fmtAmt = (n: number) => `${Math.round(n / 10000)}만 원`;
+
+  return (
+    <div style={{ position: 'relative', width: 128, height: 128, flexShrink: 0 }}>
+      <svg width="128" height="128" viewBox="0 0 128 128">
+        {segments.map((seg, i) => (
+          <path
+            key={i}
+            d={seg.path}
+            fill={data[i].color}
+            opacity={activeIdx === null || activeIdx === i ? 1 : 0.25}
+            onMouseEnter={() => setActiveIdx(i)}
+            onMouseLeave={() => setActiveIdx(null)}
+            style={{ cursor: 'default', transition: 'opacity 0.15s' }}
+          />
+        ))}
+        {segments.map((seg, i) => (
+          <text
+            key={`l${i}`}
+            x={seg.labelPos.x} y={seg.labelPos.y}
+            textAnchor="middle" dominantBaseline="middle"
+            fontSize={9} fontWeight={700} fill="white"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {data[i].pct}
+          </text>
+        ))}
+      </svg>
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        textAlign: 'center', pointerEvents: 'none', width: 64,
+      }}>
+        {active ? (
+          <>
+            <div style={{ fontSize: 9, fontWeight: 700, color: active.color, lineHeight: 1.4 }}>{active.label}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{fmtAmt(totalAmt * active.pct / 100)}</div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>이 급여</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{total}</div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -404,19 +501,42 @@ export default function Dashboard() {
 
   // ── UI 상태 ──────────────────────────────────────────────
   const [bannerVisible,       setBannerVisible]       = useState(true);
-  const [goalInputOpen,       setGoalInputOpen]       = useState(false);
   const [anomalyOpen,         setAnomalyOpen]         = useState(false);
   const [recapOpen,           setRecapOpen]           = useState(false);
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
-  const [goalText,            setGoalText]            = useState('');
   const [notiOpen,            setNotiOpen]            = useState(false);
   const [notiItems,           setNotiItems]           = useState<NotiItem[]>(NOTIFICATIONS);
   const [accountMgmtOpen,     setAccountMgmtOpen]     = useState(false);
   const [settingsOpen,        setSettingsOpen]        = useState(false);
   const [sidebarOpen,         setSidebarOpen]         = useState(false);
   const [assetTooltip,        setAssetTooltip]        = useState(false);
-  const [goalOpen,            setGoalOpen]            = useState(false);
   const [peerTab,             setPeerTab]             = useState<'asset' | 'product'>('asset');
+  const [goals,               setGoals]               = useState<Goal[]>(() => {
+    try { return JSON.parse(sessionStorage.getItem('user:goals') ?? '[]'); } catch { return []; }
+  });
+  const [goalModalOpen,       setGoalModalOpen]       = useState(false);
+  const [goalText,            setGoalText]            = useState('');
+
+  const handleGoalSubmit = () => {
+    const text = goalText.trim();
+    if (!text) return;
+    const newGoal: Goal = {
+      id: Date.now(),
+      icon: pickGoalIcon(text),
+      label: text,
+      target: '목표 설정 중',
+      progress: 0,
+      dday: 365,
+      color: GOAL_COLORS[goals.length % GOAL_COLORS.length],
+    };
+    const updated = [newGoal]; // 단일 목표
+    setGoals(updated);
+    sessionStorage.setItem('user:goals', JSON.stringify(updated));
+    sessionStorage.setItem('user:goal', text);
+    setGoalText('');
+    setGoalModalOpen(false);
+    navigate('/prescription-loading');
+  };
 
   const unreadCount = notiItems.filter(n => !n.read).length;
 
@@ -443,9 +563,17 @@ export default function Dashboard() {
         {/* 월급 알림 배너 */}
         {bannerVisible && (
           <div style={{ padding: '0 16px', marginBottom: 10 }}>
-            <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: 14, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div style={{ flex: 1 }}>
+            <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: 14, padding: '12px 14px', position: 'relative' }}>
+              {/* 1. 닫기 버튼 - 우측 상단 모서리에 절대 위치로 배치 */}
+              <button
+                onClick={() => setBannerVisible(false)}
+                style={{ position: 'absolute', right: 12, top: 12, border: 'none', background: 'none', cursor: 'pointer', color: '#BA7517', fontSize: 16, lineHeight: 1, padding: 0 }}
+                aria-label="닫기"
+              >✕</button>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingRight: 8 }}>
+                {/* 2. 좌측: 타이틀 및 설명 텍스트 */}
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <span style={{ fontSize: 14 }}>🔔</span>
                     <span style={{ fontSize: 12, fontWeight: 500, color: '#854F0B' }}>
@@ -453,14 +581,20 @@ export default function Dashboard() {
                     </span>
                     <span style={{ fontSize: 10, color: '#BA7517' }}>방금 전</span>
                   </div>
-                  <p style={{ fontSize: 12, color: '#633806', margin: '0 0 10px', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                  <p style={{ fontSize: 11, color: '#633806', margin: 0, lineHeight: 1.4, whiteSpace: 'pre-line' }}>
                     Pori가 자동으로 이번 달 분배 계획을 세웠어요.{'\n'}확인하고 자동이체를 시작해볼까요?
                   </p>
-                  <button style={{ fontSize: 12, fontWeight: 500, padding: '6px 12px', background: '#854F0B', color: '#FAEEDA', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-                    분배 계획 확인하기 →
+                </div>
+                
+                {/* 3. 우측: 확인 버튼 - 우측 끝 테두리에서 살짝 왼쪽으로 당겨지도록 여백 설정 */}
+                <div style={{ flexShrink: 0, marginRight: 8, marginTop: 4 }}>
+                  <button
+                    onClick={() => navigate('/asset-prescription')}
+                    style={{ fontSize: 11, fontWeight: 600, padding: '6px 12px', background: '#854F0B', color: '#FAEEDA', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                  >
+                    확인 →
                   </button>
                 </div>
-                <button onClick={() => setBannerVisible(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#BA7517', fontSize: 18, lineHeight: 1, padding: '0 0 0 8px', flexShrink: 0 }} aria-label="닫기">✕</button>
               </div>
             </div>
           </div>
@@ -527,73 +661,61 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 1. 월급 */}
-        <div style={{ padding: '0 16px', marginBottom: 16 }}>
-          <SectionHeader icon="💸" title="월급" right={<span style={{ fontSize: 11, color: '#64748b' }}>다음 월급 D-14</span>} />
-          <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: 12, color: '#64748b' }}>이번 달 분배 현황</span>
-              <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>320만 원</span>
-            </div>
-            <div style={{ display: 'flex', height: 8, borderRadius: 99, overflow: 'hidden', gap: 1, marginBottom: 8 }}>
-              {[
-                { pct: 45, barBg: '#BFDBFE', barBorder: '#93C5FD' },
-                { pct: 20, barBg: '#BBF7D0', barBorder: '#86EFAC' },
-                { pct: 15, barBg: '#FDE68A', barBorder: '#FCD34D' },
-              ].map((d, i) => (
-                <div key={i} style={{ width: `${d.pct}%`, background: d.barBg, borderLeft: `2px solid ${d.barBorder}` }} />
-              ))}
-              <div style={{ flex: 1, background: '#f1f5f9' }} />
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              <Pill bg="#DBEAFE" color="#1D4ED8">생활비 45%</Pill>
-              <Pill bg="#DCFCE7" color="#15803D">투자 20%</Pill>
-              <Pill bg="#FEF9C3" color="#A16207">저축 15%</Pill>
-            </div>
-          </Card>
-        </div>
-
-        {/* 2+3. 소비 + 목표 나란히 */}
-        <div style={{ padding: '0 16px', marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: recapOpen || goalOpen ? 8 : 0 }}>
-
-            {/* 소비 박스 */}
-            <div
-              onClick={() => setRecapOpen(v => !v)}
-              style={{ background: '#fff', border: `0.5px solid ${recapOpen ? '#378ADD' : '#e2e8f0'}`, borderRadius: 14, padding: '12px 12px', cursor: 'pointer' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>🧾 소비</span>
-                <span style={{ fontSize: 10, color: '#94a3b8' }}>{recapOpen ? '↑' : '↓'}</span>
-              </div>
-              <p style={{ fontSize: 9, color: '#64748b', margin: '0 0 2px' }}>5월 총 지출</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>245만 원</p>
-              <Pill bg="#FCEBEB" color="#A32D2D">예산 초과 +8%</Pill>
-            </div>
-
-            {/* 목표 박스 */}
-            <div
-              onClick={() => setGoalOpen(v => !v)}
-              style={{ background: '#fff', border: `0.5px solid ${goalOpen ? '#7F77DD' : '#e2e8f0'}`, borderRadius: 14, padding: '12px 12px', cursor: 'pointer' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>🎯 목표</span>
-                <span style={{ fontSize: 10, color: '#94a3b8' }}>{goalOpen ? '↑' : '↓'}</span>
-              </div>
-              {GOALS[0] && (
-                <>
-                  <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: '0 0 5px' }}>{GOALS[0].icon} {GOALS[0].label}</p>
-                  <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 3 }}>
-                    <div style={{ width: `${GOALS[0].progress}%`, height: '100%', background: GOALS[0].color.bar, borderRadius: 99 }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: GOALS[0].color.text, fontWeight: 500 }}>{GOALS[0].progress}% 달성</span>
-                </>
-              )}
-            </div>
+        {/* 1. 월급 + 목표 (2-column) */}
+        <div style={{ padding: '0 16px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
+          {/* 월급 */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <SectionHeader icon="💸" title="월급" right={<span style={{ fontSize: 10, color: '#64748b' }}>D-14</span>} />
+            <Card style={{ flex: 1, padding: '12px 10px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <SalaryDonutChart data={SALARY_SLICES} total="320만 원" totalAmt={3200000} />
+            </Card>
           </div>
 
-          {/* 소비 펼침 */}
-          {recapOpen && (
+          {/* 목표 */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <SectionHeader
+              icon="🎯" title="목표"
+              right={!goals[0] ? <SmallBtn onClick={() => { setGoalText(''); setGoalModalOpen(true); }}>+ 추가</SmallBtn> : undefined}
+            />
+            {goals[0] ? (
+              <Card style={{ flex: 1, padding: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 18 }}>{goals[0].icon}</span>
+                  <Pill bg={goals[0].color.badge} color={goals[0].color.badgeText}>D-{goals[0].dday}</Pill>
+                </div>
+                <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: '0 0 2px' }}>{goals[0].label}</p>
+                <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 7px' }}>{goals[0].target}</p>
+                <div style={{ height: 4, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ width: `${goals[0].progress}%`, height: '100%', background: goals[0].color.bar, borderRadius: 99 }} />
+                </div>
+                <p style={{ fontSize: 10, color: goals[0].color.text, margin: '3px 0 0', fontWeight: 500 }}>{goals[0].progress}% 달성</p>
+              </Card>
+            ) : (
+              <Card style={{ flex: 1, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, textAlign: 'center', lineHeight: 1.6 }}>아직 목표가<br />없어요</p>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* 2. 소비 */}
+        <div style={{ padding: '0 16px', marginBottom: recapOpen ? 0 : 16 }}>
+          <SectionHeader icon="🧾" title="소비" right={<Pill bg="#FCEBEB" color="#A32D2D">예산 초과 +8%</Pill>} />
+          <div
+            onClick={() => setRecapOpen(v => !v)}
+            style={{ background: '#fff', border: `0.5px solid ${recapOpen ? '#378ADD' : '#e2e8f0'}`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <p style={{ fontSize: 9, color: '#64748b', margin: 0 }}>5월 총 지출</p>
+              <span style={{ fontSize: 10, color: '#94a3b8' }}>{recapOpen ? '↑' : '↓'}</span>
+            </div>
+            <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>245만 원</p>
+          </div>
+        </div>
+
+        {/* 소비 펼침 */}
+        {recapOpen && (
+          <div style={{ padding: '0 16px', marginBottom: 16 }}>
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0 }}>지출 카테고리 비율</p>
@@ -632,43 +754,8 @@ export default function Dashboard() {
                 ))}
               </div>
             </Card>
-          )}
-
-          {/* 목표 펼침 */}
-          {goalOpen && GOALS[0] && (
-            <Card>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 22 }}>{GOALS[0].icon}</span>
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{GOALS[0].label}</p>
-                    <p style={{ fontSize: 10, color: '#64748b', margin: '1px 0 0' }}>목표 {GOALS[0].target}</p>
-                  </div>
-                </div>
-                <Pill bg={GOALS[0].color.badge} color={GOALS[0].color.badgeText}>D-{GOALS[0].dday}</Pill>
-              </div>
-              <div style={{ height: 7, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 4 }}>
-                <div style={{ width: `${GOALS[0].progress}%`, height: '100%', background: GOALS[0].color.bar, borderRadius: 99 }} />
-              </div>
-              <p style={{ fontSize: 11, color: GOALS[0].color.text, fontWeight: 500, margin: '0 0 14px' }}>{GOALS[0].progress}% 달성</p>
-              {goalInputOpen ? (
-                <div style={{ background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: '12px 14px' }}>
-                  <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 7px' }}>어떤 목표를 이루고 싶으세요?</p>
-                  <input value={goalText} onChange={e => setGoalText(e.target.value)} placeholder="예: 내년 5월에 유럽 여행 가고 싶어요" style={{ width: '100%', boxSizing: 'border-box', marginBottom: 7, fontSize: 13, padding: '8px 10px', border: '0.5px solid #e2e8f0', borderRadius: 8, background: '#fff', color: '#0f172a' }} />
-                  <button
-                    onClick={() => navigate('/prescription-loading')}
-                    disabled={!goalText.trim()}
-                    style={{ width: '100%', padding: '8px 0', fontSize: 12, fontWeight: 500, background: goalText.trim() ? '#0f172a' : '#cbd5e1', color: '#fff', border: 'none', borderRadius: 8, cursor: goalText.trim() ? 'pointer' : 'not-allowed' }}
-                  >
-                    Pori가 목표 설정해드릴게요 →
-                  </button>
-                </div>
-              ) : (
-                <SmallBtn onClick={() => setGoalInputOpen(true)}>+ 목표 변경</SmallBtn>
-              )}
-            </Card>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* 4. 자산 포트폴리오 */}
         <div style={{ padding: '0 16px', marginBottom: 16 }}>
@@ -788,6 +875,59 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      {/* 목표 추가 모달 */}
+      {goalModalOpen && (
+        <div
+          onClick={() => setGoalModalOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 375, background: '#fff',
+              borderRadius: '20px 20px 0 0', padding: '20px 20px 36px',
+              animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>새 목표 추가</span>
+              <button onClick={() => setGoalModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#64748b' }}>✕</button>
+            </div>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px' }}>어떤 목표를 이루고 싶으세요?</p>
+            <input
+              value={goalText}
+              onChange={e => setGoalText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleGoalSubmit(); }}
+              placeholder="예: 내년 5월에 유럽 여행 가고 싶어요"
+              autoFocus
+              style={{
+                width: '100%', boxSizing: 'border-box', marginBottom: 12,
+                fontSize: 14, padding: '12px 14px',
+                border: '1px solid #e2e8f0', borderRadius: 12,
+                background: '#f8fafc', color: '#0f172a', outline: 'none',
+              }}
+            />
+            <button
+              onClick={handleGoalSubmit}
+              disabled={!goalText.trim()}
+              style={{
+                width: '100%', padding: '14px 0', fontSize: 14, fontWeight: 700,
+                background: goalText.trim() ? '#0f172a' : '#cbd5e1',
+                color: '#fff', border: 'none', borderRadius: 12,
+                cursor: goalText.trim() ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Pori가 목표 설정해드릴게요 →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 사이드바 */}
       {sidebarOpen && (

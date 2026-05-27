@@ -1,22 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
-import kakaoLogo    from '../assets/banks/kakao.png';
-import tossLogo     from '../assets/banks/toss.png';
-import shinhanLogo  from '../assets/banks/shinhan.png';
-import wooriLogo    from '../assets/banks/woori.png';
-import kbLogo       from '../assets/banks/kb.png';
-import hanaLogo     from '../assets/banks/hana.png';
-import miraeLogo    from '../assets/banks/mirae.png';
+import kakaoLogo from '../assets/banks/kakao.png';
+import tossLogo from '../assets/banks/toss.png';
+import shinhanLogo from '../assets/banks/shinhan.png';
+import wooriLogo from '../assets/banks/woori.png';
+import kbLogo from '../assets/banks/kb.png';
+import hanaLogo from '../assets/banks/hana.png';
+import miraeLogo from '../assets/banks/mirae.png';
 import { useAuth } from '../contexts/AuthContext';
 
 const BANK_LOGOS: Record<string, string> = {
   '카카오뱅크': kakaoLogo,
-  '토스뱅크':   tossLogo,
-  '신한은행':   shinhanLogo,
-  '우리은행':   wooriLogo,
-  '국민은행':   kbLogo,
-  '하나은행':   hanaLogo,
+  '토스뱅크': tossLogo,
+  '신한은행': shinhanLogo,
+  '우리은행': wooriLogo,
+  '국민은행': kbLogo,
+  '하나은행': hanaLogo,
   '미래에셋증권': miraeLogo,
 };
 
@@ -59,22 +59,22 @@ interface LinkedAccount {
 }
 
 const MY_ACCOUNTS: LinkedAccount[] = [
-  { id: 'kakao-1',   bank: '카카오뱅크',    name: '입출금통장',         short: '카카', badgeBg: 'bg-yellow-100', badgeColor: 'text-yellow-700' },
-  { id: 'kakao-2',   bank: '카카오뱅크',    name: '26주 적금',          short: '카카', badgeBg: 'bg-yellow-100', badgeColor: 'text-yellow-700' },
-  { id: 'toss-1',    bank: '토스뱅크',      name: '파킹통장',           short: '토스', badgeBg: 'bg-blue-50',    badgeColor: 'text-blue-500'   },
-  { id: 'toss-2',    bank: '토스뱅크',      name: '나눠모으기 통장',     short: '토스', badgeBg: 'bg-blue-50',    badgeColor: 'text-blue-500'   },
-  { id: 'shinhan-1', bank: '신한은행',      name: 'Tops 직장인 플랜',   short: '신한', badgeBg: 'bg-blue-50',    badgeColor: 'text-blue-600'   },
-  { id: 'woori-1',   bank: '우리은행',      name: 'WON 파킹 통장',      short: '우리', badgeBg: 'bg-blue-100',   badgeColor: 'text-blue-800'   },
-  { id: 'woori-2',   bank: '우리은행',      name: 'WON 적금',           short: '우리', badgeBg: 'bg-blue-100',   badgeColor: 'text-blue-800'   },
-  { id: 'kb-1',      bank: '국민은행',      name: 'Star 입출금통장',    short: '국민', badgeBg: 'bg-amber-100',  badgeColor: 'text-amber-700'  },
-  { id: 'hana-1',    bank: '하나은행',      name: '하나원큐 적금',      short: '하나', badgeBg: 'bg-emerald-100',badgeColor: 'text-emerald-700'},
-  { id: 'mirae-1',   bank: '미래에셋증권',  name: '종합매매계좌',       short: '미래', badgeBg: 'bg-orange-100', badgeColor: 'text-orange-700' },
+  { id: 'kakao-1', bank: '카카오뱅크', name: '입출금통장', short: '카카', badgeBg: 'bg-yellow-100', badgeColor: 'text-yellow-700' },
+  { id: 'kakao-2', bank: '카카오뱅크', name: '26주 적금', short: '카카', badgeBg: 'bg-yellow-100', badgeColor: 'text-yellow-700' },
+  { id: 'toss-1', bank: '토스뱅크', name: '파킹통장', short: '토스', badgeBg: 'bg-blue-50', badgeColor: 'text-blue-500' },
+  { id: 'toss-2', bank: '토스뱅크', name: '나눠모으기 통장', short: '토스', badgeBg: 'bg-blue-50', badgeColor: 'text-blue-500' },
+  { id: 'shinhan-1', bank: '신한은행', name: 'Tops 직장인 플랜', short: '신한', badgeBg: 'bg-blue-50', badgeColor: 'text-blue-600' },
+  { id: 'woori-1', bank: '우리은행', name: 'WON 파킹 통장', short: '우리', badgeBg: 'bg-blue-100', badgeColor: 'text-blue-800' },
+  { id: 'woori-2', bank: '우리은행', name: 'WON 적금', short: '우리', badgeBg: 'bg-blue-100', badgeColor: 'text-blue-800' },
+  { id: 'kb-1', bank: '국민은행', name: 'Star 입출금통장', short: '국민', badgeBg: 'bg-amber-100', badgeColor: 'text-amber-700' },
+  { id: 'hana-1', bank: '하나은행', name: '하나원큐 적금', short: '하나', badgeBg: 'bg-emerald-100', badgeColor: 'text-emerald-700' },
+  { id: 'mirae-1', bank: '미래에셋증권', name: '종합매매계좌', short: '미래', badgeBg: 'bg-orange-100', badgeColor: 'text-orange-700' },
 ];
 
 // [AI 자동생성 필요] 초기 계좌 배분 목록 — AI 처방 결과로 자동 생성 (통장 종류·금액·태그)
 const INITIAL_ACCOUNTS: Account[] = [
-  { id: 0, bank: '입출금통장', bankName: '카카오뱅크', tag: '생활비', amount: 1_500_000, percent: 47, isPinned: true,  color: TAG_COLORS[0] },
-  { id: 1, bank: '파킹통장',   bankName: '토스뱅크',   tag: '비상금', amount: 300_000,   percent: 9,  isPinned: false, color: TAG_COLORS[3] },
+  { id: 0, bank: '입출금통장', bankName: '카카오뱅크', tag: '생활비', amount: 1_500_000, percent: 47, isPinned: true, color: TAG_COLORS[0] },
+  { id: 1, bank: '파킹통장', bankName: '토스뱅크', tag: '비상금', amount: 300_000, percent: 9, isPinned: false, color: TAG_COLORS[3] },
 ];
 
 const formatNumber = (n: number) => n.toLocaleString('ko-KR');
@@ -84,6 +84,7 @@ export default function AssetPrescription() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
+  const [showFixedInfo, setShowFixedInfo] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedLinkedId, setSelectedLinkedId] = useState<string | null>(null);
@@ -102,9 +103,12 @@ export default function AssetPrescription() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
 
+  const [investmentAmount, setInvestmentAmount] = useState(INVESTMENT_AMOUNT);
+
   const totalAmount = accounts.reduce((sum, a) => sum + a.amount, 0);
-  // 남은 금액 = 월급 - 투자할 금액 - 계좌 분배 합계
-  const remain = TOTAL_SALARY - INVESTMENT_AMOUNT - totalAmount;
+  const spendAmount = TOTAL_SALARY - investmentAmount;
+  // 통장에 남은 금액 = 월급 - 투자할 금액 - 계좌 분배 합계
+  const remain = spendAmount - totalAmount;
   const isOver = remain < 0;
 
   const updateAmount = (idx: number, amount: number) => {
@@ -205,55 +209,100 @@ export default function AssetPrescription() {
 
         <main className="p-5 pt-2">
           {/* 헤더 텍스트 */}
-          <h2 className="text-lg font-bold leading-snug mb-5 text-slate-800">
-            <span className="text-blue-600">Pori</span>가 {USER_NAME} 님의 소비·저축 패턴을 보고<br />
-            이번 월급을 나눠봤어요.
+          <h2 className="text-base font-bold leading-snug mb-3.5 text-slate-800">
+            <span className="text-blue-600">Pori</span>가 {USER_NAME}님에 맞게 월급을 나눠봤어요!
           </h2>
 
-          {/* 고정 지출 안내 - 상단으로 이동 */}
-          <div className="mb-5 bg-slate-100 p-4 rounded-xl text-sm text-slate-600 leading-relaxed">
-            <Info className="w-4 h-4 inline-block mb-1 mr-1 text-slate-400" />
-            고정 지출(월세, 보험, 통신비) <span className="font-bold text-slate-700">{formatNumber(FIXED_EXPENSE)}원</span>은 신한 고정지출 통장에 먼저 빼놨어요. 변동을 원하시면 수동 조정이 가능해요.
+          {/* Row 1: 급여통장 (중앙 정렬) */}
+          <div className="flex flex-col items-center justify-center relative z-10 pt-2">
+            <p className="text-xs font-semibold text-slate-500 mb-1.5 flex items-center justify-center gap-1">
+              <img src={wooriLogo} alt="우리은행" className="w-4 h-4 rounded-full object-contain" />
+              우리은행 급여통장
+            </p>
+            
+            <div className="border-2 border-slate-700 rounded-2xl px-5 py-2.5 shadow-sm bg-white min-w-[140px] text-center">
+              <span className="text-base font-extrabold tracking-tight">
+                {formatNumber(TOTAL_SALARY)}<span className="text-xs font-bold text-slate-600 ml-0.5">원</span>
+              </span>
+            </div>
           </div>
 
-          {/* 급여 통장 + 투자할 금액 */}
-          <div className="relative z-10 mb-5 flex items-end gap-3 flex-wrap">
-            {/* 급여통장 */}
+          {/* 급여통장에서 아래 두 갈래로 나뉘는 T자형 연결선 영역 (높이 28px 확보) */}
+          <div className="relative h-7 pointer-events-none z-0">
+            {/* 1. 중앙 수직 하강선 */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[3px] h-[14px] bg-slate-700" />
+
+            {/* 2. 가로 분기선 (좌측 25% 지점부터 우측 25% 지점까지) */}
+            <div className="absolute left-[25%] right-[25%] top-[12px] h-[3px] bg-slate-700 rounded-sm" />
+
+            {/* 3. 좌측 25% 지점 수직 하강선 (지출할 금액 카드로) */}
+            <div className="absolute left-[25%] -translate-x-1/2 top-[12px] w-[3px] h-[16px] bg-slate-700" />
+
+            {/* 4. 우측 25% 지점 수직 하강선 (투자할 금액 카드로) */}
+            <div className="absolute right-[25%] translate-x-1/2 top-[12px] w-[3px] h-[16px] bg-slate-700" />
+          </div>
+
+          {/* Row 2: 지출할 금액 (좌) + 투자할 금액 (우) - 1:1 대칭 그리드 구조 */}
+          <div className="grid grid-cols-2 gap-4 mb-4 relative z-10">
+            {/* 지출할 금액 카드 (자동 계산) */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 ml-1 mb-1 flex items-center gap-1">
-                <img src={wooriLogo} alt="우리은행" className="w-4 h-4 rounded-full object-contain" />
-                우리은행 급여통장
+              <p className="text-xs font-semibold text-slate-500 mb-1 text-center flex items-center justify-center gap-0.5">
+                지출할 금액
+                <span className="relative inline-block align-middle">
+                  <button
+                    type="button"
+                    onMouseEnter={() => setShowFixedInfo(true)}
+                    onMouseLeave={() => setShowFixedInfo(false)}
+                    onClick={() => setShowFixedInfo(prev => !prev)}
+                    className="p-0.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600 outline-none"
+                    aria-label="고정지출 안내"
+                  >
+                    <Info className="w-3 h-3" />
+                  </button>
+                  {showFixedInfo && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[220px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 transform rotate-45" />
+                      고정 지출(월세, 보험, 통신비) <span className="font-bold text-blue-300">{formatNumber(FIXED_EXPENSE)}원</span>은 신한 고정지출 통장에 먼저 빼놨어요.
+                    </div>
+                  )}
+                </span>
               </p>
-              <div className="inline-block border-2 border-slate-700 rounded-2xl px-4 py-2.5 shadow-sm bg-white">
-                <span className="text-xl font-extrabold tracking-tight">
-                  {formatNumber(TOTAL_SALARY)}<span className="text-sm font-bold text-slate-600 ml-1">원</span>
+              <div className="border-2 border-slate-700 rounded-2xl px-4 py-2.5 shadow-sm bg-white text-center">
+                <span className="text-base font-extrabold tracking-tight text-slate-800">
+                  {formatNumber(spendAmount)}<span className="text-xs font-bold text-slate-500 ml-0.5">원</span>
                 </span>
               </div>
             </div>
-            {/* 투자할 금액 */}
+
+            {/* 투자할 금액 카드 (사용자 조정 가능) */}
             <div>
-              <p className="text-xs font-semibold text-blue-600 ml-1 mb-1">투자할 금액</p>
-              <div className="inline-block border-2 border-blue-400 rounded-2xl px-4 py-2.5 shadow-sm bg-blue-50">
-                <span className="text-xl font-extrabold tracking-tight text-blue-800">
-                  {formatNumber(INVESTMENT_AMOUNT)}<span className="text-sm font-bold text-blue-600 ml-1">원</span>
-                </span>
+              <p className="text-xs font-semibold text-blue-600 mb-1 text-center">투자할 금액</p>
+              <div className="border-2 border-blue-400 rounded-2xl px-2 py-2.5 shadow-sm bg-blue-50 flex items-center justify-center gap-0.5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(investmentAmount)}
+                  onChange={e => {
+                    const v = parseDigits(e.target.value);
+                    setInvestmentAmount(Math.min(v, TOTAL_SALARY));
+                  }}
+                  className="text-base font-extrabold text-blue-800 bg-transparent outline-none text-center w-full min-w-0"
+                />
+                <span className="text-xs font-bold text-blue-600 shrink-0">원</span>
               </div>
             </div>
           </div>
-
-          {/* 소비 영역 라벨 */}
-          <p className="text-xs font-semibold text-slate-500 ml-1 mb-2">지출 배분</p>
 
           {/* 계좌 리스트 트리 영역 */}
-          <div className="relative mt-2">
-            {/* 세로 줄 */}
-            <div className="absolute left-5 top-0 bottom-8 w-[3px] bg-slate-700 rounded-sm" />
+          <div className="relative">
+            {/* 세로 줄: 지출할 금액 박스 아래에서 시작하여 남은 금액 화살표 머리 꼭지점 속으로 쏙 파고드는 단일 트리선 */}
+            <div className="absolute left-6 top-[-14px] bottom-[3px] w-[3px] bg-slate-700 rounded-sm z-0" />
 
             <div className="space-y-5 relative">
               {accounts.map((acc, index) => (
                 <div key={acc.id} className="relative pl-12 pr-1 pt-2">
                   {/* 트리를 잇는 꺾인 선 (SVG 화살표) */}
-                  <svg className="absolute left-5 top-11 w-7 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none">
+                  <svg className="absolute left-6 top-11 w-6 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M0 12h20M16 6l6 6-6 6" />
                   </svg>
 
@@ -287,7 +336,7 @@ export default function AssetPrescription() {
                           value={acc.tag}
                           onChange={(e) => updateTag(index, e.target.value)}
                           placeholder="태그"
-                          className={`${acc.isPinned ? acc.color : 'bg-blue-100 text-blue-500'} px-2 py-0.5 rounded-md text-xs font-bold outline-none focus:ring-2 focus:ring-blue-300 w-16 text-center transition-colors`}
+                          className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-xs font-medium outline-none focus:ring-2 focus:ring-blue-300 w-16 text-center"
                         />
                         <button
                           onClick={(e) => togglePin(index, e)}
@@ -329,7 +378,7 @@ export default function AssetPrescription() {
 
               {/* + 계좌 추가 버튼 (트리에 이어붙임) */}
               <div className="relative pl-12 pr-1 pt-2">
-                <svg className="absolute left-5 top-7 w-7 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none">
+                <svg className="absolute left-6 top-7 w-6 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M0 12h20M16 6l6 6-6 6" />
                 </svg>
                 <button
@@ -341,6 +390,21 @@ export default function AssetPrescription() {
                   계좌 추가
                 </button>
               </div>
+
+              {/* 통장에 남은 금액 연결 — 깔끔한 하향 화살표 */}
+              <div className="relative h-10 mt-1 z-0">
+                {/* 
+                  화살표 머리 (아래 방향): 
+                  - 위의 계좌 리스트에 사용된 custom SVG와 동일한 머리 각도, 두께(2.5px), stroke-round 스타일 적용
+                  - 소수점 픽셀 정렬(left-[13.5px])을 통해 세로 트리선의 가로 정중앙 축과 100% 정확하게 포개어짐
+                */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  className="absolute left-[13.5px] bottom-0 text-slate-700 z-10"
+                >
+                  <path d="M6 14l6 6 6-6" />
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -349,7 +413,7 @@ export default function AssetPrescription() {
         {/* 하단 고정 바 (남은 금액 및 완료 버튼) */}
         <div className="fixed bottom-0 max-w-[390px] w-full bg-white border-t border-slate-200 p-4 pb-6 z-20 flex justify-between items-center shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
           <div className="flex flex-col">
-            <span className="text-xs font-semibold text-slate-500 mb-0.5">남은 금액</span>
+            <span className="text-xs font-semibold text-slate-500 mb-0.5">통장에 남은 금액</span>
             <div className="text-2xl font-extrabold flex items-baseline gap-1">
               <span className={isOver ? 'text-red-500' : 'text-blue-600'}>{formatNumber(remain)}</span>
               <span className="text-lg text-slate-400">원</span>
@@ -435,13 +499,12 @@ export default function AssetPrescription() {
                         type="button"
                         disabled={alreadyAdded}
                         onClick={() => setSelectedLinkedId(isSelected ? null : acc.id)}
-                        className={`w-full text-left px-3 py-2.5 rounded-xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
-                          alreadyAdded
-                            ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
-                            : isSelected
-                              ? 'border-blue-400 bg-blue-50'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl border-2 flex items-center justify-between transition active:scale-[0.98] ${alreadyAdded
+                          ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
+                          : isSelected
+                            ? 'border-blue-400 bg-blue-50'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acc.badgeBg} ${acc.badgeColor}`}>
@@ -452,13 +515,12 @@ export default function AssetPrescription() {
                             <p className="text-sm font-bold text-slate-800 truncate">{acc.name}</p>
                           </div>
                         </div>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
-                          alreadyAdded
-                            ? 'border-slate-200 bg-slate-100'
-                            : isSelected
-                              ? 'border-blue-500 bg-blue-500'
-                              : 'border-slate-300'
-                        }`}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${alreadyAdded
+                          ? 'border-slate-200 bg-slate-100'
+                          : isSelected
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-slate-300'
+                          }`}>
                           {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                           {alreadyAdded && <Check className="w-3 h-3 text-slate-400" strokeWidth={3} />}
                         </div>
@@ -571,13 +633,12 @@ export default function AssetPrescription() {
                       type="button"
                       disabled={usedByOther}
                       onClick={() => pickBankFor(acc)}
-                      className={`w-full text-left px-3 py-2.5 rounded-xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
-                        usedByOther
-                          ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
-                          : isCurrent
-                            ? 'border-blue-400 bg-blue-50'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border-2 flex items-center justify-between transition active:scale-[0.98] ${usedByOther
+                        ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
+                        : isCurrent
+                          ? 'border-blue-400 bg-blue-50'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         {BANK_LOGOS[acc.bank] ? (
@@ -596,13 +657,12 @@ export default function AssetPrescription() {
                           <p className="text-sm font-bold text-slate-800 truncate">{acc.name}</p>
                         </div>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
-                        usedByOther
-                          ? 'border-slate-200 bg-slate-100'
-                          : isCurrent
-                            ? 'border-blue-500 bg-blue-500'
-                            : 'border-slate-300'
-                      }`}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${usedByOther
+                        ? 'border-slate-200 bg-slate-100'
+                        : isCurrent
+                          ? 'border-blue-500 bg-blue-500'
+                          : 'border-slate-300'
+                        }`}>
                         {isCurrent && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                         {usedByOther && <Check className="w-3 h-3 text-slate-400" strokeWidth={3} />}
                       </div>

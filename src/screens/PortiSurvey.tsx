@@ -620,7 +620,7 @@ export default function PortiSurvey() {
             onClick={() => navigate('/prescription-intro')}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95"
           >
-            AI 자산 처방전 받기 <ArrowRight className="w-5 h-5" />
+            맞춤형 월급 관리 받기 <ArrowRight className="w-5 h-5" />
           </button>
         </div>
 
