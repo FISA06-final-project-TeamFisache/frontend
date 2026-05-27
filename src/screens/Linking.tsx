@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Check } from 'lucide-react';
-import { getMyDataPreview, syncAssets, type PreviewAccount } from '../api/assetApi';
+import { getMyDataPreview, syncAssets, getAssetSummary, type Asset, type PreviewAccount, type AssetSummary } from '../api/assetApi';
 import wooriLogo   from '../assets/banks/woori.png';
 import kbLogo      from '../assets/banks/kb.png';
 import kakaoLogo   from '../assets/banks/kakao.png';
@@ -9,7 +9,7 @@ import tossLogo    from '../assets/banks/toss.png';
 import shinhanLogo from '../assets/banks/shinhan.png';
 import hanaLogo    from '../assets/banks/hana.png';
 
-type Step = 'consent' | 'select' | 'linking' | 'account-pick';
+type Step = 'consent' | 'select' | 'linking' | 'account-pick' | 'complete';
 type LinkStatus = 'waiting' | 'linking' | 'done';
 
 const BANK_LIST = [
@@ -71,6 +71,8 @@ export default function Linking() {
   const [pickedAccounts, setPickedAccounts] = useState<string[]>([]);
   const [previewAccounts, setPreviewAccounts] = useState<PreviewAccount[]>([]);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [summary, setSummary] = useState<AssetSummary | null>(null);
+  const [syncedAssets, setSyncedAssets] = useState<Asset[]>([]);
 
   const togglePickedAccount = (id: string) =>
     setPickedAccounts(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
@@ -253,6 +255,47 @@ export default function Linking() {
     </PhoneFrame>
   );
 
+  // ── Step 5: 연동 완료 ───────────────────────────────────
+  if (step === 'complete') return (
+    <PhoneFrame bottomLabel="연동 완료">
+      <div className="flex flex-col items-center text-center mt-8 mb-6">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <Check className="w-8 h-8 text-green-500" strokeWidth={3} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 mb-1">연동 완료!</h2>
+        <p className="text-sm text-gray-400">{syncedAssets.length}개 자산이 연결되었어요</p>
+      </div>
+
+      <div className="space-y-3 mb-8">
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">총 자산</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.totalBalance.toLocaleString()}원` : '-'}
+          </span>
+        </div>
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">투자 자산</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.investBalance.toLocaleString()}원` : '-'}
+          </span>
+        </div>
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">카드 개수</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.linkedCardCount}개 연결됨` : '-'}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={() => navigate('/salary-select', { state: { linkedAccounts: syncedAssets } })}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold transition active:scale-95"
+      >
+        급여통장 설정하기 →
+      </button>
+    </PhoneFrame>
+  );
+
   // ── Step 4: 계좌 선택 ───────────────────────────────────
   const allAssetNumbers = previewAccounts.map(a => a.assetNumber);
   const isAll = allAssetNumbers.length > 0 && allAssetNumbers.every(n => pickedAccounts.includes(n));
@@ -337,9 +380,11 @@ export default function Linking() {
           setSyncLoading(true);
           try {
             const assets = await syncAssets(pickedAccounts);
-            navigate('/salary-select', { state: { linkedAccounts: assets } });
+            setSyncedAssets(assets);
+            const s = await getAssetSummary().catch(() => null);
+            setSummary(s);
+            setStep('complete');
           } catch {
-            // 동기화 실패 시에도 다음 단계로 진행 (빈 목록)
             navigate('/salary-select', { state: { linkedAccounts: [] } });
           } finally {
             setSyncLoading(false);
