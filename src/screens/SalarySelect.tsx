@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getAssets, setSalaryAccount, connectAutoTransfer, type Asset } from '../api/assetApi';
 import { ChevronLeft, Check, ChevronRight, X } from 'lucide-react';
 import heroImg from '../assets/hero.png';
@@ -63,12 +63,8 @@ function PhoneFrame({ children, bottomLabel }: { children: React.ReactNode; bott
 
 export default function SalarySelect() {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // Linking에서 넘어온 연동 계좌 (없으면 API에서 직접 로드)
-  const linkedAssets: Asset[] = location.state?.linkedAccounts ?? [];
-
-  const [allAssets, setAllAssets] = useState<Asset[]>(linkedAssets);
+  const [allAssets, setAllAssets] = useState<Asset[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [wooriAccounts, setWooriAccounts] = useState<Account[]>([]);
 
