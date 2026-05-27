@@ -32,13 +32,14 @@ const BANK_INFO: Record<string, { logo?: string; isWoori: boolean }> = {
 };
 
 const assetToAccount = (asset: Asset): Account => {
-  const info = BANK_INFO[asset.institution] ?? { isWoori: asset.bankType === 'WOORI' };
+  const institution = asset.institution ?? '';
+  const info = BANK_INFO[institution] ?? { isWoori: asset.bankType === 'WOORI' };
   return {
     id: asset.id,
-    bank: asset.institution,
+    bank: institution,
     logo: info.logo,
-    name: asset.accountName,
-    balance: asset.balance,
+    name: asset.accountName ?? '',
+    balance: asset.balance ?? 0,
     isWoori: info.isWoori,
   };
 };
@@ -79,11 +80,11 @@ export default function SalarySelect() {
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [transferLoading, setTransferLoading] = useState(false);
 
-  // GET /assets — Linking에서 linkedAccounts가 없을 때만 호출, 있으면 그대로 사용
+  // GET /assets — 항상 API에서 최신 데이터 로드
   useEffect(() => {
     const load = async () => {
       try {
-        const fetched = allAssets.length > 0 ? allAssets : await getAssets();
+        const fetched = await getAssets();
         setAllAssets(fetched);
 
         // 입출금·예적금만 급여통장 후보로 표시
@@ -147,7 +148,7 @@ export default function SalarySelect() {
                   <div className="w-11 h-11 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
                     {acc.logo
                       ? <img src={acc.logo} alt={acc.bank} className="w-8 h-8 object-contain" />
-                      : <span className="text-xs font-bold text-gray-600">{acc.bank.slice(0, 2)}</span>
+                      : <span className="text-xs font-bold text-gray-600">{(acc.bank ?? '??').slice(0, 2)}</span>
                     }
                   </div>
                   <div>
