@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { signup as signupApi } from '../api/authApi';
+import { Loader2 } from 'lucide-react';
 
 const hasNum     = (pw: string) => /\d/.test(pw);
 const hasLower   = (pw: string) => /[a-z]/.test(pw);
@@ -16,18 +18,32 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const pwValid =
     hasNum(password) && hasLower(password) && hasUpper(password) &&
     hasSpecial(password) && hasLength(password);
 
-  const canSubmit = name.trim() && email.trim() && pwValid;
+  const canSubmit = name.trim() && email.trim() && pwValid && !isLoading;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    // 이름을 컨텍스트에 저장 (백엔드 연동 시 API 응답에서 받아와 login() 호출로 대체)
-    setUserName(name.trim());
-    navigate('/login');
+    setError('');
+    setIsLoading(true);
+    try {
+      await signupApi({
+        email: email.trim(),
+        password,
+        name: name.trim(),
+      });
+      setUserName(name.trim());
+      navigate('/login');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '회원가입 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -116,6 +132,11 @@ export default function Signup() {
               ))}
             </div>
           </div>
+
+          {/* 에러 메시지 */}
+          {error && (
+            <p className="text-red-500 text-xs text-center mb-4">{error}</p>
+          )}
         </div>
 
         {/* 하단 버튼 */}
@@ -123,9 +144,9 @@ export default function Signup() {
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold transition active:scale-95"
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold transition active:scale-95 flex items-center justify-center gap-2"
           >
-            회원가입
+            {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> 가입 중...</> : '회원가입'}
           </button>
           <button
             onClick={() => navigate('/login')}
