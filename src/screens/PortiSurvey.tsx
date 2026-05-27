@@ -10,7 +10,7 @@ import judoporiImg    from '../assets/JudoPori.png';
 import fencingporiImg from '../assets/FencingPori.png';
 import archeryporiImg from '../assets/Archerypori.png';
 import { useAuth } from '../contexts/AuthContext';
-import { submitSurvey } from '../api/userApi';
+import { savePortiType, type PortiType } from '../api/userApi';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -269,60 +269,32 @@ export default function PortiSurvey() {
   const currentQ = QUESTIONS[currentIndex];
   const progress = completing ? 100 : (currentIndex / TOTAL_QUESTIONS) * 100;
 
-  // 로딩 → 결과 자동 전환 및 API 연동
+  // 로딩 → 결과 자동 전환 및 API 저장
   useEffect(() => {
     if (step !== 'loading') return;
 
-    let isApiDone = false;
-    let isTimerDone = false;
-    let fetchedResult: ResultType | null = null;
-    let apiError: Error | null = null;
+    // 1. 클라이언트에서 결과 계산 (API 의존 없음)
+    const localResult = calcResult(answers);
 
-    const PORTI_IMAGES: Record<string, string> = {
-      SWIMMING: swimporiImg,
-      RHYTHMIC: golfporiImg,
-      CYCLING: cycleporiImg,
-      JUDO: judoporiImg,
-      FENCING: fencingporiImg,
-      ARCHERY: archeryporiImg,
+    const PORTI_TYPE_MAP: Record<string, PortiType> = {
+      '수영하는 Pori': 'SWIMMING',
+      '골프 치는 Pori': 'RHYTHMIC',
+      '사이클 타는 Pori': 'CYCLING',
+      '유도하는 Pori': 'JUDO',
+      '펜싱하는 Pori': 'FENCING',
+      '양궁 쏘는 Pori': 'ARCHERY',
     };
+    const portiType = PORTI_TYPE_MAP[localResult.typeName] ?? 'SWIMMING';
 
-    const checkAndTransition = () => {
-      if (isApiDone && isTimerDone) {
-        if (apiError) {
-          alert(apiError.message || '설문 제출 중 오류가 발생했습니다.');
-          setStep('question');
-          setCompleting(false);
-        } else if (fetchedResult) {
-          setResult(fetchedResult);
-          setStep('result');
-        }
-      }
-    };
+    // 2. 백엔드에 저장 (PATCH /users/porti-survey) — 실패해도 화면 전환은 진행
+    savePortiType(portiType).catch((err) => {
+      console.error('[PortiSurvey] portiType 저장 실패:', err);
+    });
 
-    const answerArray = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => answers[i + 1] || 'A');
-    submitSurvey(answerArray)
-      .then((data) => {
-        fetchedResult = {
-          typeName: data.typeName,
-          img: PORTI_IMAGES[data.portiType] || swimporiImg,
-          subtitle: data.description,
-          spending: data.managementStyle,
-          investment: data.investTendency,
-          saving: data.timePerspective,
-        };
-        isApiDone = true;
-        checkAndTransition();
-      })
-      .catch((err) => {
-        apiError = err instanceof Error ? err : new Error('설문 제출 중 오류가 발생했습니다.');
-        isApiDone = true;
-        checkAndTransition();
-      });
-
+    // 3. 최소 로딩 시간(2.8초) 후 결과 화면으로 전환
     const timer = setTimeout(() => {
-      isTimerDone = true;
-      checkAndTransition();
+      setResult(localResult);
+      setStep('result');
     }, 2800);
 
     return () => clearTimeout(timer);
