@@ -75,11 +75,23 @@ export interface AgentRecommend {
 }
 
 /**
- * POST /agent/recommend
+ * POST /agent/rebalance
  * 월급 리밸런싱 추천 (요청 바디 없음)
  */
 export async function getAgentRecommend(): Promise<AgentRecommend> {
-  const response = await api.post<CommonResponse<AgentRecommend>>('/agent/recommend', {});
+  const response = await api.post<CommonResponse<AgentRecommend>>('/agent/rebalance', {});
   if (!response.success) throw new Error(response.message || '리밸런싱 추천 중 오류가 발생했습니다.');
   return response.data;
+}
+
+/**
+ * POST /agent/prescriptions
+ * PrescriptionComplete 화면 진입 시 호출 — FastAPI /asset-portfolio 로
+ * AI 포트폴리오를 생성받아 백엔드 DB(portfolio_flows + items)에 저장
+ */
+export async function generatePrescriptions(): Promise<void> {
+  const response = await api.post<CommonResponse>('/agent/prescriptions', {});
+  if (!response.success) {
+    throw new Error(response.message || 'AI 포트폴리오 생성 중 오류가 발생했습니다.');
+  }
 }
