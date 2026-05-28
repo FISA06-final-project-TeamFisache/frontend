@@ -55,3 +55,31 @@ export async function generateAgentProfile(answers: string[]): Promise<AgentProf
   if (!response.success) throw new Error(response.message || 'AI 진단 리포트 생성 중 오류가 발생했습니다.');
   return response.data;
 }
+
+export interface RebalancingPlan {
+  assetId: string;
+  institution: string;
+  assetType: string;
+  assetNumber: string;
+  amount: number;
+  nickname: string;
+}
+
+export interface AgentRecommend {
+  salary: number;
+  investAmount: number;
+  totalFixedExpense: number;
+  fixedExpenseComment: string;
+  rebalancingPlans: RebalancingPlan[];
+  remainingAmount: number;
+}
+
+/**
+ * POST /agent/recommend
+ * 월급 리밸런싱 추천 (요청 바디 없음)
+ */
+export async function getAgentRecommend(): Promise<AgentRecommend> {
+  const response = await api.post<CommonResponse<AgentRecommend>>('/agent/recommend', {});
+  if (!response.success) throw new Error(response.message || '리밸런싱 추천 중 오류가 발생했습니다.');
+  return response.data;
+}
