@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getPortfolioFlows, getAvailableAssets, updatePortfolioFlow,
@@ -1031,6 +1031,9 @@ function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }: { cat
 export default function AssetPortfolio() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // 햄버거 → '포트폴리오 재설정' 으로 진입한 경우만 'edit' — 헤더 문구가 달라짐
+  const isEditMode = (location.state as { mode?: string } | null)?.mode === 'edit';
   const [termTab, setTermTab] = useState<TermTab>('all');        // 'all' 또는 flow.id
   const [detailFlowId, setDetailFlowId] = useState<string | null>(null);
   const [flows, setFlows] = useState<Flow[]>([]);
@@ -1253,16 +1256,20 @@ export default function AssetPortfolio() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
-          <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>자산 처방전</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            {isEditMode ? '포트폴리오 재설정' : '자산 처방전'}
+          </h1>
         </div>
 
         <div style={{ padding: '12px 16px 0' }}>
           {!showDetail && (
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
               <p style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, margin: 0 }}>
-                {USER_NAME}님의 자산<br />이렇게 불려드릴게요
+                {isEditMode
+                  ? <>흐름과 상품 구성을<br />원하는 대로 수정해보세요</>
+                  : <>{USER_NAME}님의 자산<br />이렇게 불려드릴게요</>}
               </p>
-              <img src={pillImg} alt="처방전" style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
+              <img src={pillImg} alt={isEditMode ? '재설정' : '처방전'} style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
             </div>
           )}
 
