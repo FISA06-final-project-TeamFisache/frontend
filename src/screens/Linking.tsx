@@ -99,9 +99,8 @@ export default function Linking() {
         setTimeout(() => {
           setLinkStatus(prev => ({ ...prev, [id]: 'done' }));
           if (i === selected.length - 1) {
-            // 마지막 은행 완료 후 마이데이터 계좌 목록 조회
-            const bankNames = selected.map(bid => BANK_LIST.find(b => b.id === bid)?.name ?? bid);
-            getMyDataPreview(bankNames)
+            // 마지막 은행 완료 후 마이데이터 계좌 목록 조회 (해당 사용자의 전체 계좌)
+            getMyDataPreview([])
               .then(accounts => { setPreviewAccounts(accounts); })
               .catch(() => { setPreviewAccounts([]); })
               .finally(() => { setTimeout(() => setStep('account-pick'), 600); });
