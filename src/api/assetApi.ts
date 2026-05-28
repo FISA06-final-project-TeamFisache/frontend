@@ -19,7 +19,7 @@ export interface Asset {
   accountName: string;       // 상품명
   isSalary: boolean;         // 급여 계좌 여부
   balance: number;           // 잔액
-  bankType: string;          // 은행 코드
+  bankType: string;          // 은행 코드 (e.g. "WOORI", "OTHER")
   syncedAt: string;          // 마지막 동기화 시각 (ISO 8601)
 }
 
@@ -34,21 +34,21 @@ export interface AssetSummary {
 
 /** MyData 기관 미리보기 항목 */
 export interface PreviewAccount {
-  institution: string;          // 금융기관명
-  assetType: string;            // 자산 유형
-  assetNumber: string;          // 계좌번호
-  accountName: string;          // 상품명
-  accountPurpose: string;       // 계좌 용도
-  balance: number;              // 잔액
-  bankType: string;             // 은행 코드
-  isSalary: boolean;            // 급여 계좌 여부
+  institution: string;
+  assetType: string;
+  assetNumber: string;
+  accountName: string;
+  accountPurpose: string;
+  balance: number;
+  bankType: string;
+  isSalary: boolean;
 }
 
 /** 급여 계좌 설정 결과 */
 export interface SalarySetResult {
   assetId: string;
   institution: string;
-  isWooriBank: boolean;         // 우리은행 여부 → true면 다음 단계, false면 자동이체 연결
+  isWooriBank: boolean;         // true → 다음 단계, false → 자동이체 연결
 }
 
 /** 자동이체 연결 상태 */
@@ -62,9 +62,29 @@ export interface AutoTransferStatus {
 // ── API 함수 ───────────────────────────────────────────────────
 
 /**
+ * GET /assets
+ * 연동된 전체 자산(계좌) 목록 조회
+ */
+export async function getAssets(): Promise<Asset[]> {
+  const response = await api.get<CommonResponse<{ assets: Asset[]; totalCount: number }>>('/assets');
+  if (!response.success) throw new Error(response.message || '자산 목록 조회 중 오류가 발생했습니다.');
+  return response.data.assets;
+}
+
+/**
+ * GET /assets/summary
+ * 자산 카테고리별 요약 조회
+ */
+export async function getAssetSummary(): Promise<AssetSummary> {
+  const response = await api.get<CommonResponse<AssetSummary>>('/assets/summary');
+  if (!response.success) throw new Error(response.message || '자산 요약 조회 중 오류가 발생했습니다.');
+  return response.data;
+}
+
+/**
  * GET /assets/mydata/preview
  * 연결할 기관의 계좌 목록 미리보기
- * @param institutions 조회할 기관 코드 배열 (e.g. ["우리은행","국민은행"])
+ * @param institutions 조회할 기관명 배열 (e.g. ["우리은행","국민은행"])
  */
 export async function getMyDataPreview(institutions: string[]): Promise<PreviewAccount[]> {
   const params = institutions.map((i) => `institutions=${encodeURIComponent(i)}`).join('&');
@@ -85,26 +105,6 @@ export async function syncAssets(selectedAssetNumbers: string[]): Promise<Asset[
 }
 
 /**
- * GET /assets
- * 내 자산 목록 조회
- */
-export async function getAssets(): Promise<Asset[]> {
-  const response = await api.get<CommonResponse<Asset[]>>('/assets');
-  if (!response.success) throw new Error(response.message || '자산 목록 조회 중 오류가 발생했습니다.');
-  return response.data;
-}
-
-/**
- * GET /assets/summary
- * 자산 요약 조회
- */
-export async function getAssetSummary(): Promise<AssetSummary> {
-  const response = await api.get<CommonResponse<AssetSummary>>('/assets/summary');
-  if (!response.success) throw new Error(response.message || '자산 요약 조회 중 오류가 발생했습니다.');
-  return response.data;
-}
-
-/**
  * PATCH /assets/{assetId}/salary
  * 급여 계좌로 설정
  */
@@ -116,11 +116,12 @@ export async function setSalaryAccount(assetId: string): Promise<SalarySetResult
 
 /**
  * POST /assets/auto-transfer/connect
- * 자동이체 연결 (비우리은행 급여 계좌인 경우)
- * @param fromAssetId 출금 계좌 ID
+ * 타행 급여 계좌 → 우리은행 계좌 자동이체 연결
+ * @param toAssetId  입금받을 우리은행 계좌 UUID
+ * @param salaryDate 이체일 (1~31)
  */
-export async function connectAutoTransfer(fromAssetId: string): Promise<void> {
-  const response = await api.post<CommonResponse>('/assets/auto-transfer/connect', { fromAssetId });
+export async function connectAutoTransfer(toAssetId: string, salaryDate: number): Promise<void> {
+  const response = await api.post<CommonResponse>('/assets/auto-transfer/connect', { toAssetId, salaryDate });
   if (!response.success) throw new Error(response.message || '자동이체 연결 중 오류가 발생했습니다.');
 }
 
