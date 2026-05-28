@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
 import kakaoLogo from '../assets/banks/kakao.png';
 import tossLogo from '../assets/banks/toss.png';
@@ -9,6 +9,9 @@ import kbLogo from '../assets/banks/kb.png';
 import hanaLogo from '../assets/banks/hana.png';
 import miraeLogo from '../assets/banks/mirae.png';
 import { useAuth } from '../contexts/AuthContext';
+import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
+import { updatePortfolios } from '../api/portfolioApi';
+import { getAssets, type Asset } from '../api/assetApi';
 
 const BANK_LOGOS: Record<string, string> = {
   '카카오뱅크': kakaoLogo,
@@ -20,16 +23,12 @@ const BANK_LOGOS: Record<string, string> = {
   '미래에셋증권': miraeLogo,
 };
 
-// [AI 자동생성 필요] 월급 · 고정지출 · 투자금액 — 백엔드 마이데이터 API 연동 시 교체
-const TOTAL_SALARY = 3_200_000;
-const FIXED_EXPENSE = 245_000;
-// TODO: AssetPortfolio 흐름 합계에서 받아와 교체 (현재 4개 흐름 × 30만원 = 120만원 mock)
-const INVESTMENT_AMOUNT = 1_200_000;
-
 interface Account {
   id: number;
-  bank: string;      // 계좌 상품명 (예: 입출금통장)
-  bankName: string;  // 은행 기관명 (예: 카카오뱅크)
+  assetId?: string;
+  assetType?: string;
+  bank: string;
+  bankName: string;
   tag: string;
   amount: number;
   percent: number;
@@ -48,9 +47,10 @@ const TAG_COLORS = [
   'bg-teal-100 text-teal-600',
 ];
 
-// 마이데이터 연동으로 가져온 내 계좌 목록 (TODO: 추후 API 연동)
 interface LinkedAccount {
   id: string;
+  assetId?: string;
+  assetType?: string;
   bank: string;
   name: string;
   short: string;
@@ -58,24 +58,35 @@ interface LinkedAccount {
   badgeColor: string;
 }
 
-const MY_ACCOUNTS: LinkedAccount[] = [
-  { id: 'kakao-1', bank: '카카오뱅크', name: '입출금통장', short: '카카', badgeBg: 'bg-yellow-100', badgeColor: 'text-yellow-700' },
-  { id: 'kakao-2', bank: '카카오뱅크', name: '26주 적금', short: '카카', badgeBg: 'bg-yellow-100', badgeColor: 'text-yellow-700' },
-  { id: 'toss-1', bank: '토스뱅크', name: '파킹통장', short: '토스', badgeBg: 'bg-blue-50', badgeColor: 'text-blue-500' },
-  { id: 'toss-2', bank: '토스뱅크', name: '나눠모으기 통장', short: '토스', badgeBg: 'bg-blue-50', badgeColor: 'text-blue-500' },
-  { id: 'shinhan-1', bank: '신한은행', name: 'Tops 직장인 플랜', short: '신한', badgeBg: 'bg-blue-50', badgeColor: 'text-blue-600' },
-  { id: 'woori-1', bank: '우리은행', name: 'WON 파킹 통장', short: '우리', badgeBg: 'bg-blue-100', badgeColor: 'text-blue-800' },
-  { id: 'woori-2', bank: '우리은행', name: 'WON 적금', short: '우리', badgeBg: 'bg-blue-100', badgeColor: 'text-blue-800' },
-  { id: 'kb-1', bank: '국민은행', name: 'Star 입출금통장', short: '국민', badgeBg: 'bg-amber-100', badgeColor: 'text-amber-700' },
-  { id: 'hana-1', bank: '하나은행', name: '하나원큐 적금', short: '하나', badgeBg: 'bg-emerald-100', badgeColor: 'text-emerald-700' },
-  { id: 'mirae-1', bank: '미래에셋증권', name: '종합매매계좌', short: '미래', badgeBg: 'bg-orange-100', badgeColor: 'text-orange-700' },
-];
+function assetToLinked(asset: Asset): LinkedAccount {
+  const inst = asset.institution ?? '';
+  return {
+    id: asset.id,
+    assetId: asset.id,
+    assetType: asset.assetType,
+    bank: inst,
+    name: asset.accountName ?? asset.assetType,
+    short: inst.slice(0, 2),
+    badgeBg: 'bg-blue-50',
+    badgeColor: 'text-blue-600',
+  };
+}
 
-// [AI 자동생성 필요] 초기 계좌 배분 목록 — AI 처방 결과로 자동 생성 (통장 종류·금액·태그)
-const INITIAL_ACCOUNTS: Account[] = [
-  { id: 0, bank: '입출금통장', bankName: '카카오뱅크', tag: '생활비', amount: 1_500_000, percent: 47, isPinned: true, color: TAG_COLORS[0] },
-  { id: 1, bank: '파킹통장', bankName: '토스뱅크', tag: '비상금', amount: 300_000, percent: 9, isPinned: false, color: TAG_COLORS[3] },
-];
+const ASSET_TYPE_TO_CATEGORY: Record<string, string> = {
+  CHECKING: 'CASH',
+  PARKING: 'CASH',
+  CMA: 'CASH',
+  SAVINGS: 'DEPOSIT',
+  DEPOSIT: 'DEPOSIT',
+  STOCK: 'STOCK',
+  BOND: 'BOND',
+  IRP: 'IRP',
+};
+
+function toAssetCategory(assetType?: string): string {
+  if (!assetType) return 'CASH';
+  return ASSET_TYPE_TO_CATEGORY[assetType] ?? 'CASH';
+}
 
 const formatNumber = (n: number) => n.toLocaleString('ko-KR');
 const parseDigits = (s: string) => parseInt(s.replace(/[^0-9]/g, ''), 10) || 0;
@@ -83,7 +94,13 @@ const parseDigits = (s: string) => parseInt(s.replace(/[^0-9]/g, ''), 10) || 0;
 export default function AssetPrescription() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
-  const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
+  const location = useLocation();
+  const recommend = location.state?.recommend as AgentRecommend | undefined;
+
+  const [totalSalary, setTotalSalary] = useState(recommend?.salary ?? 0);
+  const [fixedExpense, setFixedExpense] = useState(recommend?.totalFixedExpense ?? 0);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [showFixedInfo, setShowFixedInfo] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -95,25 +112,58 @@ export default function AssetPrescription() {
   const [isCreatingNewWoori, setIsCreatingNewWoori] = useState(false);
   const [newWooriName, setNewWooriName] = useState('');
 
-  const allLinkedAccounts = [...MY_ACCOUNTS, ...customLinkedAccounts];
+  const allLinkedAccounts = [...linkedAccounts, ...customLinkedAccounts];
   const [toast, setToast] = useState<{ top: number; left: number } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const applyRecommend = (data: AgentRecommend) => {
+    setTotalSalary(data.salary);
+    setFixedExpense(data.totalFixedExpense);
+    setInvestmentAmount(data.investAmount);
+    setAccounts(data.rebalancingPlans.map((plan, i) => ({
+      id: i,
+      assetId: plan.assetId,
+      assetType: plan.assetType,
+      bank: plan.nickname || plan.assetType,
+      bankName: plan.institution,
+      tag: plan.assetType,
+      amount: plan.amount,
+      percent: data.salary > 0 ? Math.round((plan.amount / data.salary) * 100) : 0,
+      isPinned: false,
+      color: TAG_COLORS[i % TAG_COLORS.length],
+    })));
+  };
+
+  // 자산 목록 로드 + 추천 데이터로 초기화
+  useEffect(() => {
+    getAssets().then(assets => {
+      setLinkedAccounts(assets.map(assetToLinked));
+    }).catch(() => {});
+
+    if (recommend) {
+      applyRecommend(recommend);
+    } else {
+      getAgentRecommend()
+        .then(applyRecommend)
+        .catch(err => console.error('[AssetPrescription] recommend 실패:', err));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => () => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
 
-  const [investmentAmount, setInvestmentAmount] = useState(INVESTMENT_AMOUNT);
+  const [investmentAmount, setInvestmentAmount] = useState(recommend?.investAmount ?? 0);
 
   const totalAmount = accounts.reduce((sum, a) => sum + a.amount, 0);
-  const spendAmount = TOTAL_SALARY - investmentAmount;
-  // 통장에 남은 금액 = 월급 - 투자할 금액 - 계좌 분배 합계
+  const spendAmount = totalSalary - investmentAmount;
   const remain = spendAmount - totalAmount;
   const isOver = remain < 0;
 
   const updateAmount = (idx: number, amount: number) => {
     setAccounts(prev => prev.map((a, i) => i === idx
-      ? { ...a, amount, percent: Math.round((amount / TOTAL_SALARY) * 100) }
+      ? { ...a, amount, percent: totalSalary > 0 ? Math.round((amount / totalSalary) * 100) : 0 }
       : a));
   };
 
@@ -123,7 +173,7 @@ export default function AssetPrescription() {
 
   const pickBankFor = (linked: LinkedAccount) => {
     if (bankPickerForIdx === null) return;
-    setAccounts(prev => prev.map((a, i) => i === bankPickerForIdx ? { ...a, bank: linked.name, bankName: linked.bank } : a));
+    setAccounts(prev => prev.map((a, i) => i === bankPickerForIdx ? { ...a, assetId: linked.assetId, assetType: linked.assetType, bank: linked.name, bankName: linked.bank } : a));
     setBankPickerForIdx(null);
   };
 
@@ -167,7 +217,7 @@ export default function AssetPrescription() {
     const color = TAG_COLORS[accounts.length % TAG_COLORS.length];
     setAccounts(prev => [
       ...prev,
-      { id: nextId, bank: linked.name, bankName: linked.bank, tag, amount: 0, percent: 0, isPinned: false, color },
+      { id: nextId, assetId: linked.assetId, assetType: linked.assetType, bank: linked.name, bankName: linked.bank, tag, amount: 0, percent: 0, isPinned: false, color },
     ]);
     setShowAddModal(false);
   };
@@ -189,8 +239,18 @@ export default function AssetPrescription() {
     setShowModal(true);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setShowModal(false);
+    const portfolios = accounts.map(a => ({
+      assetType: toAssetCategory(a.assetType),
+      assetAmount: a.amount,
+      ...(a.assetId ? { assetId: a.assetId } : {}),
+    }));
+    try {
+      await updatePortfolios(portfolios, investmentAmount);
+    } catch (err) {
+      console.error('[AssetPrescription] PATCH /portfolios 실패:', err);
+    }
     navigate('/prescription-complete');
   };
 
@@ -222,7 +282,7 @@ export default function AssetPrescription() {
             
             <div className="border-2 border-slate-700 rounded-2xl px-5 py-2.5 shadow-sm bg-white min-w-[140px] text-center">
               <span className="text-base font-extrabold tracking-tight">
-                {formatNumber(TOTAL_SALARY)}<span className="text-xs font-bold text-slate-600 ml-0.5">원</span>
+                {formatNumber(totalSalary)}<span className="text-xs font-bold text-slate-600 ml-0.5">원</span>
               </span>
             </div>
           </div>
@@ -262,7 +322,7 @@ export default function AssetPrescription() {
                   {showFixedInfo && (
                     <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[220px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 transform rotate-45" />
-                      고정 지출(월세, 보험, 통신비) <span className="font-bold text-blue-300">{formatNumber(FIXED_EXPENSE)}원</span>은 신한 고정지출 통장에 먼저 빼놨어요.
+                      고정 지출(월세, 보험, 통신비) <span className="font-bold text-blue-300">{formatNumber(fixedExpense)}원</span>은 신한 고정지출 통장에 먼저 빼놨어요.
                     </div>
                   )}
                 </span>
@@ -284,7 +344,7 @@ export default function AssetPrescription() {
                   value={formatNumber(investmentAmount)}
                   onChange={e => {
                     const v = parseDigits(e.target.value);
-                    setInvestmentAmount(Math.min(v, TOTAL_SALARY));
+                    setInvestmentAmount(Math.min(v, totalSalary));
                   }}
                   className="text-base font-extrabold text-blue-800 bg-transparent outline-none text-center w-full min-w-0"
                 />
