@@ -66,9 +66,9 @@ export interface AutoTransferStatus {
  * 연동된 전체 자산(계좌) 목록 조회
  */
 export async function getAssets(): Promise<Asset[]> {
-  const response = await api.get<CommonResponse<Asset[]>>('/assets');
+  const response = await api.get<CommonResponse<{ assets: Asset[]; totalCount: number }>>('/assets');
   if (!response.success) throw new Error(response.message || '자산 목록 조회 중 오류가 발생했습니다.');
-  return response.data;
+  return response.data.assets;
 }
 
 /**
