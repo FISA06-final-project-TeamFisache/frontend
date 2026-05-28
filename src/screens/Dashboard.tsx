@@ -1,8 +1,16 @@
-import { useEffect, useState, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SalaryManagement from './SalaryManagement';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
 import { getDashboard, type DashboardData } from '../api/dashboardApi';
+import {
+  getNotifications,
+  readNotification,
+  readAllNotifications,
+  subscribeToNotifications,
+  type Notification as ApiNotification,
+} from '../api/notificationApi';
 
 
 interface Goal {
@@ -19,6 +27,24 @@ interface SpendingItem { label: string; pct: number; color: string; }
 interface PopularProduct { rank: number; name: string; sub: string; pct: number; }
 interface PortfolioSlice { label: string; pct: number; color: string; rate?: string; }
 interface NotiItem { id: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; }
+
+const NOTI_META: Record<string, { icon: string; iconBg: string }> = {
+  SALARY_REBALANCING: { icon: '💳', iconBg: '#E6F1FB' },
+  SPENDING_TREND:     { icon: '📉', iconBg: '#FCEBEB' },
+  REPORT_READY:       { icon: '📋', iconBg: '#E1F5EE' },
+};
+
+function toNotiItem(n: ApiNotification): NotiItem {
+  const meta = NOTI_META[n.type] ?? { icon: '🔔', iconBg: '#f1f5f9' };
+  const diff = Date.now() - new Date(n.sentAt).getTime();
+  const mins = Math.floor(diff / 60000);
+  const time =
+    mins < 1   ? '방금 전' :
+    mins < 60  ? `${mins}분 전` :
+    mins < 1440 ? `${Math.floor(mins / 60)}시간 전` :
+                  `${Math.floor(mins / 1440)}일 전`;
+  return { id: n.id, icon: meta.icon, iconBg: meta.iconBg, title: n.title, body: n.content, time, read: n.isRead };
+}
 
 const GOAL_COLORS: Goal['color'][] = [
   { bg: '#EEEDFE', bar: '#7F77DD', text: '#534AB7', badge: '#EEEDFE', badgeText: '#534AB7' },
@@ -392,9 +418,12 @@ function SettingsPanel({ onClose, onNavigate }: { onClose: () => void; onNavigat
   );
 }
 
-function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; items: NotiItem[]; setItems: Dispatch<SetStateAction<NotiItem[]>> }) {
-  const markRead = (id: string) => setItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  const markAll = () => setItems(prev => prev.map(n => ({ ...n, read: true })));
+function NotificationPanel({ onClose, items, onMarkRead, onMarkAll }: {
+  onClose: () => void;
+  items: NotiItem[];
+  onMarkRead: (id: string) => void;
+  onMarkAll: () => void;
+}) {
   const unreadCount = items.filter(n => !n.read).length;
 
   return (
@@ -414,15 +443,20 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {unreadCount > 0 && (
-            <button onClick={markAll} style={{ fontSize: 12, fontWeight: 500, color: '#64748b', border: 'none', background: 'none', cursor: 'pointer' }}>모두 읽음</button>
+            <button onClick={onMarkAll} style={{ fontSize: 12, fontWeight: 500, color: '#64748b', border: 'none', background: 'none', cursor: 'pointer' }}>모두 읽음</button>
           )}
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }} aria-label="닫기">✕</button>
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '8px 12px 20px', overflowY: 'auto' }}>
+        {items.length === 0 && (
+          <div style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+            아직 알림이 없어요
+          </div>
+        )}
         {items.map(n => (
-          <div key={n.id} onClick={() => markRead(n.id)}
+          <div key={n.id} onClick={() => onMarkRead(n.id)}
             style={{
               background: '#fff', border: '0.5px solid #f1f5f9', borderRadius: 14, padding: 14,
               display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer',
@@ -470,15 +504,6 @@ export default function Dashboard() {
     }
   };
 
-  // ── 알림 데이터 (하드) — 별도 API 미제공 ───────────────
-  const NOTIFICATIONS: NotiItem[] = [
-    { id: 'n1', icon: '💳', iconBg: '#E6F1FB', title: '월급이 들어왔네요!', body: '새로 나눴어요! 확인하고 자동이체할게요.', time: '방금 전', read: false },
-    { id: 'n2', icon: '📉', iconBg: '#FCEBEB', title: '밸런싱 붕괴 조짐이 보여요', body: '이번 달 소비 속도가 빠르게 올라가고 있어요...', time: '2시간 전', read: false },
-    { id: 'n3', icon: '📋', iconBg: '#E1F5EE', title: '2026년 5월 월간 리포트가 도착했어요!', body: `${USER_NAME}님만을 위한 5월 종합 리포트...`, time: '1일 전', read: false },
-    { id: 'n4', icon: '🎵', iconBg: '#EEEDFE', title: '이번 달 관심받고 있는 공연 소식이에요!', body: `${USER_NAME}님의 취향을 기반으로...`, time: '1일 전', read: false },
-    { id: 'n5', icon: '🏦', iconBg: '#E1F5EE', title: `${USER_NAME}님만을 위한 정부 정책을 가져왔어요`, body: '자격증 지원금을 신청해보세요! 최대 50만 원을 돌려받을 수 있어요.', time: '2일 전', read: true },
-  ];
-
   // ── 대시보드 API 상태 ────────────────────────────────────
   const [dashboard,           setDashboard]           = useState<DashboardData | null>(null);
   const [loadError,           setLoadError]           = useState<string | null>(null);
@@ -494,11 +519,12 @@ export default function Dashboard() {
 
   // ── UI 상태 ──────────────────────────────────────────────
   const [bannerVisible,       setBannerVisible]       = useState(true);
+  const [salaryMgmtOpen,      setSalaryMgmtOpen]      = useState(false);
   const [anomalyOpen,         setAnomalyOpen]         = useState(false);
   const [recapOpen,           setRecapOpen]           = useState(false);
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
   const [notiOpen,            setNotiOpen]            = useState(false);
-  const [notiItems,           setNotiItems]           = useState<NotiItem[]>(NOTIFICATIONS);
+  const [notiItems,           setNotiItems]           = useState<NotiItem[]>([]);
   const [accountMgmtOpen,     setAccountMgmtOpen]     = useState(false);
   const [settingsOpen,        setSettingsOpen]        = useState(false);
   const [sidebarOpen,         setSidebarOpen]         = useState(false);
@@ -524,6 +550,38 @@ export default function Dashboard() {
     }]);
   }, [dashboard]);
 
+  // ── 알림 로드 + SSE 구독 ─────────────────────────────────
+  useEffect(() => {
+    getNotifications()
+      .then(list => {
+        const items = list.map(toNotiItem);
+        setNotiItems(items);
+        if (items.some(n => !n.read && n.icon === '💳')) {
+          setBannerVisible(true);
+        }
+      })
+      .catch(err => console.error('[Dashboard] 알림 조회 실패:', err));
+
+    const ctrl = subscribeToNotifications({
+      onNotification: (n) => {
+        setNotiItems(prev => [toNotiItem(n), ...prev]);
+      },
+      onSalaryArrived: () => setBannerVisible(true),
+    });
+
+    return () => ctrl.abort();
+  }, []);
+
+  const handleMarkRead = (id: string) => {
+    setNotiItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    readNotification(id).catch(err => console.error('[Dashboard] 읽음 처리 실패:', err));
+  };
+
+  const handleMarkAll = () => {
+    setNotiItems(prev => prev.map(n => ({ ...n, read: true })));
+    readAllNotifications().catch(err => console.error('[Dashboard] 전체 읽음 실패:', err));
+  };
+
   // ── 표시용 헬퍼 ─────────────────────────────────────────
   const fmtManwon = (n: number) => `${Math.round(n / 10000).toLocaleString()}만 원`;
 
@@ -539,7 +597,7 @@ export default function Dashboard() {
       }))
     : [];
 
-  // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑, (하드))
+  // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑)
   const SPENDING_COLOR: Record<string, string> = {
     '식비':       '#D85A30',
     '문화/여가':  '#D85A30',
@@ -668,7 +726,7 @@ export default function Dashboard() {
                 {/* 3. 우측: 확인 버튼 - 우측 끝 테두리에서 살짝 왼쪽으로 당겨지도록 여백 설정 */}
                 <div style={{ flexShrink: 0, marginRight: 8, marginTop: 4 }}>
                   <button
-                    onClick={() => navigate('/asset-prescription')}
+                    onClick={() => setSalaryMgmtOpen(true)}
                     style={{ fontSize: 11, fontWeight: 600, padding: '6px 12px', background: '#854F0B', color: '#FAEEDA', border: 'none', borderRadius: 8, cursor: 'pointer' }}
                   >
                     확인 →
@@ -1082,7 +1140,7 @@ export default function Dashboard() {
           animation: 'fadeIn 0.2s ease-out',
         }}>
           <div style={{ width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
-            <NotificationPanel onClose={() => setNotiOpen(false)} items={notiItems} setItems={setNotiItems} />
+            <NotificationPanel onClose={() => setNotiOpen(false)} items={notiItems} onMarkRead={handleMarkRead} onMarkAll={handleMarkAll} />
           </div>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '85vh', zIndex: -1 }} onClick={() => setNotiOpen(false)} />
         </div>
@@ -1122,6 +1180,13 @@ export default function Dashboard() {
               onNavigate={(to) => { setSettingsOpen(false); navigate(to, { state: { mode: 'edit' } }); }}
             />
           </div>
+        </div>
+      )}
+
+      {/* 월급 관리 overlay */}
+      {salaryMgmtOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <SalaryManagement onClose={() => setSalaryMgmtOpen(false)} />
         </div>
       )}
     </div>

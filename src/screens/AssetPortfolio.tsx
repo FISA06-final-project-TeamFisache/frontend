@@ -1041,14 +1041,12 @@ export default function AssetPortfolio() {
   const [productCatalog, setProductCatalog] = useState<ProductItem[]>([]);
   const [editor, setEditor] = useState<EditorMode>(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // API 병렬: 흐름 / 통장 후보 / 상품 카탈로그
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    setLoadError(null);
     Promise.all([getPortfolioFlows(), getAvailableAssets(), getProducts()])
       .then(([flowsRes, assetsRes, productsRes]) => {
         if (cancelled) return;
@@ -1060,7 +1058,7 @@ export default function AssetPortfolio() {
       })
       .catch(e => {
         if (cancelled) return;
-        setLoadError(e instanceof Error ? e.message : '포트폴리오 화면 조회 실패');
+        console.error('포트폴리오 조회 실패:', e);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -1221,14 +1219,6 @@ export default function AssetPortfolio() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #e2e8f0', borderTopColor: '#0f172a', animation: 'spin 0.8s linear infinite' }} />
-      </div>
-    );
-  }
-  if (loadError) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f8fafc', fontFamily: "'Pretendard', sans-serif" }}>
-        <p style={{ fontSize: 14, color: '#A32D2D', margin: 0 }}>{loadError}</p>
-        <button onClick={() => window.location.reload()} style={{ fontSize: 12, fontWeight: 600, padding: '8px 16px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>다시 시도</button>
       </div>
     );
   }
