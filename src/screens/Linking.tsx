@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Check } from 'lucide-react';
+import { getMyDataPreview, syncAssets, getAssetSummary, type Asset, type PreviewAccount, type AssetSummary } from '../api/assetApi';
 import wooriLogo   from '../assets/banks/woori.png';
 import kbLogo      from '../assets/banks/kb.png';
 import kakaoLogo   from '../assets/banks/kakao.png';
@@ -8,7 +9,7 @@ import tossLogo    from '../assets/banks/toss.png';
 import shinhanLogo from '../assets/banks/shinhan.png';
 import hanaLogo    from '../assets/banks/hana.png';
 
-type Step = 'consent' | 'select' | 'linking' | 'account-pick';
+type Step = 'consent' | 'select' | 'linking' | 'account-pick' | 'complete';
 type LinkStatus = 'waiting' | 'linking' | 'done';
 
 const BANK_LIST = [
@@ -20,42 +21,6 @@ const BANK_LIST = [
   { id: 'hana',    name: '하나은행',   logo: hanaLogo    },
 ];
 
-interface LinkedAccount {
-  id: string;
-  bankId: string;
-  name: string;
-  type: '입출금' | '예·적금' | '증권' | '카드';
-  balance: number;
-}
-
-// 각 은행에서 마이데이터 연동 시 가져오는 계좌 목록 (mock)
-const BANK_ACCOUNTS: Record<string, LinkedAccount[]> = {
-  woori: [
-    { id: 'woori-1', bankId: 'woori', name: '우월한 월급 통장',  type: '입출금',   balance: 3_850_000 },
-    { id: 'woori-2', bankId: 'woori', name: 'WON적금',          type: '예·적금', balance: 12_000_000 },
-  ],
-  kb: [
-    { id: 'kb-1', bankId: 'kb', name: 'KB Star*t 통장',         type: '입출금',   balance: 1_200_000 },
-    { id: 'kb-2', bankId: 'kb', name: 'KB Star 정기예금',        type: '예·적금', balance: 8_000_000 },
-  ],
-  kakao: [
-    { id: 'kakao-1', bankId: 'kakao', name: '입출금통장',         type: '입출금',   balance: 1_500_000 },
-    { id: 'kakao-2', bankId: 'kakao', name: '26주 적금',          type: '예·적금', balance: 2_400_000 },
-  ],
-  toss: [
-    { id: 'toss-1', bankId: 'toss', name: '토스뱅크 통장',        type: '입출금',   balance: 2_300_000 },
-    { id: 'toss-2', bankId: 'toss', name: '나눠모으기 통장',      type: '입출금',   balance: 500_000 },
-    { id: 'toss-3', bankId: 'toss', name: '토스증권 계좌',        type: '증권',     balance: 4_120_000 },
-  ],
-  shinhan: [
-    { id: 'shinhan-1', bankId: 'shinhan', name: '쏠편한 입출금통장', type: '입출금',   balance: 3_200_000 },
-    { id: 'shinhan-2', bankId: 'shinhan', name: '신한 알.쏠 적금',  type: '예·적금', balance: 6_540_000 },
-  ],
-  hana: [
-    { id: 'hana-1', bankId: 'hana', name: '달달 하나 통장',       type: '입출금',   balance: 950_000 },
-    { id: 'hana-2', bankId: 'hana', name: '급여하나 월복리 적금', type: '예·적금', balance: 3_600_000 },
-  ],
-};
 
 const CONSENT_ITEMS = [
   { key: 'personal'  as const, label: '필수 개인정보 수집·이용 (필수)' },
@@ -63,6 +28,16 @@ const CONSENT_ITEMS = [
   { key: 'terms'     as const, label: '서비스 이용약관 (필수)' },
   { key: 'marketing' as const, label: '마케팅 수신 동의 (선택)' },
 ];
+
+function assetTypeLabel(assetType: string): string {
+  const map: Record<string, string> = {
+    SAVINGS: '입출금',
+    DEPOSIT: '예·적금',
+    INVESTMENT: '증권',
+    CARD: '카드',
+  };
+  return map[assetType] ?? assetType;
+}
 
 function PhoneFrame({ children, bottomLabel }: { children: React.ReactNode; bottomLabel: string }) {
   return (
@@ -94,6 +69,10 @@ export default function Linking() {
   const [selected, setSelected] = useState<string[]>([]);
   const [linkStatus, setLinkStatus] = useState<Record<string, LinkStatus>>({});
   const [pickedAccounts, setPickedAccounts] = useState<string[]>([]);
+  const [previewAccounts, setPreviewAccounts] = useState<PreviewAccount[]>([]);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [summary, setSummary] = useState<AssetSummary | null>(null);
+  const [syncedAssets, setSyncedAssets] = useState<Asset[]>([]);
 
   const togglePickedAccount = (id: string) =>
     setPickedAccounts(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
@@ -120,7 +99,12 @@ export default function Linking() {
         setTimeout(() => {
           setLinkStatus(prev => ({ ...prev, [id]: 'done' }));
           if (i === selected.length - 1) {
-            setTimeout(() => setStep('account-pick'), 600);
+            // 마지막 은행 완료 후 마이데이터 계좌 목록 조회
+            const bankNames = selected.map(bid => BANK_LIST.find(b => b.id === bid)?.name ?? bid);
+            getMyDataPreview(bankNames)
+              .then(accounts => { setPreviewAccounts(accounts); })
+              .catch(() => { setPreviewAccounts([]); })
+              .finally(() => { setTimeout(() => setStep('account-pick'), 600); });
           }
         }, 1200);
       }, delay);
@@ -271,7 +255,58 @@ export default function Linking() {
     </PhoneFrame>
   );
 
+  // ── Step 5: 연동 완료 ───────────────────────────────────
+  if (step === 'complete') return (
+    <PhoneFrame bottomLabel="연동 완료">
+      <div className="flex flex-col items-center text-center mt-8 mb-6">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <Check className="w-8 h-8 text-green-500" strokeWidth={3} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 mb-1">연동 완료!</h2>
+        <p className="text-sm text-gray-400">{syncedAssets.length}개 자산이 연결되었어요</p>
+      </div>
+
+      <div className="space-y-3 mb-8">
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">총 자산</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.totalBalance.toLocaleString()}원` : '-'}
+          </span>
+        </div>
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">투자 자산</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.investBalance.toLocaleString()}원` : '-'}
+          </span>
+        </div>
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">카드 개수</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.linkedCardCount}개 연결됨` : '-'}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={() => navigate('/salary-select', { state: { linkedAccounts: syncedAssets } })}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold transition active:scale-95"
+      >
+        급여통장 설정하기 →
+      </button>
+    </PhoneFrame>
+  );
+
   // ── Step 4: 계좌 선택 ───────────────────────────────────
+  const allAssetNumbers = previewAccounts.map(a => a.assetNumber);
+  const isAll = allAssetNumbers.length > 0 && allAssetNumbers.every(n => pickedAccounts.includes(n));
+
+  // institution 별로 그룹핑
+  const groupedPreview = previewAccounts.reduce<Record<string, PreviewAccount[]>>((acc, pa) => {
+    if (!acc[pa.institution]) acc[pa.institution] = [];
+    acc[pa.institution].push(pa);
+    return acc;
+  }, {});
+
   return (
     <PhoneFrame bottomLabel="계좌 선택">
       <div className="flex items-center gap-2 mb-1">
@@ -285,69 +320,84 @@ export default function Linking() {
       </p>
 
       {/* 전체 선택 */}
-      {(() => {
-        const allIds = selected.flatMap(bankId => (BANK_ACCOUNTS[bankId] ?? []).map(a => a.id));
-        const isAll = allIds.length > 0 && allIds.every(id => pickedAccounts.includes(id));
-        return (
-          <button
-            onClick={() => setPickedAccounts(isAll ? [] : allIds)}
-            className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-4 active:scale-[0.99] transition"
-          >
-            <span className="text-sm font-bold text-blue-700">전체 선택</span>
-            <Checkbox checked={isAll} />
-          </button>
-        );
-      })()}
+      <button
+        onClick={() => setPickedAccounts(isAll ? [] : allAssetNumbers)}
+        className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-4 active:scale-[0.99] transition"
+      >
+        <span className="text-sm font-bold text-blue-700">전체 선택</span>
+        <Checkbox checked={isAll} />
+      </button>
 
       <div className="flex-1 overflow-y-auto space-y-5 -mx-2 px-2">
-        {selected.map(bankId => {
-          const bank = BANK_LIST.find(b => b.id === bankId)!;
-          const accs = BANK_ACCOUNTS[bankId] ?? [];
-          return (
-            <div key={bankId}>
-              <p className="text-xs font-bold text-gray-500 mb-2 px-1">{bank.name}</p>
-              <div className="space-y-2">
-                {accs.map(acc => {
-                  const checked = pickedAccounts.includes(acc.id);
-                  return (
-                    <button
-                      key={acc.id}
-                      onClick={() => togglePickedAccount(acc.id)}
-                      className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
-                        checked ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-white hover:border-gray-200'
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">
-                            {acc.type}
-                          </span>
-                          <span className="text-sm font-bold text-gray-800 truncate">{acc.name}</span>
+        {previewAccounts.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-10">연결된 계좌가 없습니다</p>
+        ) : (
+          Object.entries(groupedPreview).map(([institution, accs]) => {
+            const bank = BANK_LIST.find(b => b.name === institution);
+            return (
+              <div key={institution}>
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  {bank?.logo && (
+                    <div className="w-5 h-5 rounded-full bg-white border border-gray-100 overflow-hidden flex items-center justify-center">
+                      <img src={bank.logo} alt={institution} className="w-4 h-4 object-contain" />
+                    </div>
+                  )}
+                  <p className="text-xs font-bold text-gray-500">{institution}</p>
+                </div>
+                <div className="space-y-2">
+                  {accs.map(acc => {
+                    const checked = pickedAccounts.includes(acc.assetNumber);
+                    return (
+                      <button
+                        key={acc.assetNumber}
+                        onClick={() => togglePickedAccount(acc.assetNumber)}
+                        className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
+                          checked ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-white hover:border-gray-200'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {assetTypeLabel(acc.assetType)}
+                            </span>
+                            <span className="text-sm font-bold text-gray-800 truncate">{acc.accountName}</span>
+                          </div>
+                          <p className="text-xs text-gray-500">{acc.balance.toLocaleString()}원</p>
                         </div>
-                        <p className="text-xs text-gray-500">{acc.balance.toLocaleString()}원</p>
-                      </div>
-                      <Checkbox checked={checked} />
-                    </button>
-                  );
-                })}
+                        <Checkbox checked={checked} />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       <button
-        onClick={() => {
-          const linkedAccountObjects = selected
-            .flatMap(bankId => (BANK_ACCOUNTS[bankId] ?? []).filter(acc => pickedAccounts.includes(acc.id)));
-          navigate('/salary-select', { state: { linkedAccounts: linkedAccountObjects } });
+        onClick={async () => {
+          setSyncLoading(true);
+          try {
+            const assets = await syncAssets(pickedAccounts);
+            setSyncedAssets(assets);
+            const s = await getAssetSummary().catch(() => null);
+            setSummary(s);
+            setStep('complete');
+          } catch {
+            navigate('/salary-select', { state: { linkedAccounts: [] } });
+          } finally {
+            setSyncLoading(false);
+          }
         }}
-        disabled={pickedAccounts.length === 0}
+        disabled={pickedAccounts.length === 0 || syncLoading}
         className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white py-4 rounded-2xl font-bold mt-6 transition active:scale-95"
       >
-        {pickedAccounts.length > 0
-          ? `${pickedAccounts.length}개 계좌 연결하고 급여통장 설정하기 →`
-          : '계좌를 선택해주세요'}
+        {syncLoading
+          ? '연결 중...'
+          : pickedAccounts.length > 0
+            ? `${pickedAccounts.length}개 계좌 연결하고 급여통장 설정하기 →`
+            : '계좌를 선택해주세요'}
       </button>
     </PhoneFrame>
   );

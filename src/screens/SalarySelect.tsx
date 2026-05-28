@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { setSalaryAccount, connectAutoTransfer, type Asset } from '../api/assetApi';
 import { ChevronLeft, Check, ChevronRight, X } from 'lucide-react';
 import heroImg from '../assets/hero.png';
 import shinhanLogo from '../assets/banks/shinhan.png';
@@ -11,14 +12,6 @@ import hanaLogo    from '../assets/banks/hana.png';
 
 type Step = 'account-select' | 'transfer-setup';
 
-interface LinkedAccount {
-  id: string;
-  bankId: string;
-  name: string;
-  type: string;
-  balance: number;
-}
-
 interface Account {
   id: string;
   bank: string;
@@ -28,13 +21,14 @@ interface Account {
   isWoori: boolean;
 }
 
-const BANK_INFO: Record<string, { name: string; logo?: string; isWoori: boolean }> = {
-  woori:   { name: '우리은행',   logo: wooriLogo,   isWoori: true  },
-  kakao:   { name: '카카오뱅크', logo: kakaoLogo,   isWoori: false },
-  shinhan: { name: '신한은행',   logo: shinhanLogo, isWoori: false },
-  kb:      { name: '국민은행',   logo: kbLogo,      isWoori: false },
-  toss:    { name: '토스뱅크',   logo: tossLogo,    isWoori: false },
-  hana:    { name: '하나은행',   logo: hanaLogo,    isWoori: false },
+// institution 이름 → 로고 · isWoori 매핑
+const BANK_INFO: Record<string, { logo?: string; isWoori: boolean }> = {
+  '우리은행':   { logo: wooriLogo,   isWoori: true  },
+  '카카오뱅크': { logo: kakaoLogo,   isWoori: false },
+  '신한은행':   { logo: shinhanLogo, isWoori: false },
+  '국민은행':   { logo: kbLogo,      isWoori: false },
+  '토스뱅크':   { logo: tossLogo,    isWoori: false },
+  '하나은행':   { logo: hanaLogo,    isWoori: false },
 };
 
 const DEFAULT_ACCOUNTS: Account[] = [
@@ -43,9 +37,17 @@ const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'hana-2',    bank: '하나은행', logo: hanaLogo,    name: '급여하나 월복리 적금', balance: 3_600_000, isWoori: false },
 ];
 
-const toAccount = (acc: LinkedAccount): Account => {
-  const info = BANK_INFO[acc.bankId] ?? { name: acc.bankId, isWoori: false };
-  return { id: acc.id, bank: info.name, logo: info.logo, name: acc.name, balance: acc.balance, isWoori: info.isWoori };
+// Asset(API) → Account(표시용) 변환
+const assetToAccount = (asset: Asset): Account => {
+  const info = BANK_INFO[asset.institution] ?? { isWoori: asset.institution.includes('우리') };
+  return {
+    id: asset.id,
+    bank: asset.institution,
+    logo: info.logo,
+    name: asset.accountName,
+    balance: asset.balance,
+    isWoori: info.isWoori,
+  };
 };
 
 // 자동이체 입금받을 우리은행 계좌 후보 (TODO: 실제 사용자 보유 계좌 API 연동)
@@ -83,11 +85,12 @@ export default function SalarySelect() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const linkedAccounts: LinkedAccount[] = location.state?.linkedAccounts ?? [];
+  const linkedAssets: Asset[] = location.state?.linkedAccounts ?? [];
 
   const [accounts, setAccounts] = useState<Account[]>(
-    linkedAccounts.length > 0
-      ? linkedAccounts.filter(a => a.name.includes('급여') || a.name.includes('월급')).map(toAccount)
+    linkedAssets.length > 0
+      // 입출금·예적금 계좌만 표시 (증권·카드 제외)
+      ? linkedAssets.filter(a => !['INVESTMENT', 'CARD'].includes(a.assetType)).map(assetToAccount)
       : DEFAULT_ACCOUNTS
   );
   const [step, setStep] = useState<Step>('account-select');
@@ -95,11 +98,14 @@ export default function SalarySelect() {
   const [transferAccount, setTransferAccount] = useState<WooriDestination>(WOORI_DESTINATIONS[0]);
   const [transferDate, setTransferDate] = useState(25);
   const [showModal, setShowModal] = useState(false);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+  const [transferLoading, setTransferLoading] = useState(false);
 
-  const otherAccounts = linkedAccounts.filter(l => !accounts.some(a => a.id === l.id));
+  // 모달용 — 메인 리스트에 없는 나머지 자산
+  const otherAssets = linkedAssets.filter(a => !accounts.some(acc => acc.id === a.id));
 
-  const handleAddFromModal = (linked: LinkedAccount) => {
-    const newAcc = toAccount(linked);
+  const handleAddFromModal = (asset: Asset) => {
+    const newAcc = assetToAccount(asset);
     setAccounts(prev => [...prev, newAcc]);
     setSelectedAccount(newAcc);
     setShowModal(false);
@@ -200,40 +206,40 @@ export default function SalarySelect() {
 
             {/* 계좌 목록 */}
             <div className="overflow-y-auto flex-1 px-6 py-4">
-              {otherAccounts.length === 0 ? (
+              {otherAssets.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 py-8">연결된 추가 계좌가 없습니다</p>
               ) : (
                 <div className="space-y-5">
                   {Object.entries(
-                    otherAccounts.reduce((groups, linked) => {
-                      if (!groups[linked.bankId]) groups[linked.bankId] = [];
-                      groups[linked.bankId].push(linked);
+                    otherAssets.reduce<Record<string, Asset[]>>((groups, asset) => {
+                      if (!groups[asset.institution]) groups[asset.institution] = [];
+                      groups[asset.institution].push(asset);
                       return groups;
-                    }, {} as Record<string, LinkedAccount[]>)
-                  ).map(([bankId, accs]) => {
-                    const info = BANK_INFO[bankId] ?? { name: bankId, isWoori: false };
+                    }, {})
+                  ).map(([institution, accs]) => {
+                    const info = BANK_INFO[institution];
                     return (
-                      <div key={bankId}>
-                        <p className="text-xs font-bold text-gray-400 mb-2 px-1">{info.name}</p>
+                      <div key={institution}>
+                        <p className="text-xs font-bold text-gray-400 mb-2 px-1">{institution}</p>
                         <div className="space-y-2">
-                          {accs.map(linked => (
+                          {accs.map(asset => (
                             <button
-                              key={linked.id}
-                              onClick={() => handleAddFromModal(linked)}
+                              key={asset.id}
+                              onClick={() => handleAddFromModal(asset)}
                               className="w-full text-left px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white hover:border-blue-300 active:scale-[0.98] flex items-center gap-3 transition"
                             >
                               <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                                {info.logo
-                                  ? <img src={info.logo} alt={info.name} className="w-7 h-7 object-contain" />
-                                  : <span className="text-xs font-bold text-gray-600">{info.name.slice(0, 2)}</span>
+                                {info?.logo
+                                  ? <img src={info.logo} alt={institution} className="w-7 h-7 object-contain" />
+                                  : <span className="text-xs font-bold text-gray-600">{institution.slice(0, 2)}</span>
                                 }
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">{linked.type}</span>
-                                  <span className="text-sm font-bold text-gray-800 truncate">{linked.name}</span>
+                                  <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">{asset.assetType}</span>
+                                  <span className="text-sm font-bold text-gray-800 truncate">{asset.accountName}</span>
                                 </div>
-                                <p className="text-xs text-gray-500">{linked.balance.toLocaleString()}원</p>
+                                <p className="text-xs text-gray-500">{asset.balance.toLocaleString()}원</p>
                               </div>
                               <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
                             </button>
