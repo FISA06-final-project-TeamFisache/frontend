@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { generatePrescriptions } from '../api/agentApi';
 import doctorImg from '../assets/doctor.png';
 
-const DISPLAY_MS = 4000;
+const MIN_DISPLAY_MS = 4000;
 const FADE_MS = 500;
 
 export default function PrescriptionComplete() {
@@ -12,12 +13,22 @@ export default function PrescriptionComplete() {
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setExiting(true), DISPLAY_MS);
-    const navTimer = setTimeout(() => navigate('/asset-portfolio', { replace: true }), DISPLAY_MS + FADE_MS);
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(navTimer);
-    };
+    let cancelled = false;
+
+    const minDisplay = new Promise<void>(resolve => setTimeout(resolve, MIN_DISPLAY_MS));
+    const apiCall = generatePrescriptions().catch((e: unknown) => {
+      console.error('[PrescriptionComplete] generatePrescriptions 실패:', e);
+    });
+
+    Promise.all([apiCall, minDisplay]).then(() => {
+      if (cancelled) return;
+      setExiting(true);
+      setTimeout(() => {
+        if (!cancelled) navigate('/asset-portfolio', { replace: true });
+      }, FADE_MS);
+    });
+
+    return () => { cancelled = true; };
   }, [navigate]);
 
   return (
