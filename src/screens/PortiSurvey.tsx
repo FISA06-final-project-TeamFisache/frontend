@@ -10,7 +10,7 @@ import judoporiImg    from '../assets/JudoPori.png';
 import fencingporiImg from '../assets/FencingPori.png';
 import archeryporiImg from '../assets/Archerypori.png';
 import { useAuth } from '../contexts/AuthContext';
-import { savePortiType, type PortiType } from '../api/userApi';
+import { generateAgentProfile, type AgentProfile } from '../api/agentApi';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -209,6 +209,7 @@ export default function PortiSurvey() {
     saving: false,
   });
   const [hoveredCat, setHoveredCat] = useState<number | null>(null);
+  const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(null);
 
   const toggleDetail = (key: 'spending' | 'investment' | 'saving') =>
     setOpenDetail(prev => ({ ...prev, [key]: !prev[key] }));
@@ -269,35 +270,27 @@ export default function PortiSurvey() {
   const currentQ = QUESTIONS[currentIndex];
   const progress = completing ? 100 : (currentIndex / TOTAL_QUESTIONS) * 100;
 
-  // 로딩 → 결과 자동 전환 및 API 저장
+  // 로딩 → 결과 자동 전환 + AI 진단 리포트 생성
   useEffect(() => {
     if (step !== 'loading') return;
 
-    // 1. 클라이언트에서 결과 계산 (API 의존 없음)
     const localResult = calcResult(answers);
+    const answersArray = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => answers[i + 1] ?? 'A');
 
-    const PORTI_TYPE_MAP: Record<string, PortiType> = {
-      '수영하는 Pori': 'SWIMMING',
-      '골프 치는 Pori': 'RHYTHMIC',
-      '사이클 타는 Pori': 'CYCLING',
-      '유도하는 Pori': 'JUDO',
-      '펜싱하는 Pori': 'FENCING',
-      '양궁 쏘는 Pori': 'ARCHERY',
-    };
-    const portiType = PORTI_TYPE_MAP[localResult.typeName] ?? 'SWIMMING';
+    const minDelay = new Promise<void>(resolve => setTimeout(resolve, 2800));
+    const apiCall = generateAgentProfile(answersArray)
+      .then(profile => {
+        setAgentProfile(profile);
+        localStorage.setItem('agentProfile', JSON.stringify(profile));
+      })
+      .catch((err: unknown) => {
+        console.error('[PortiSurvey] agent profile 생성 실패:', err);
+      });
 
-    // 2. 백엔드에 저장 (PATCH /users/porti-survey) — 실패해도 화면 전환은 진행
-    savePortiType(portiType).catch((err) => {
-      console.error('[PortiSurvey] portiType 저장 실패:', err);
-    });
-
-    // 3. 최소 로딩 시간(2.8초) 후 결과 화면으로 전환
-    const timer = setTimeout(() => {
+    Promise.all([minDelay, apiCall]).then(() => {
       setResult(localResult);
       setStep('result');
-    }, 2800);
-
-    return () => clearTimeout(timer);
+    });
   }, [step, answers]);
 
   const handleAnswer = (choice: 'A' | 'B') => {
@@ -444,91 +437,97 @@ export default function PortiSurvey() {
               <h3 className="font-bold text-lg">카테고리별 지출</h3>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-              <div className="flex justify-center my-4">
-                <div
-                  className="relative w-36 h-36"
-                  onMouseLeave={() => setHoveredCat(null)}
-                >
-                  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-sm">
-                    {(() => {
-                      let acc = 0;
-                      return SPENDING_CATEGORIES.map((c, i) => {
-                        const start = acc;
-                        const end = acc + c.pct;
-                        acc = end;
-                        const path = donutArcPath(start, end, 50, 28, 50, 50);
-                        const dim = hoveredCat !== null && hoveredCat !== i;
-                        return (
-                          <path
-                            key={c.label}
-                            d={path}
-                            fill={c.color}
-                            opacity={dim ? 0.35 : 1}
-                            style={{ cursor: 'pointer', transition: 'opacity 0.15s' }}
-                            onMouseEnter={() => setHoveredCat(i)}
-                            onClick={() => setHoveredCat(prev => prev === i ? null : i)}
-                          />
-                        );
-                      });
-                    })()}
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-20 h-20 bg-white rounded-full flex flex-col items-center justify-center shadow-inner px-1 text-center">
-                      {hoveredCat !== null ? (
-                        <>
-                          <span className="text-[10px] text-gray-500 leading-tight truncate max-w-[68px]">
-                            {SPENDING_CATEGORIES[hoveredCat].label}
-                          </span>
-                          <span
-                            className="font-bold text-sm leading-tight mt-0.5"
-                            style={{ color: SPENDING_CATEGORIES[hoveredCat].color }}
-                          >
-                            {SPENDING_CATEGORIES[hoveredCat].pct}%
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[10px] text-gray-500">월 평균 소비</span>
-                          <span className="font-bold text-gray-800 text-sm">98.5만</span>
-                        </>
-                      )}
+            {(() => {
+              const CHART_COLORS = ['#ef4444','#3b82f6','#8b5cf6','#10b981','#f59e0b','#e5e7eb'];
+              const cats = agentProfile?.categoryExpense ?? SPENDING_CATEGORIES.map((c, i) => ({ name: c.label, amount: 0, ratio: c.pct, _color: c.color, _idx: i }));
+              const monthlyAvg = agentProfile
+                ? `${(agentProfile.monthlyAvgExpense / 10000).toFixed(1)}만`
+                : '98.5만';
+              return (
+                <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+                  <div className="flex justify-center my-4">
+                    <div className="relative w-36 h-36" onMouseLeave={() => setHoveredCat(null)}>
+                      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-sm">
+                        {(() => {
+                          let acc = 0;
+                          return cats.map((c, i) => {
+                            const pct = 'ratio' in c ? c.ratio : (c as typeof SPENDING_CATEGORIES[0]).pct;
+                            const start = acc;
+                            const end = acc + pct;
+                            acc = end;
+                            const color = agentProfile ? CHART_COLORS[i % CHART_COLORS.length] : (SPENDING_CATEGORIES[i]?.color ?? CHART_COLORS[i]);
+                            return (
+                              <path
+                                key={i}
+                                d={donutArcPath(start, end, 50, 28, 50, 50)}
+                                fill={color}
+                                opacity={hoveredCat !== null && hoveredCat !== i ? 0.35 : 1}
+                                style={{ cursor: 'pointer', transition: 'opacity 0.15s' }}
+                                onMouseEnter={() => setHoveredCat(i)}
+                                onClick={() => setHoveredCat(prev => prev === i ? null : i)}
+                              />
+                            );
+                          });
+                        })()}
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-20 h-20 bg-white rounded-full flex flex-col items-center justify-center shadow-inner px-1 text-center">
+                          {hoveredCat !== null ? (
+                            <>
+                              <span className="text-[10px] text-gray-500 leading-tight truncate max-w-[68px]">
+                                {'name' in cats[hoveredCat] ? cats[hoveredCat].name : (cats[hoveredCat] as typeof SPENDING_CATEGORIES[0]).label}
+                              </span>
+                              <span className="font-bold text-sm leading-tight mt-0.5" style={{ color: agentProfile ? CHART_COLORS[hoveredCat % CHART_COLORS.length] : SPENDING_CATEGORIES[hoveredCat]?.color }}>
+                                {'ratio' in cats[hoveredCat] ? cats[hoveredCat].ratio : (cats[hoveredCat] as typeof SPENDING_CATEGORIES[0]).pct}%
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[10px] text-gray-500">월 평균 소비</span>
+                              <span className="font-bold text-gray-800 text-sm">{monthlyAvg}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div className="mt-6 space-y-3">
-                {[
-                  { color: 'bg-red-500',     label: '식비 (배달 등)', pct: '42%', amount: '413,210원', bold: true },
-                  { color: 'bg-blue-500',    label: '문화/여가',       pct: '15%', amount: '180,800원' },
-                  { color: 'bg-purple-500',  label: '온라인 쇼핑',     pct: '17%', amount: '116,300원' },
-                  { color: 'bg-emerald-500', label: '교통',            pct: '8%',  amount: '80,000원'  },
-                ].map(({ color, label, pct, amount, bold }) => (
-                  <div key={label} className="flex justify-between items-center text-sm">
-                    <span className="flex items-center gap-2 text-gray-700">
-                      <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                      {label} <span className="text-xs text-gray-400">{pct}</span>
-                    </span>
-                    <span className={bold ? 'font-semibold text-gray-800' : 'text-gray-600'}>{amount}</span>
+                  <div className="mt-6 space-y-3">
+                    {cats.map((c, i) => {
+                      const label = 'name' in c ? c.name : (c as typeof SPENDING_CATEGORIES[0]).label;
+                      const pct = 'ratio' in c ? c.ratio : (c as typeof SPENDING_CATEGORIES[0]).pct;
+                      const amount = agentProfile && 'amount' in c ? `${c.amount.toLocaleString()}원` : '';
+                      const color = agentProfile ? CHART_COLORS[i % CHART_COLORS.length] : (SPENDING_CATEGORIES[i]?.color ?? '#e5e7eb');
+                      return (
+                        <div key={i} className="flex justify-between items-center text-sm">
+                          <span className="flex items-center gap-2 text-gray-700">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                            {label} <span className="text-xs text-gray-400">{pct}%</span>
+                          </span>
+                          {amount && <span className="text-gray-600">{amount}</span>}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })()}
 
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <span className="font-semibold text-sm text-gray-700">매월 나가는 고정 지출</span>
-                <span className="font-bold text-gray-800">월 245,000원</span>
+                <span className="font-bold text-gray-800">
+                  월 {agentProfile ? agentProfile.totalFixedExpense.toLocaleString() : '245,000'}원
+                </span>
               </div>
               <div className="space-y-2 text-xs">
-                {[
-                  { label: '보장성 보험료',    amount: '150,000원' },
-                  { label: '통신비',          amount: '65,000원'  },
-                  { label: 'OTT 및 정기구독', amount: '30,000원'  },
-                ].map(({ label, amount }) => (
-                  <div key={label} className="flex justify-between text-gray-600">
-                    <span>{label}</span>
-                    <span>{amount}</span>
+                {(agentProfile?.fixedExpense ?? [
+                  { name: '보장성 보험료', amount: 150000 },
+                  { name: '통신비',        amount: 65000  },
+                  { name: 'OTT 및 정기구독', amount: 30000 },
+                ]).map(({ name, amount }) => (
+                  <div key={name} className="flex justify-between text-gray-600">
+                    <span>{name}</span>
+                    <span>{amount.toLocaleString()}원</span>
                   </div>
                 ))}
               </div>
@@ -543,9 +542,8 @@ export default function PortiSurvey() {
               {openDetail.spending ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {openDetail.spending && (
-              // [AI 자동생성 필요] 소비 분석 텍스트 — 사용자 마이데이터 기반 자동 생성
               <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
-                매월 고정적으로 나가는 지출(24.5만 원) 외의 변동 지출 통제를 잘하고 계세요! 다만, 변동 지출 중 가장 큰 비중을 차지하는 <strong>식비(특히 배달앱)</strong>가 유독 눈에 띄네요. 규칙적인 수영 페이스처럼 배달 횟수도 일주일에 1번으로 규칙을 정해보는 건 어떨까요?
+                {agentProfile?.expenseComment ?? '소비 분석 데이터를 불러오는 중입니다.'}
               </div>
             )}
           </section>
@@ -561,18 +559,28 @@ export default function PortiSurvey() {
 
             <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
               <p className="text-xs text-gray-500 mb-3 text-center">설문(안전 추구) vs 실제 계좌 내역</p>
-              <div className="h-8 w-full bg-gray-100 rounded-lg overflow-hidden flex mb-2">
-                <div className="bg-blue-400 h-full flex items-center justify-center text-white text-xs font-bold animate-fill-bar" style={{ width: '25%' }}>
-                  안전 25%
-                </div>
-                <div className="bg-purple-500 h-full flex items-center justify-center text-white text-xs font-bold animate-fill-bar" style={{ width: '75%' }}>
-                  위험 75%
-                </div>
-              </div>
-              <div className="flex justify-between text-xs text-gray-500 px-1">
-                <span>예적금, 채권</span>
-                <span>국내외 주식, 코인</span>
-              </div>
+              {(() => {
+                const safe = agentProfile?.investTendency.safeRatio ?? 25;
+                const risk = agentProfile?.investTendency.riskRatio ?? 75;
+                const safeAssets = agentProfile?.investTendency.safeAssets ?? '예적금, 채권';
+                const riskAssets = agentProfile?.investTendency.riskAssets ?? '국내외 주식, 코인';
+                return (
+                  <>
+                    <div className="h-8 w-full bg-gray-100 rounded-lg overflow-hidden flex mb-2">
+                      <div className="bg-blue-400 h-full flex items-center justify-center text-white text-xs font-bold animate-fill-bar" style={{ width: `${safe}%` }}>
+                        안전 {safe}%
+                      </div>
+                      <div className="bg-purple-500 h-full flex items-center justify-center text-white text-xs font-bold animate-fill-bar" style={{ width: `${risk}%` }}>
+                        위험 {risk}%
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 px-1">
+                      <span>{safeAssets}</span>
+                      <span>{riskAssets}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <button
@@ -584,9 +592,8 @@ export default function PortiSurvey() {
               {openDetail.investment ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {openDetail.investment && (
-              // [AI 자동생성 필요] 투자 성향 분석 텍스트 — 설문 결과 + 마이데이터 비교 기반 자동 생성
               <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
-                설문에서는 <strong>'원금 손실을 두려워하는 성향'</strong>이셨는데, 현재 마이데이터를 보면 주식 비중이 75%로 변동성이 다소 큰 상태예요. 수영 타입답게 예적금이나 배당 ETF 비중을 늘려 레인을 튼튼하게 만들어볼까요?
+                {agentProfile?.investComment ?? '투자 성향 분석 데이터를 불러오는 중입니다.'}
               </div>
             )}
           </section>
@@ -602,21 +609,33 @@ export default function PortiSurvey() {
 
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
               <p className="text-xs text-gray-500 mb-4 text-center">내 저축은 얼마나 자유로울까?</p>
-              <div className="flex justify-between text-xs font-semibold mb-2 px-1">
-                <span className="text-blue-500">입출금/CMA</span>
-                <span className="text-emerald-600">예금/적금</span>
-                <span className="text-gray-500">주택청약</span>
-              </div>
-              <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden flex shadow-inner">
-                <div className="bg-blue-400 h-full animate-fill-bar" style={{ width: '8%' }} />
-                <div className="bg-emerald-400 h-full animate-fill-bar border-l border-white/30" style={{ width: '72%' }} />
-                <div className="bg-gray-300 h-full animate-fill-bar border-l border-white/30" style={{ width: '20%' }} />
-              </div>
-              <div className="flex justify-between text-[10px] text-gray-400 mt-2 px-1">
-                <span>8% (언제든 뺌)</span>
-                <span>72% (만기 필요)</span>
-                <span>20% (절대 못 뺌)</span>
-              </div>
+              {(() => {
+                const savings = agentProfile?.savingsList ?? [
+                  { type: '입출금/CMA', amount: 0, ratio: 8 },
+                  { type: '예금/적금',  amount: 0, ratio: 72 },
+                  { type: '주택청약',   amount: 0, ratio: 20 },
+                ];
+                const barColors = ['bg-blue-400','bg-emerald-400','bg-gray-300'];
+                return (
+                  <>
+                    <div className="flex justify-between text-xs font-semibold mb-2 px-1">
+                      {savings.map(s => (
+                        <span key={s.type} className={s === savings[0] ? 'text-blue-500' : s === savings[1] ? 'text-emerald-600' : 'text-gray-500'}>{s.type}</span>
+                      ))}
+                    </div>
+                    <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden flex shadow-inner">
+                      {savings.map((s, i) => (
+                        <div key={s.type} className={`${barColors[i % barColors.length]} h-full animate-fill-bar ${i > 0 ? 'border-l border-white/30' : ''}`} style={{ width: `${s.ratio}%` }} />
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-400 mt-2 px-1">
+                      {savings.map(s => (
+                        <span key={s.type}>{s.ratio}%</span>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <button
@@ -628,10 +647,8 @@ export default function PortiSurvey() {
               {openDetail.saving ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {openDetail.saving && (
-              // [AI 자동생성 필요] 저축 안전망 분석 텍스트 — 계좌 유동성 비율 기반 자동 생성
               <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
-                설문에서 나타난 <strong>'안전 지향'</strong> 성향이 실제 계좌에도 뚜렷하게 보이고 있어요. 전체 저축의 92%가 예적금과 청약에 단단히 묶여 있어 기본기가 매우 탄탄합니다.<br />
-                반면, 언제든 쓸 수 있는 유동성 자산(비상금)은 8%로, 단기적인 유연성보다는 돈을 확실하게 묶어두는 방식을 선호하고 계시네요.
+                {agentProfile?.savingsComment ?? '저축 분석 데이터를 불러오는 중입니다.'}
               </div>
             )}
           </section>
