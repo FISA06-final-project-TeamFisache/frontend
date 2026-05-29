@@ -741,7 +741,7 @@ function SpendingAlarmPanel({ onClose, totalExpense, categories }: SpendingAlarm
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
-  const { userName: USER_NAME, logout } = useAuth();
+  const { userName: USER_NAME, logout, setUserName } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -770,10 +770,14 @@ export default function Dashboard() {
     let cancelled = false;
     setLoadError(null);
     getDashboard()
-      .then(d => { if (!cancelled) setDashboard(d); })
+      .then(d => {
+        if (cancelled) return;
+        setDashboard(d);
+        if (d.user?.name) setUserName(d.user.name);
+      })
       .catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : '대시보드 조회 실패'); });
     return () => { cancelled = true; };
-  }, []);
+  }, [setUserName]);
 
   // ── UI 상태 ──────────────────────────────────────────────
   const [bannerVisible, setBannerVisible] = useState(true);
