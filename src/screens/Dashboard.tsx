@@ -1,8 +1,16 @@
-import { useEffect, useState, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SalaryManagement from './SalaryManagement';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
-import { getDashboard, type DashboardData } from '../api/dashboardApi';
+import { getDashboard, type DashboardData, type DashboardCategoryExpense } from '../api/dashboardApi';
+import {
+  getNotifications,
+  readNotification,
+  readAllNotifications,
+  subscribeToNotifications,
+  type Notification as ApiNotification,
+} from '../api/notificationApi';
 
 
 interface Goal {
@@ -18,7 +26,27 @@ interface Goal {
 interface SpendingItem { label: string; pct: number; color: string; }
 interface PopularProduct { rank: number; name: string; sub: string; pct: number; }
 interface PortfolioSlice { label: string; pct: number; color: string; rate?: string; }
-interface NotiItem { id: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; }
+interface NotiItem { id: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; type?: string; }
+
+const NOTI_META: Record<string, { icon: string; iconBg: string }> = {
+  SALARY_REBALANCING: { icon: '💳', iconBg: '#E6F1FB' },
+  SPENDING_TREND: { icon: '📉', iconBg: '#FCEBEB' },
+  REPORT_READY: { icon: '📋', iconBg: '#E1F5EE' },
+  CONCERT_INFO: { icon: '🎵', iconBg: '#F3E8FF' },
+  GOVT_POLICY: { icon: '🏛️', iconBg: '#E1F5EE' },
+};
+
+function toNotiItem(n: ApiNotification): NotiItem {
+  const meta = NOTI_META[n.type] ?? { icon: '🔔', iconBg: '#f1f5f9' };
+  const diff = Date.now() - new Date(n.sentAt).getTime();
+  const mins = Math.floor(diff / 60000);
+  const time =
+    mins < 1 ? '방금 전' :
+      mins < 60 ? `${mins}분 전` :
+        mins < 1440 ? `${Math.floor(mins / 60)}시간 전` :
+          `${Math.floor(mins / 1440)}일 전`;
+  return { id: n.id, icon: meta.icon, iconBg: meta.iconBg, title: n.title, body: n.content, time, read: n.isRead, type: n.type };
+}
 
 const GOAL_COLORS: Goal['color'][] = [
   { bg: '#EEEDFE', bar: '#7F77DD', text: '#534AB7', badge: '#EEEDFE', badgeText: '#534AB7' },
@@ -29,16 +57,16 @@ const GOAL_COLORS: Goal['color'][] = [
 
 function pickGoalIcon(text: string): string {
   if (/여행|해외|비행|유럽|제주|일본/.test(text)) return '✈';
-  if (/집|주택|전세|매매|부동산/.test(text))      return '🏠';
-  if (/차|자동차/.test(text))                     return '🚗';
-  if (/결혼|웨딩/.test(text))                     return '💍';
-  if (/공부|학위|자격증|교육/.test(text))          return '📚';
+  if (/집|주택|전세|매매|부동산/.test(text)) return '🏠';
+  if (/차|자동차/.test(text)) return '🚗';
+  if (/결혼|웨딩/.test(text)) return '💍';
+  if (/공부|학위|자격증|교육/.test(text)) return '📚';
   return '🎯';
 }
 
 // (하드) 또래비교 인기상품 — API 미제공
 const POPULAR_PRODUCTS: PopularProduct[] = [
-  { rank: 1, name: 'TIGER 미국S&P500',  sub: 'ETF · 가입률 68%',  pct: 68 },
+  { rank: 1, name: 'TIGER 미국S&P500', sub: 'ETF · 가입률 68%', pct: 68 },
   { rank: 2, name: '우리은행 정기적금', sub: '적금 · 가입률 54%', pct: 54 },
   { rank: 3, name: '토스뱅크 파킹통장', sub: '파킹 · 가입률 47%', pct: 47 },
 ];
@@ -130,7 +158,7 @@ function SalaryDonutChart({ data, total, totalAmt }: {
           </>
         ) : (
           <>
-            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>이 급여</div>
+            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>급여</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{total}</div>
           </>
         )}
@@ -198,28 +226,28 @@ const LINKED_BANKS_MOCK: LinkedBank[] = [
     id: 'woori', name: '우리은행', short: '우리', badgeBg: '#DBEAFE', badgeColor: '#1E40AF',
     accounts: [
       { id: 'woori-1', name: 'WON 우월한 월급 통장', number: '1002-***-345678', type: '입출금', balance: 3_850_000 },
-      { id: 'woori-2', name: 'WON 적금',             number: '1002-***-998877', type: '예·적금', balance: 12_000_000 },
+      { id: 'woori-2', name: 'WON 적금', number: '1002-***-998877', type: '예·적금', balance: 12_000_000 },
     ],
   },
   {
     id: 'kakao', name: '카카오뱅크', short: '카카', badgeBg: '#FEF3C7', badgeColor: '#854D0E',
     accounts: [
       { id: 'kakao-1', name: '입출금통장', number: '3333-01-****567', type: '입출금', balance: 1_500_000 },
-      { id: 'kakao-2', name: '26주 적금',   number: '3333-04-****092', type: '예·적금', balance: 2_400_000 },
+      { id: 'kakao-2', name: '26주 적금', number: '3333-04-****092', type: '예·적금', balance: 2_400_000 },
     ],
   },
   {
     id: 'toss', name: '토스뱅크', short: '토스', badgeBg: '#DBEAFE', badgeColor: '#1D4ED8',
     accounts: [
-      { id: 'toss-1', name: '파킹통장',      number: '1000-12-****345', type: '입출금', balance: 2_300_000 },
-      { id: 'toss-2', name: '나눠모으기',     number: '1000-24-****221', type: '입출금', balance: 500_000   },
-      { id: 'toss-3', name: '토스증권 계좌', number: '5601-01-****234', type: '증권',   balance: 4_120_000 },
+      { id: 'toss-1', name: '파킹통장', number: '1000-12-****345', type: '입출금', balance: 2_300_000 },
+      { id: 'toss-2', name: '나눠모으기', number: '1000-24-****221', type: '입출금', balance: 500_000 },
+      { id: 'toss-3', name: '토스증권 계좌', number: '5601-01-****234', type: '증권', balance: 4_120_000 },
     ],
   },
   {
     id: 'shinhan', name: '신한은행', short: '신한', badgeBg: '#DBEAFE', badgeColor: '#1E40AF',
     accounts: [
-      { id: 'shinhan-1', name: 'Tops 직장인 플랜 통장', number: '110-***-456789', type: '입출금',   balance: 3_200_000 },
+      { id: 'shinhan-1', name: 'Tops 직장인 플랜 통장', number: '110-***-456789', type: '입출금', balance: 3_200_000 },
     ],
   },
 ];
@@ -339,8 +367,8 @@ interface SettingsItem {
 }
 
 const SETTINGS_ITEMS: SettingsItem[] = [
-  { id: 'salary-split', icon: '💰', title: '월급 나눈 비율 재설정', desc: '각 계좌별 분배 비율을 다시 정해요',         to: '/asset-prescription' },
-  { id: 'portfolio',    icon: '📊', title: '포트폴리오 재설정',     desc: '흐름·상품 구성을 처음부터 다시 짜요',     to: '/asset-portfolio' },
+  { id: 'salary-split', icon: '💰', title: '월급 나눈 비율 재설정', desc: '각 계좌별 분배 비율을 다시 정해요', to: '/asset-prescription' },
+  { id: 'portfolio', icon: '📊', title: '포트폴리오 재설정', desc: '흐름·상품 구성을 수정해요', to: '/asset-portfolio' },
 ];
 
 function SettingsPanel({ onClose, onNavigate }: { onClose: () => void; onNavigate: (to: string) => void }) {
@@ -392,9 +420,12 @@ function SettingsPanel({ onClose, onNavigate }: { onClose: () => void; onNavigat
   );
 }
 
-function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; items: NotiItem[]; setItems: Dispatch<SetStateAction<NotiItem[]>> }) {
-  const markRead = (id: string) => setItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  const markAll = () => setItems(prev => prev.map(n => ({ ...n, read: true })));
+function NotificationPanel({ onClose, items, onMarkRead, onMarkAll }: {
+  onClose: () => void;
+  items: NotiItem[];
+  onMarkRead: (id: string) => void;
+  onMarkAll: () => void;
+}) {
   const unreadCount = items.filter(n => !n.read).length;
 
   return (
@@ -414,15 +445,20 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {unreadCount > 0 && (
-            <button onClick={markAll} style={{ fontSize: 12, fontWeight: 500, color: '#64748b', border: 'none', background: 'none', cursor: 'pointer' }}>모두 읽음</button>
+            <button onClick={onMarkAll} style={{ fontSize: 12, fontWeight: 500, color: '#64748b', border: 'none', background: 'none', cursor: 'pointer' }}>모두 읽음</button>
           )}
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }} aria-label="닫기">✕</button>
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '8px 12px 20px', overflowY: 'auto' }}>
+        {items.length === 0 && (
+          <div style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+            아직 알림이 없어요
+          </div>
+        )}
         {items.map(n => (
-          <div key={n.id} onClick={() => markRead(n.id)}
+          <div key={n.id} onClick={() => onMarkRead(n.id)}
             style={{
               background: '#fff', border: '0.5px solid #f1f5f9', borderRadius: 14, padding: 14,
               display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer',
@@ -446,10 +482,266 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
   );
 }
 
+interface SpendingAlarmPanelProps {
+  onClose: () => void;
+  totalExpense: number;
+  categories: DashboardCategoryExpense[];
+}
+
+function SpendingAlarmPanel({ onClose, totalExpense, categories }: SpendingAlarmPanelProps) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+
+  const ALARM_EXPENSE_COLORS = ['#D85A30', '#EF9F27', '#7F77DD', '#378ADD', '#1D9E75', '#94a3b8'];
+
+  const ALARM_EXPENSE_HINTS: Record<string, string> = {
+    '식비': '식비 지출이 크게 늘었어요.\n지난달 대비 +42% 증가하여 예산 초과의 가장 큰 원인입니다.',
+    '쇼핑': '온라인 쇼핑몰 결제가 잦았어요.\n지난달 대비 +21% 증가했습니다.',
+    '문화/여가': '뮤지컬 등 여가 비용으로 지난달 대비 +18% 증가했습니다.',
+    '기타': '카페 및 소액 지출 위주로 지출액의 11%를 차지하고 있습니다.',
+    '교통': '택시 호출 서비스 이용이 소폭 늘어났습니다.',
+  };
+
+  // Cumulative spending up to Week 3 alert point = 85만 원 (850,000 KRW)
+  const alarmCategories = [
+    { category: '식비', value: 357000 },
+    { category: '쇼핑', value: 178500 },
+    { category: '문화/여가', value: 153000 },
+    { category: '기타', value: 93500 },
+    { category: '교통', value: 68000 },
+  ];
+
+  const total = alarmCategories.reduce((s, c) => s + c.value, 0);
+
+  const formatKRWMan = (val: number) => {
+    return `${Math.round(val / 10000).toLocaleString()}만 원`;
+  };
+
+  const cx = 64, cy = 64, outerR = 56, innerR = 36;
+  let cum = 0;
+
+  const slices = alarmCategories.map((c, i) => {
+    const pct = (c.value / total) * 100;
+    const start = cum;
+    cum += pct;
+    const o1 = pctToXY(cx, cy, outerR, start);
+    const o2 = pctToXY(cx, cy, outerR, cum);
+    const i2 = pctToXY(cx, cy, innerR, cum);
+    const i1 = pctToXY(cx, cy, innerR, start);
+    const large = pct > 50 ? 1 : 0;
+    return {
+      path: `M ${o1.x} ${o1.y} A ${outerR} ${outerR} 0 ${large} 1 ${o2.x} ${o2.y} L ${i2.x} ${i2.y} A ${innerR} ${innerR} 0 ${large} 0 ${i1.x} ${i1.y} Z`,
+      pct,
+      color: ALARM_EXPENSE_COLORS[i % ALARM_EXPENSE_COLORS.length],
+      label: c.category,
+      value: c.value
+    };
+  });
+
+  const active = activeIdx !== null ? slices[activeIdx] : null;
+  const hint = activeIdx !== null ? ALARM_EXPENSE_HINTS[alarmCategories[activeIdx].category] : null;
+
+  return (
+    <div style={{
+      background: '#fff', borderRadius: '20px 20px 0 0',
+      display: 'flex', flexDirection: 'column',
+      maxWidth: 375, width: '100%', maxHeight: '92vh',
+      animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      overflowY: 'auto',
+      boxSizing: 'border-box',
+    }}>
+      {/* Header */}
+      <div style={{ padding: '16px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid #e2e8f0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🚨</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>소비 알람</span>
+        </div>
+        <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', fontSize: 16, display: 'flex', alignItems: 'center' }} aria-label="닫기">✕</button>
+      </div>
+
+      <div style={{ padding: '20px 16px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Title */}
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0, textAlign: 'center' }}>
+          지난달 소비 추세에서 벗어나요
+        </h3>
+
+        {/* 1. Line Chart comparing total spending with last month */}
+        <div style={{ background: '#f8fafc', borderRadius: 16, padding: '16px 12px 12px', border: '0.5px solid #e2e8f0', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>총 지출을 지난달과 비교</span>
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: 10, fontSize: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 10, height: 2, borderBottom: '2px dashed #EF9F27', display: 'inline-block' }} />
+                <span style={{ color: '#64748b' }}>지난달</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 10, height: 2, background: '#0f172a', display: 'inline-block' }} />
+                <span style={{ color: '#0f172a', fontWeight: 600 }}>이번달</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SVG Line Chart */}
+          <div style={{ position: 'relative', width: '100%', height: 160 }}>
+            <svg width="100%" height="100%" viewBox="0 0 340 160" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+              {/* Grid Lines & Y-axis Labels */}
+              {[300000, 600000, 900000].map((val, idx) => {
+                const y = 130 - (val / 900000) * 110;
+                return (
+                  <g key={idx}>
+                    <line x1="45" y1={y} x2="320" y2={y} stroke="#e2e8f0" strokeWidth="0.5" strokeDasharray="2 2" />
+                    <text x="5" y={y + 4} fontSize="9" fontWeight="500" fill="#94a3b8">{val / 10000}만</text>
+                  </g>
+                );
+              })}
+              {/* Baseline */}
+              <line x1="45" y1="130" x2="320" y2="130" stroke="#cbd5e1" strokeWidth="1" />
+
+              {/* X-axis Labels */}
+              {['1주', '2주', '3주', '4주'].map((label, idx) => {
+                const x = 55 + idx * 80;
+                return (
+                  <text key={idx} x={x} y="150" textAnchor="middle" fontSize="10" fontWeight="600" fill="#64748b">{label}</text>
+                );
+              })}
+
+              {/* Last Month (Orange dashed line) */}
+              <path
+                d="M 55 101.9 L 135 75 L 215 46.9 L 295 20"
+                fill="none"
+                stroke="#EF9F27"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+              />
+              {/* Last Month dots */}
+              {[
+                { x: 55, y: 101.9 },
+                { x: 135, y: 75 },
+                { x: 215, y: 46.9 },
+                { x: 295, y: 20 },
+              ].map((p, idx) => (
+                <circle key={idx} cx={p.x} cy={p.y} r="3" fill="#fff" stroke="#EF9F27" strokeWidth="1.5" />
+              ))}
+
+              {/* This Month (Black solid line) */}
+              <path
+                d="M 55 108 L 135 78.7 L 215 26.1"
+                fill="none"
+                stroke="#0f172a"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+              {/* This Month dots */}
+              {[
+                { x: 55, y: 108, highlight: false },
+                { x: 135, y: 78.7, highlight: false },
+                { x: 215, y: 26.1, highlight: true },
+              ].map((p, idx) => (
+                <g key={idx}>
+                  {p.highlight ? (
+                    <>
+                      {/* Pulse effect */}
+                      <circle cx={p.x} cy={p.y} r="8" fill="#E24B4A" opacity="0.2">
+                        <animate attributeName="r" values="6;10;6" dur="1.5s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" values="0.4;0.1;0.4" dur="1.5s" repeatCount="indefinite" />
+                      </circle>
+                      <circle cx={p.x} cy={p.y} r="4.5" fill="#E24B4A" stroke="#fff" strokeWidth="1.5" />
+                      {/* Siren Icon above point */}
+                      <foreignObject x={p.x - 12} y={p.y - 32} width="24" height="24">
+                        <div style={{ fontSize: '18px', textAlign: 'center', animation: 'bounce 1s infinite alternate' }}>🚨</div>
+                      </foreignObject>
+                    </>
+                  ) : (
+                    <circle cx={p.x} cy={p.y} r="4" fill="#0f172a" stroke="#fff" strokeWidth="1.5" />
+                  )}
+                </g>
+              ))}
+            </svg>
+            <style>{`
+              @keyframes bounce {
+                from { transform: translateY(0); }
+                to { transform: translateY(-4px); }
+              }
+            `}</style>
+          </div>
+        </div>
+
+        {/* 2. Category Analysis (Agent commentary) */}
+        <div style={{
+          background: '#FEFCE8',
+          border: '1px solid #EF9F27',
+          borderRadius: 16,
+          padding: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          boxShadow: '0 2px 4px rgba(239, 159, 39, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 14 }}>🐳</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#854F0B' }}>Pori의 분석</span>
+          </div>
+          <p style={{ fontSize: 13, color: '#451a03', margin: 0, lineHeight: 1.5 }}>
+            <span style={{ color: '#E24B4A', fontWeight: 800 }}>식비</span> 지출이 지난달에 비해 많은 것 같아요!
+          </p>
+          <p style={{ fontSize: 12, color: '#78350f', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+            이번 달 3주 차에 식비 지출이 급증했어요. 배달앱 이용 빈도가 지난달 동기 대비 높은 흐름을 보이고 있으니, 남은 기간 동안 지출 조절이 필요합니다.
+          </p>
+        </div>
+
+        {/* 3. This Month's Accumulated Spending Chart */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', margin: 0 }}>이번달 누적 소비</h4>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ position: 'relative', width: 128, height: 128, flexShrink: 0 }}>
+              <svg width="128" height="128" viewBox="0 0 128 128">
+                {slices.map((s, i) => (
+                  <path key={i} d={s.path} fill={s.color}
+                    opacity={activeIdx === null || activeIdx === i ? 1 : 0.25}
+                    onMouseEnter={() => setActiveIdx(i)}
+                    onMouseLeave={() => setActiveIdx(null)}
+                    style={{ cursor: 'default', transition: 'opacity 0.15s' }}
+                  />
+                ))}
+              </svg>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none', width: 70 }}>
+                {active ? (
+                  <>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: active.color, lineHeight: 1.4 }}>{active.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{active.pct.toFixed(0)}%</div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>누적 소비</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{formatKRWMan(total)}</div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {slices.map((s, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color, flexShrink: 0, display: 'inline-block' }} />
+                  <span style={{ fontSize: 11, color: activeIdx === i ? s.color : '#475569', fontWeight: activeIdx === i ? 600 : 400, flex: 1, transition: 'color 0.15s' }}>{s.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a' }}>{s.pct.toFixed(0)}% ({Math.round(s.value / 10000)}만)</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginTop: 4, padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '0.5px solid #e2e8f0', minHeight: 48, fontSize: 12, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-line', transition: 'all 0.2s' }}>
+            {hint ?? <span style={{ color: '#94a3b8', fontSize: 11 }}>항목에 마우스를 올려 상세 분석을 확인해 보세요</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
-  const { userName: USER_NAME, logout } = useAuth();
+  const { token, userName: USER_NAME, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -470,44 +762,41 @@ export default function Dashboard() {
     }
   };
 
-  // ── 알림 데이터 (하드) — 별도 API 미제공 ───────────────
-  const NOTIFICATIONS: NotiItem[] = [
-    { id: 'n1', icon: '💳', iconBg: '#E6F1FB', title: '월급이 들어왔네요!', body: '새로 나눴어요! 확인하고 자동이체할게요.', time: '방금 전', read: false },
-    { id: 'n2', icon: '📉', iconBg: '#FCEBEB', title: '밸런싱 붕괴 조짐이 보여요', body: '이번 달 소비 속도가 빠르게 올라가고 있어요...', time: '2시간 전', read: false },
-    { id: 'n3', icon: '📋', iconBg: '#E1F5EE', title: '2026년 5월 월간 리포트가 도착했어요!', body: `${USER_NAME}님만을 위한 5월 종합 리포트...`, time: '1일 전', read: false },
-    { id: 'n4', icon: '🎵', iconBg: '#EEEDFE', title: '이번 달 관심받고 있는 공연 소식이에요!', body: `${USER_NAME}님의 취향을 기반으로...`, time: '1일 전', read: false },
-    { id: 'n5', icon: '🏦', iconBg: '#E1F5EE', title: `${USER_NAME}님만을 위한 정부 정책을 가져왔어요`, body: '자격증 지원금을 신청해보세요! 최대 50만 원을 돌려받을 수 있어요.', time: '2일 전', read: true },
-  ];
-
   // ── 대시보드 API 상태 ────────────────────────────────────
-  const [dashboard,           setDashboard]           = useState<DashboardData | null>(null);
-  const [loadError,           setLoadError]           = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     let cancelled = false;
     setLoadError(null);
     getDashboard()
       .then(d => { if (!cancelled) setDashboard(d); })
       .catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : '대시보드 조회 실패'); });
     return () => { cancelled = true; };
-  }, []);
+  }, [token, navigate]);
 
   // ── UI 상태 ──────────────────────────────────────────────
-  const [bannerVisible,       setBannerVisible]       = useState(true);
-  const [anomalyOpen,         setAnomalyOpen]         = useState(false);
-  const [recapOpen,           setRecapOpen]           = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(true);
+  const [salaryMgmtOpen, setSalaryMgmtOpen] = useState(false);
+  const [anomalyOpen, setAnomalyOpen] = useState(false);
+  const [recapOpen, setRecapOpen] = useState(false);
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
-  const [notiOpen,            setNotiOpen]            = useState(false);
-  const [notiItems,           setNotiItems]           = useState<NotiItem[]>(NOTIFICATIONS);
-  const [accountMgmtOpen,     setAccountMgmtOpen]     = useState(false);
-  const [settingsOpen,        setSettingsOpen]        = useState(false);
-  const [sidebarOpen,         setSidebarOpen]         = useState(false);
-  const [peerTab,             setPeerTab]             = useState<'asset' | 'product'>('asset');
-  const [goals,               setGoals]               = useState<Goal[]>(() => {
+  const [notiOpen, setNotiOpen] = useState(false);
+  const [notiItems, setNotiItems] = useState<NotiItem[]>([]);
+  const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [peerTab, setPeerTab] = useState<'asset' | 'product'>('asset');
+  const [goals, setGoals] = useState<Goal[]>(() => {
     try { return JSON.parse(sessionStorage.getItem('user:goals') ?? '[]'); } catch { return []; }
   });
-  const [goalModalOpen,       setGoalModalOpen]       = useState(false);
-  const [goalText,            setGoalText]            = useState('');
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [goalText, setGoalText] = useState('');
+  const [spendingAlarmOpen, setSpendingAlarmOpen] = useState(false);
 
   // 대시보드 fetch 결과로 목표 카드 채우기 (events[0] 우선)
   useEffect(() => {
@@ -524,51 +813,156 @@ export default function Dashboard() {
     }]);
   }, [dashboard]);
 
+  // ── 알림 로드 + SSE 구독 ─────────────────────────────────
+  useEffect(() => {
+    getNotifications()
+      .then(list => {
+        const mockList: ApiNotification[] = [
+          {
+            id: 'mock-1',
+            type: 'SALARY_REBALANCING',
+            title: '월급이 들어왔네요!',
+            content: '새로 나눴어요! 확인하고 자동이체할게요.',
+            isRead: false,
+            sentAt: new Date(Date.now() - 60000).toISOString(),
+          },
+          {
+            id: 'mock-2',
+            type: 'SPENDING_TREND',
+            title: '밸런싱 붕괴 조짐이 보여요',
+            content: '이번 달 소비 속도가 빠르게 올라가고 있어요...',
+            isRead: false,
+            sentAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+          },
+          {
+            id: 'mock-3',
+            type: 'REPORT_READY',
+            title: '2026년 5월 월간 리포트가 도착했어요!',
+            content: '이주형님만을 위한 5월 종합 리포트...',
+            isRead: false,
+            sentAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+          },
+          {
+            id: 'mock-4',
+            type: 'CONCERT_INFO',
+            title: '이번 달 관심받고 있는 공연 소식이에요!',
+            content: '이주형님의 취향을 기반으로...',
+            isRead: false,
+            sentAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+          },
+          {
+            id: 'mock-5',
+            type: 'GOVT_POLICY',
+            title: '이주형님만을 위한 정부 정책을 가져왔어요',
+            content: '자격증 지원금을 신청해보세요! 최대 50만 원을 돌려받을 수 있어요.',
+            isRead: true,
+            sentAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+          }
+        ];
+
+        const combined = [...mockList, ...list.filter(n => !mockList.some(m => m.title === n.title))];
+        const items = combined.map(toNotiItem);
+        setNotiItems(items);
+        if (items.some(n => !n.read && n.icon === '💳')) {
+          setBannerVisible(true);
+        }
+      })
+      .catch(err => console.error('[Dashboard] 알림 조회 실패:', err));
+
+    const ctrl = subscribeToNotifications({
+      onNotification: (n) => {
+        setNotiItems(prev => [toNotiItem(n), ...prev]);
+      },
+      onSalaryArrived: () => setBannerVisible(true),
+    });
+
+    return () => ctrl.abort();
+  }, []);
+
+  const handleMarkRead = (id: string) => {
+    const clicked = notiItems.find(n => n.id === id);
+    setNotiItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    if (!id.startsWith('mock-')) {
+      readNotification(id).catch(err => console.error('[Dashboard] 읽음 처리 실패:', err));
+    }
+    if (clicked && clicked.type === 'SPENDING_TREND') {
+      setNotiOpen(false);
+      setSpendingAlarmOpen(true);
+    }
+    if (clicked && clicked.type === 'REPORT_READY') {
+      setNotiOpen(false);
+      navigate('/monthly-report');
+    }
+    if (clicked && (clicked.type === 'SALARY_REBALANCING' || clicked.type === 'SALARY_ARRIVED')) {
+      setNotiOpen(false);
+      setSalaryMgmtOpen(true);
+    }
+  };
+
+  const handleMarkAll = () => {
+    setNotiItems(prev => prev.map(n => ({ ...n, read: true })));
+    readAllNotifications().catch(err => console.error('[Dashboard] 전체 읽음 실패:', err));
+  };
+
   // ── 표시용 헬퍼 ─────────────────────────────────────────
   const fmtManwon = (n: number) => `${Math.round(n / 10000).toLocaleString()}만 원`;
 
-  // 월급 분배 도넛 데이터 (API allocations → SalaryDonutChart 슬라이스)
+  // 월급 분배 도넛 데이터 (allocations + 투자 + 잉여금 → SalaryDonutChart 슬라이스)
   const SALARY_PALETTE = ['#EF9F27', '#7F77DD', '#378ADD', '#1D9E75', '#e2e8f0'];
+  const INVEST_COLOR = '#1D9E75';
+  const SURPLUS_COLOR = '#cbd5e1';
   const salarySlices: PortfolioSlice[] = dashboard
-    ? dashboard.salaryPlan.allocations.map((a, i) => ({
+    ? (() => {
+      const income = dashboard.salaryPlan.monthlyIncome;
+      const toPct = (amt: number) => income > 0 ? Math.round(amt / income * 100) : 0;
+
+      const allocSlices = dashboard.salaryPlan.allocations.map((a, i) => ({
         label: a.purpose ?? '기타',
-        pct: dashboard.salaryPlan.monthlyIncome > 0
-          ? Math.round(a.plannedAmount / dashboard.salaryPlan.monthlyIncome * 100)
-          : 0,
+        pct: toPct(a.plannedAmount),
         color: SALARY_PALETTE[i % SALARY_PALETTE.length],
-      }))
+      }));
+
+      const slices: PortfolioSlice[] = [...allocSlices];
+      if (dashboard.salaryPlan.investmentAmount > 0) {
+        slices.push({ label: '투자', pct: toPct(dashboard.salaryPlan.investmentAmount), color: INVEST_COLOR });
+      }
+      if (dashboard.salaryPlan.surplus > 0) {
+        slices.push({ label: '잉여금', pct: toPct(dashboard.salaryPlan.surplus), color: SURPLUS_COLOR });
+      }
+      return slices;
+    })()
     : [];
 
-  // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑, (하드))
+  // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑)
   const SPENDING_COLOR: Record<string, string> = {
-    '식비':       '#D85A30',
-    '문화/여가':  '#D85A30',
+    '식비': '#D85A30',
+    '문화/여가': '#D85A30',
     '온라인쇼핑': '#A32D2D',
-    '교통':       '#D85A30',
-    '기타':       '#D85A30',
+    '교통': '#D85A30',
+    '기타': '#D85A30',
   };
   const spendingItems: SpendingItem[] = dashboard
     ? dashboard.consumption.categories.map(c => ({
-        label: c.categoryName,
-        pct: c.percentage,
-        color: SPENDING_COLOR[c.categoryName] ?? '#D85A30',
-      }))
+      label: c.categoryName,
+      pct: c.percentage,
+      color: SPENDING_COLOR[c.categoryName] ?? '#D85A30',
+    }))
     : [];
 
   // 포트폴리오 카테고리별 색상 (categoryLabel → 색상)
   const PORTFOLIO_COLOR: Record<string, string> = {
-    'ETF':    '#1D9E75',
+    'ETF': '#1D9E75',
     '현금성': '#5DCAA5',
-    '적금':   '#9FE1CB',
-    'IRP':    '#085041',
+    '적금': '#9FE1CB',
+    'IRP': '#085041',
   };
   const portfolioSlices: PortfolioSlice[] = dashboard
     ? dashboard.portfolio.map(p => ({
-        label: p.categoryLabel,
-        pct: p.ratio,
-        color: PORTFOLIO_COLOR[p.categoryLabel] ?? '#94a3b8',
-        rate: p.rate,
-      }))
+      label: p.categoryLabel,
+      pct: p.ratio,
+      color: PORTFOLIO_COLOR[p.categoryLabel] ?? '#94a3b8',
+      rate: p.rate,
+    }))
     : [];
 
   const handleGoalSubmit = () => {
@@ -664,11 +1058,11 @@ export default function Dashboard() {
                     Pori가 자동으로 이번 달 분배 계획을 세웠어요.{'\n'}확인하고 자동이체를 시작해볼까요?
                   </p>
                 </div>
-                
+
                 {/* 3. 우측: 확인 버튼 - 우측 끝 테두리에서 살짝 왼쪽으로 당겨지도록 여백 설정 */}
                 <div style={{ flexShrink: 0, marginRight: 8, marginTop: 4 }}>
                   <button
-                    onClick={() => navigate('/asset-prescription')}
+                    onClick={() => setSalaryMgmtOpen(true)}
                     style={{ fontSize: 11, fontWeight: 600, padding: '6px 12px', background: '#854F0B', color: '#FAEEDA', border: 'none', borderRadius: 8, cursor: 'pointer' }}
                   >
                     확인 →
@@ -686,7 +1080,7 @@ export default function Dashboard() {
               <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#0f172a', display: 'flex', alignItems: 'center' }} aria-label="메뉴">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="6"  x2="21" y2="6"  />
+                  <line x1="3" y1="6" x2="21" y2="6" />
                   <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
               </button>
@@ -717,7 +1111,7 @@ export default function Dashboard() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 7 }}>
               {[
-                { label: '투자 자산',   value: fmtManwon(dashboard.assetsSummary.investmentBalance) },
+                { label: '투자 자산', value: fmtManwon(dashboard.assetsSummary.investmentBalance) },
                 { label: '현금성 자산', value: fmtManwon(dashboard.assetsSummary.cashBalance) },
               ].map(item => (
                 <div key={item.label} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px' }}>
@@ -796,7 +1190,7 @@ export default function Dashboard() {
             <Card>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0 }}>지출 카테고리 비율</p>
-                <button onClick={e => { e.stopPropagation(); setAnomalyOpen(!anomalyOpen); }} style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: '#F7C1C1', color: '#791F1F', border: 'none', cursor: 'pointer' }}>⚠ 이상 소비 감지</button>
+                <button onClick={e => { e.stopPropagation(); setSpendingAlarmOpen(true); }} style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: '#F7C1C1', color: '#791F1F', border: 'none', cursor: 'pointer' }}>⚠ 이상 소비 감지</button>
               </div>
               {anomalyOpen && (
                 <div style={{ background: '#FCEBEB', border: '0.5px solid #F09595', borderRadius: 8, padding: '9px 11px', marginBottom: 12 }}>
@@ -1082,7 +1476,7 @@ export default function Dashboard() {
           animation: 'fadeIn 0.2s ease-out',
         }}>
           <div style={{ width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
-            <NotificationPanel onClose={() => setNotiOpen(false)} items={notiItems} setItems={setNotiItems} />
+            <NotificationPanel onClose={() => setNotiOpen(false)} items={notiItems} onMarkRead={handleMarkRead} onMarkAll={handleMarkAll} />
           </div>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '85vh', zIndex: -1 }} onClick={() => setNotiOpen(false)} />
         </div>
@@ -1119,7 +1513,35 @@ export default function Dashboard() {
           <div style={{ width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
             <SettingsPanel
               onClose={() => setSettingsOpen(false)}
-              onNavigate={(to) => { setSettingsOpen(false); navigate(to); }}
+              onNavigate={(to) => { setSettingsOpen(false); navigate(to, { state: { mode: 'edit' } }); }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 월급 관리 overlay */}
+      {salaryMgmtOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <SalaryManagement onClose={() => setSalaryMgmtOpen(false)} />
+        </div>
+      )}
+
+      {/* 소비 알람 overlay */}
+      {spendingAlarmOpen && (
+        <div
+          onClick={() => setSpendingAlarmOpen(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.4)', zIndex: 999,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div style={{ width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+            <SpendingAlarmPanel
+              onClose={() => setSpendingAlarmOpen(false)}
+              totalExpense={dashboard.consumption.totalExpense}
+              categories={dashboard.consumption.categories}
             />
           </div>
         </div>

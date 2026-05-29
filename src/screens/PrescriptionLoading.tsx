@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 
 
 interface StepRowProps {
@@ -46,8 +47,12 @@ export default function PrescriptionLoading() {
 
   useEffect(() => {
     const t: ReturnType<typeof setTimeout>[] = [];
+    let recommend: AgentRecommend | null = null;
 
-    // TODO: 실제 API 호출은 여기서 시작. 응답이 9s 이전에 오면 즉시 다음 화면으로 갈 수 있도록 race 처리 가능.
+    // POST /agent/recommend 호출 (UI 애니메이션과 병렬 진행)
+    const apiCall = getAgentRecommend()
+      .then(data => { recommend = data; })
+      .catch((err: unknown) => console.error('[PrescriptionLoading] recommend 실패:', err));
 
     t.push(setTimeout(() => setSteps(s => ({ ...s, s1: true })), 1800));
     t.push(setTimeout(() => { setChecks(c => ({ ...c, c1: true })); setMainVisible(false); }, 2500));
@@ -65,7 +70,10 @@ export default function PrescriptionLoading() {
     t.push(setTimeout(() => { setChecks(c => ({ ...c, c3: true })); setSpinnerVisible(false); }, 5300));
     t.push(setTimeout(() => setComplete(true), 6500));
     t.push(setTimeout(() => setExiting(true), 8500));
-    t.push(setTimeout(() => navigate('/asset-prescription', { replace: true }), 9000));
+    t.push(setTimeout(async () => {
+      await apiCall;
+      navigate('/asset-prescription', { replace: true, state: { recommend } });
+    }, 9000));
 
     return () => t.forEach(clearTimeout);
   }, [navigate]);

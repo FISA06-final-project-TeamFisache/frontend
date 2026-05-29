@@ -1,6 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  getPortfolioFlows, getAvailableAssets, updatePortfolioFlow,
+  type PortfolioFlow, type AvailableAsset, type PortfolioFlowUpdateRequest,
+} from '../api/portfolioFlowApi';
+import { getProducts, type Product } from '../api/productApi';
 import pillImg from '../assets/pill.png';
 import kakaoImg  from '../assets/banks/kakao.png';
 import tossImg   from '../assets/banks/toss.png';
@@ -31,17 +36,7 @@ interface AccountItem {
   imgSrc?: string;
 }
 
-const SOURCE_CATALOG: AccountItem[] = [
-  { id: 'kakao-1',   bank: '카카오뱅크', name: '입출금통장',          number: '3333-01-****567',  logo: 'K', bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg  },
-  { id: 'kakao-2',   bank: '카카오뱅크', name: '세이프박스',          number: '3333-02-****890',  logo: 'K', bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg  },
-  { id: 'toss-1',    bank: '토스증권',   name: '종합매매계좌',        number: '5601-01-****234',  logo: 'T', bg: '#3182F6', color: '#fff',    imgSrc: tossImg   },
-  { id: 'shinhan-1', bank: '신한은행',   name: 'Tops 직장인 플랜',    number: '110-***-456789',   logo: 'S', bg: '#0046FF', color: '#fff',    imgSrc: shinhanImg },
-  { id: 'hana-1',    bank: '하나은행',   name: '하나원큐 입출금',     number: '623-******-501',   logo: 'H', bg: '#009F6B', color: '#fff',    imgSrc: hanaImg   },
-  { id: 'woori-1',   bank: '우리은행',   name: 'WON 우월한 월급통장', number: '1002-***-345678',  logo: 'W', bg: '#0067AC', color: '#fff',    imgSrc: wooriImg  },
-  { id: 'nh-1',      bank: 'NH농협',     name: '주거래 통장',         number: '352-****-1122-99', logo: 'N', bg: '#19CE60', color: '#fff'    },
-  { id: 'kb-1',      bank: '국민은행',   name: 'Star 입출금통장',     number: '004-**-7788-12',   logo: 'K', bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg     },
-  { id: 'ibk-1',     bank: '기업은행',   name: '급여 자동이체',       number: '202-******-001',   logo: 'I', bg: '#005BAC', color: '#fff'    },
-];
+// SOURCE_CATALOG (mock) 는 GET /portfolio-flows/available-assets 응답으로 대체됨
 
 interface HubItem {
   id: string;
@@ -60,15 +55,14 @@ interface HubItem {
   imgSrc?: string;
 }
 
-const HUB_CATALOG: HubItem[] = [
-  { id: 'toss-park',   logo: 'T',   logoBg: '#3182F6', logoColor: '#fff',    name: '토스뱅크 파킹통장',     number: '1000-12-****345', sub: '연 2.5% · 수시입출금',         cardBg: '#EEEDFE', border: '#AFA9EC', nameColor: '#3C3489', subColor: '#534AB7', kind: '일반', hubLabel: '토스뱅크',    imgSrc: tossImg   },
-  { id: 'shinhan-cma', logo: '증권', logoBg: '#085041', logoColor: '#9FE1CB', name: '투자증권 CMA',          number: '8001-77-****092', sub: '연 3.1% · 수시입출금',         cardBg: '#E1F5EE', border: '#5DCAA5', nameColor: '#085041', subColor: '#0F6E56', kind: '일반', hubLabel: '투자증권',  imgSrc: shinhanImg },
-  { id: 'kakao-park',  logo: 'K',   logoBg: '#FEE500', logoColor: '#3C1E1E', name: '카카오뱅크 세이프박스',  number: '3333-09-****123', sub: '연 2.2% · 수시입출금',         cardBg: '#FEF9C3', border: '#FCD34D', nameColor: '#854D0E', subColor: '#A16207', kind: '일반', hubLabel: '카카오뱅크',  imgSrc: kakaoImg  },
-  { id: 'mirae-irp',   logo: '미래', logoBg: '#FF8200', logoColor: '#fff',    name: '미래에셋증권 IRP',     number: '910-22-****678',  sub: '연 16.5% 세액공제 · 노후 대비', cardBg: '#FFF4E6', border: '#FFB873', nameColor: '#9A4D00', subColor: '#C45500', kind: 'IRP',  hubLabel: '미래에셋 IRP', imgSrc: miraeImg  },
-  { id: 'samsung-irp', logo: '삼성', logoBg: '#1428A0', logoColor: '#fff',    name: '삼성증권 IRP',         number: '550-15-****321',  sub: '연 16.5% 세액공제 · 안정형',   cardBg: '#E0E7FF', border: '#818CF8', nameColor: '#3730A3', subColor: '#4338CA', kind: 'IRP',  hubLabel: '삼성 IRP' },
-  { id: 'ki-isa',      logo: 'ISA', logoBg: '#1F2937', logoColor: '#FBBF24', name: '한국투자 중개형 ISA',   number: '720-88-****456',  sub: '비과세 200만 원 한도 · 절세',   cardBg: '#FEF3C7', border: '#F59E0B', nameColor: '#92400E', subColor: '#B45309', kind: 'ISA',  hubLabel: '중개형 ISA' },
-  { id: 'kiwoom-isa',  logo: 'ISA', logoBg: '#FF2C2C', logoColor: '#fff',    name: '키움증권 중개형 ISA',   number: '630-44-****789',  sub: '비과세 한도 활용 · 절세',      cardBg: '#FEE2E2', border: '#FCA5A5', nameColor: '#991B1B', subColor: '#B91C1C', kind: 'ISA',  hubLabel: '키움 ISA' },
-];
+// HUB_CATALOG (mock) 는 GET /portfolio-flows/available-assets 응답으로 대체됨
+// (모으기 통장 후보 = 사용 가능한 통장 = available-assets)
+const PLACEHOLDER_HUB: HubItem = {
+  id: '', logo: '?', logoBg: '#94a3b8', logoColor: '#fff',
+  name: '-', number: '-', sub: '-',
+  cardBg: '#f1f5f9', border: '#e2e8f0', nameColor: '#0f172a', subColor: '#64748b',
+  kind: '일반', hubLabel: '-',
+};
 
 interface ProductItem {
   id: string;
@@ -82,36 +76,22 @@ interface ProductItem {
   badgeColor: string;
 }
 
-const PRODUCT_CATALOG: ProductItem[] = [
-  // ETF
-  { id: 'etf-tiger-snp',  type: 'ETF',  name: 'TIGER S&P500',         description: '미국 대표 500개 기업에 분산 투자. 장기 우상향 기대 1순위.',          recommended: true,  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  { id: 'etf-kodex-nas',  type: 'ETF',  name: 'KODEX 나스닥100',      description: '미국 빅테크 100종목 추종. 변동성은 크지만 성장성 매력.',             recommended: true,  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  { id: 'etf-kodex-200',  type: 'ETF',  name: 'KODEX 200',            description: '코스피200 추종, 국내 시장 대표 ETF. 환율 영향이 적어요.',          recommended: false, icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  { id: 'etf-tiger-divi', type: 'ETF',  name: 'TIGER 미국배당다우존스', description: '꾸준한 배당 받기 좋은 미국 배당주 ETF. 안정 지향에 적합.',         recommended: false, icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  // 적금
-  { id: 'sav-woori',      type: '적금', name: '우리 정기적금',         description: '연 4.1% (12개월) · 우리은행 대표 정기적금 상품.',                   recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'sav-kakao-26',   type: '적금', name: '카카오뱅크 26주 적금',   description: '연 7.0%(최고) · 매주 늘려 모으는 26주 단기 적금.',                 recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'sav-toss',       type: '적금', name: '토스뱅크 자유적금',      description: '연 4.5% · 자유롭게 입금 가능한 적금.',                              recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'sav-shinhan',    type: '적금', name: '신한 쏠편한 적금',       description: '연 3.8% · 자동이체 우대 제공.',                                     recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  // TDF / 채권 / 리츠
-  { id: 'tdf-mirae-2045', type: 'TDF',  name: '미래에셋 TDF2045',     description: '은퇴시점(2045)에 맞춰 자동 자산배분. IRP 대표 상품.',              recommended: true,  icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7' },
-  { id: 'tdf-samsung',    type: 'TDF',  name: '삼성 한국형TDF2050',   description: '국내 자산 비중을 늘린 한국형 TDF. 환위험 완화.',                    recommended: false, icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7' },
-  { id: 'bnd-tiger-10y',  type: '채권', name: 'TIGER 국채10년',       description: '국채 10년물 추종. 안정적 이자 수익 기대.',                          recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'bnd-kodex-corp', type: '채권', name: 'KODEX 단기채권',       description: '단기 회사채/국공채 추종. 변동성 낮음.',                              recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'reit-macq',      type: '리츠', name: '맥쿼리인프라',         description: '국내 인프라 리츠. 분기배당으로 현금흐름 확보.',                      recommended: true,  icon: 'trending-up', iconColor: '#0F6E56', badgeBg: '#E1F5EE', badgeColor: '#0F6E56' },
-  { id: 'reit-shinhan',   type: '리츠', name: '신한알파리츠',         description: '오피스/물류센터 리츠. 안정적 임대수익.',                              recommended: false, icon: 'trending-up', iconColor: '#0F6E56', badgeBg: '#E1F5EE', badgeColor: '#0F6E56' },
-];
+// PRODUCT_CATALOG (mock) 는 GET /products 응답으로 대체됨
+const PLACEHOLDER_PRODUCT: ProductItem = {
+  id: '', type: 'ETF', name: '-', description: '-',
+  recommended: false, icon: 'trending-up', iconColor: '#94a3b8',
+  badgeBg: '#f1f5f9', badgeColor: '#64748b',
+};
 
 // ─── Flow 타입 ───────────────────────────────────────
 
-interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; imgSrc?: string; }
-interface FlowProduct { productId: string; pct: number; barColor: string; }
+interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; imgSrc?: string; assetId?: string; }
+interface FlowProduct { productId: string; pct: number; barColor: string; productType: string; }   // productType = API 원본 (STOCK/BOND/DEPOSIT/SAVING/IRP)
 
 type FlowTerm = '단기' | '중기' | '장기';
 
 interface Flow {
-  label: string;
-  shortLabel: string;
+  id: string;                // API: portfolio_flows.id (UUID) — flow 식별자
   title: string;
   summary: string;
   term: FlowTerm;
@@ -132,88 +112,211 @@ const TERM_STYLE: Record<FlowTerm, { bg: string; color: string }> = {
   장기: { bg: '#BBF7D0', color: '#166534' },
 };
 
-type FlowKey = 'a' | 'b' | 'c' | 'd';
-type TermTab = 'all' | '단기' | '중기' | '장기1' | '장기2';
+// ─── 동적 라벨/매핑 헬퍼 ─────────────────────────────────
+// 'all' 또는 flow.id 직접 진입
+type TermTab = 'all' | string;
 
-const FLOW_TERM_LABELS: Record<FlowKey, string> = { a: '단기', b: '중기', c: '장기1', d: '장기2' };
+// 시드 '단'/'중'/'장' → 화면용 FlowTerm
+const apiTermToFlowTerm = (t?: string | null): FlowTerm =>
+  t === '단' ? '단기' : t === '장' ? '장기' : '중기';
 
-const INITIAL_FLOWS: Record<FlowKey, Flow> = {
-  a: {
-    label: '알약 A', shortLabel: '알약A',
-    title: '당장 쓸 돈 든든히 모으기',
-    summary: '비상금·생활비 베이스를 단단히 다져요',
-    term: '단기',
-    kind: '일반', hubId: 'toss-park',
-    rate: '+8.4%', projected: '1.1억', projectedPeriod: '6개월', badgeBg: '#EEEDFE', badgeColor: '#534AB7',
-    sources: [
-      { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장',   number: '3333-01-****567', amt: 150, imgSrc: kakaoImg },
-      { logo: 'T', bg: '#3182F6', color: '#fff',    bank: '토스증권',   name: '종합매매계좌', number: '5601-01-****234', amt: 60,  imgSrc: tossImg  },
-    ],
-    products: [
-      { productId: 'etf-tiger-snp', pct: 70, barColor: '#E24B4A' },
-      { productId: 'sav-woori',     pct: 30, barColor: '#378ADD' },
-    ],
-  },
-  b: {
-    label: '알약 B', shortLabel: '알약B',
-    title: '5년 안 목돈 만들기',
-    summary: '중기 목표를 위한 균형 성장 전략',
-    term: '중기',
-    kind: '일반', hubId: 'shinhan-cma',
-    rate: '+7.1%', projected: '7,200만', projectedPeriod: '1년', badgeBg: '#E1F5EE', badgeColor: '#0F6E56',
-    sources: [
-      { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜',  number: '110-***-456789', amt: 60, imgSrc: shinhanImg },
-      { logo: 'H', bg: '#009F6B', color: '#fff', bank: '하나은행', name: '하나원큐 입출금',   number: '623-******-501', amt: 40, imgSrc: hanaImg    },
-    ],
-    products: [
-      { productId: 'etf-kodex-nas', pct: 60, barColor: '#E24B4A' },
-      { productId: 'sav-kakao-26',  pct: 40, barColor: '#378ADD' },
-    ],
-  },
-  c: {
-    label: '알약 C', shortLabel: '알약C',
-    title: '노후 대비하며 세금 환급 받기',
-    summary: 'IRP로 매년 연말정산 환급까지 챙겨요',
-    term: '장기',
-    kind: 'IRP', hubId: 'mirae-irp',
-    rate: '+6.2%', projected: '4,500만', projectedPeriod: '4년', badgeBg: '#FFF4E6', badgeColor: '#C45500',
-    sources: [
-      { logo: 'K', bg: '#FEE500', color: '#3C1E1E', bank: '카카오뱅크', name: '입출금통장', number: '3333-01-****567', amt: 50, imgSrc: kakaoImg },
-    ],
-    products: [
-      { productId: 'tdf-mirae-2045', pct: 50, barColor: '#534AB7' },
-      { productId: 'bnd-tiger-10y',  pct: 50, barColor: '#378ADD' },
-    ],
-  },
-  d: {
-    label: '알약 D', shortLabel: '알약D',
-    title: '절세하며 공격적으로 불리기',
-    summary: 'ISA 비과세 한도로 수익률을 더 챙겨요',
-    term: '장기',
-    kind: 'ISA', hubId: 'ki-isa',
-    rate: '+9.1%', projected: '6,800만', projectedPeriod: '4년', badgeBg: '#FEF3C7', badgeColor: '#B45309',
-    sources: [
-      { logo: 'S', bg: '#0046FF', color: '#fff', bank: '신한은행', name: 'Tops 직장인 플랜', number: '110-***-456789',   amt: 50, imgSrc: shinhanImg },
-      { logo: 'N', bg: '#19CE60', color: '#fff', bank: 'NH농협',   name: '주거래 통장',      number: '352-****-1122-99', amt: 30 },
-    ],
-    products: [
-      { productId: 'etf-kodex-200', pct: 60, barColor: '#E24B4A' },
-      { productId: 'reit-macq',     pct: 40, barColor: '#639922' },
-    ],
-  },
+// 기관명 → Logo 표시 메타
+interface BankMeta { logo: string; bg: string; color: string; imgSrc?: string }
+const BANK_META: Record<string, BankMeta> = {
+  '카카오뱅크': { logo: 'K',    bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg   },
+  '토스뱅크':   { logo: 'T',    bg: '#3182F6', color: '#fff',    imgSrc: tossImg    },
+  '토스증권':   { logo: 'T',    bg: '#3182F6', color: '#fff',    imgSrc: tossImg    },
+  '신한은행':   { logo: 'S',    bg: '#0046FF', color: '#fff',    imgSrc: shinhanImg },
+  '하나은행':   { logo: 'H',    bg: '#009F6B', color: '#fff',    imgSrc: hanaImg    },
+  '우리은행':   { logo: 'W',    bg: '#0067AC', color: '#fff',    imgSrc: wooriImg   },
+  '국민은행':   { logo: 'K',    bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg      },
+  'KB증권':     { logo: 'K',    bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg      },
+  '미래에셋':   { logo: '미래', bg: '#FF8200', color: '#fff',    imgSrc: miraeImg   },
 };
+const bankMeta = (inst: string): BankMeta =>
+  BANK_META[inst] ?? { logo: (inst || '?')[0], bg: '#94a3b8', color: '#fff' };
 
-const TERM_TABS: { key: TermTab; label: string }[] = [
-  { key: 'all',  label: '전체' },
-  { key: '단기', label: '단기' },
-  { key: '중기', label: '중기' },
-  { key: '장기1', label: '장기1' },
-  { key: '장기2', label: '장기2' },
-];
+// API productType → ProductItem 표시 메타
+interface ProductTypeMeta {
+  type: ProductItem['type'];
+  icon: ProductItem['icon'];
+  iconColor: string;
+  badgeBg: string;
+  badgeColor: string;
+  barColor: string;
+}
+const PRODUCT_TYPE_META: Record<string, ProductTypeMeta> = {
+  STOCK:   { type: 'ETF',  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D', barColor: '#E24B4A' },
+  BOND:    { type: '채권', icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
+  SAVING:  { type: '적금', icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
+  DEPOSIT: { type: '적금', icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
+  IRP:     { type: 'TDF',  icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7', barColor: '#534AB7' },
+};
+const productTypeMeta = (t: string | null | undefined): ProductTypeMeta =>
+  PRODUCT_TYPE_META[t ?? ''] ?? PRODUCT_TYPE_META.STOCK;
+
+// assetType → 흐름 kind 파생 (모으기 통장 종류로 판단)
+const assetTypeToKind = (t: string | null | undefined): '일반' | 'IRP' | 'ISA' =>
+  t === 'IRP' ? 'IRP' : t === 'ISA' ? 'ISA' : '일반';
+
+// 끌어오기 후보 — 현금성 통장만
+const SOURCE_ASSET_TYPES = new Set(['CHECKING', 'PARKING', 'SAVINGS', 'DEPOSIT', 'CMA']);
+
+// 모으기 후보 — 현금성 + 절세 계좌
+const HUB_ASSET_TYPES = new Set(['CHECKING', 'PARKING', 'SAVINGS', 'DEPOSIT', 'CMA', 'IRP', 'ISA']);
+
+// 편집 모달의 lookup*과 호환되도록 API 응답을 catalog 형태로 동적 등록
+const dynamicHubs = new Map<string, HubItem>();
+const dynamicProducts = new Map<string, ProductItem>();
+// 화면 매핑 시 손실되는 원본 API productType 보존 (handleProductPick에서 사용)
+const productApiTypeById = new Map<string, string>();
 
 const sourceTotal = (flow: Flow) => flow.sources.reduce((s, x) => s + x.amt, 0);
-const lookupHub = (id: string) => HUB_CATALOG.find(h => h.id === id) ?? HUB_CATALOG[0];
-const lookupProduct = (id: string) => PRODUCT_CATALOG.find(p => p.id === id) ?? PRODUCT_CATALOG[0];
+const lookupHub = (id: string): HubItem =>
+  dynamicHubs.get(id) ?? PLACEHOLDER_HUB;
+const lookupProduct = (id: string): ProductItem =>
+  dynamicProducts.get(id) ?? PLACEHOLDER_PRODUCT;
+
+// API DTO → Flow (편집 모달에서 lookup 가능하도록 dynamic catalog도 채움)
+function apiToFlow(dto: PortfolioFlow): Flow {
+  const term = apiTermToFlowTerm(dto.term);
+  const kind = assetTypeToKind(dto.gatheringAsset?.assetType);
+
+  // hub 동적 등록
+  const hubId = dto.gatheringAsset?.id ?? `dyn-hub-${dto.id}`;
+  if (dto.gatheringAsset && !dynamicHubs.has(hubId)) {
+    const m = bankMeta(dto.gatheringAsset.institution ?? '');
+    dynamicHubs.set(hubId, {
+      id: hubId,
+      logo: m.logo, logoBg: m.bg, logoColor: m.color, imgSrc: m.imgSrc,
+      name: dto.gatheringAsset.accountName ?? '모으기 통장',
+      number: dto.gatheringAsset.assetNumber ?? '',
+      sub: dto.gatheringAsset.assetType ?? '',
+      cardBg: kind === 'IRP' ? '#FFF4E6' : kind === 'ISA' ? '#FEF3C7' : '#EEEDFE',
+      border: kind === 'IRP' ? '#FFB873' : kind === 'ISA' ? '#F59E0B' : '#AFA9EC',
+      nameColor: kind === 'IRP' ? '#9A4D00' : kind === 'ISA' ? '#92400E' : '#3C3489',
+      subColor:  kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
+      kind,
+      hubLabel: dto.gatheringAsset.institution ?? '',
+    });
+  }
+
+  const sources: FlowSource[] = dto.sources.map(s => {
+    const m = bankMeta(s.institution ?? '');
+    return {
+      logo: m.logo, bg: m.bg, color: m.color, imgSrc: m.imgSrc,
+      bank: s.institution ?? '',
+      name: s.accountName ?? '',
+      number: s.assetNumber ?? '',
+      amt: Math.round((s.amount ?? 0) / 10000), // 원 → 만원
+      assetId: s.assetId ?? undefined,
+    };
+  });
+
+  const products: FlowProduct[] = dto.products.map((p, i) => {
+    const meta = productTypeMeta(p.productType);
+    const productId = p.productId ?? `dyn-prod-${dto.id}-${i}`;
+    if (p.productId && !dynamicProducts.has(p.productId)) {
+      dynamicProducts.set(p.productId, {
+        id: p.productId,
+        type: meta.type,
+        name: p.productName ?? '',
+        description: p.interestRate != null ? `연 ${p.interestRate}%` : '',
+        recommended: false,
+        icon: meta.icon,
+        iconColor: meta.iconColor,
+        badgeBg: meta.badgeBg,
+        badgeColor: meta.badgeColor,
+      });
+    }
+    if (p.productId && p.productType) productApiTypeById.set(p.productId, p.productType);
+    return {
+      productId,
+      pct: p.productRatio ?? 0,
+      barColor: meta.barColor,
+      productType: p.productType ?? 'STOCK',
+    };
+  });
+
+  // 부족 메타는 기본값 (rate/projected는 추후 별도 데이터 소스로 대체)
+  return {
+    id: dto.id,
+    title: dto.title ?? '',
+    summary: dto.summary ?? '',
+    term, kind, hubId,
+    rate: '+0.0%', projected: '-', projectedPeriod: '6개월',
+    badgeBg: kind === 'IRP' ? '#FFF4E6' : kind === 'ISA' ? '#FEF3C7' : '#EEEDFE',
+    badgeColor: kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
+    sources, products,
+  };
+}
+
+// available-assets DTO → SourcePickerModal 의 AccountItem
+function assetToAccountItem(a: AvailableAsset): AccountItem {
+  const m = bankMeta(a.institution ?? '');
+  return {
+    id: a.id,
+    bank: a.institution ?? '',
+    name: a.accountName ?? '',
+    number: a.assetNumber ?? '',
+    logo: m.logo, bg: m.bg, color: m.color, imgSrc: m.imgSrc,
+  };
+}
+
+// available-assets DTO → HubPickerModal 의 HubItem (모으기 통장 후보)
+//   동시에 dynamicHubs 에도 등록해서 lookupHub 호환 유지
+function assetToHubItem(a: AvailableAsset): HubItem {
+  const m = bankMeta(a.institution ?? '');
+  const kind = assetTypeToKind(a.assetType);
+  const hub: HubItem = {
+    id: a.id,
+    logo: m.logo, logoBg: m.bg, logoColor: m.color, imgSrc: m.imgSrc,
+    name: a.accountName ?? '모으기 통장',
+    number: a.assetNumber ?? '',
+    sub: a.assetType ?? '',
+    cardBg: kind === 'IRP' ? '#FFF4E6' : kind === 'ISA' ? '#FEF3C7' : '#EEEDFE',
+    border: kind === 'IRP' ? '#FFB873' : kind === 'ISA' ? '#F59E0B' : '#AFA9EC',
+    nameColor: kind === 'IRP' ? '#9A4D00' : kind === 'ISA' ? '#92400E' : '#3C3489',
+    subColor:  kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
+    kind,
+    hubLabel: a.institution ?? '',
+  };
+  dynamicHubs.set(a.id, hub);
+  return hub;
+}
+
+// products DTO → ProductPickerModal 의 ProductItem
+//   동시에 dynamicProducts 와 productApiTypeById 에도 등록해서 lookup/저장 호환 유지
+function productToCatalogItem(p: Product): ProductItem {
+  const meta = productTypeMeta(p.productType);
+  const item: ProductItem = {
+    id: p.id,
+    type: meta.type,
+    name: p.name ?? '',
+    description: p.description ?? (p.interestRate != null ? `연 ${p.interestRate}%` : ''),
+    recommended: false,
+    icon: meta.icon,
+    iconColor: meta.iconColor,
+    badgeBg: meta.badgeBg,
+    badgeColor: meta.badgeColor,
+  };
+  dynamicProducts.set(p.id, item);
+  if (p.productType) productApiTypeById.set(p.id, p.productType);
+  return item;
+}
+
+// flow.id → '단기' / '단기1' / '단기2' 같이 중복 시 번호 부여
+function buildFlowTabLabels(flows: Flow[]): Record<string, string> {
+  const total: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
+  flows.forEach(f => { total[f.term]++; });
+  const seen: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
+  const labels: Record<string, string> = {};
+  flows.forEach(f => {
+    seen[f.term]++;
+    labels[f.id] = total[f.term] > 1 ? `${f.term}${seen[f.term]}` : f.term;
+  });
+  return labels;
+}
 
 // ─── 공통 서브컴포넌트 ─────────────────────────────
 
@@ -287,17 +390,17 @@ function ProductIcon({ icon, color, size = 18 }: { icon: 'trending-up' | 'piggy-
 
 type EditorMode =
   | null
-  | { type: 'source-pick';  flowKey: FlowKey; sourceIdx: number | 'new' }
-  | { type: 'hub-pick';     flowKey: FlowKey }
-  | { type: 'product-pick'; flowKey: FlowKey; productIdx: number | 'new' };
+  | { type: 'source-pick';  flowId: string; sourceIdx: number | 'new' }
+  | { type: 'hub-pick';     flowId: string }
+  | { type: 'product-pick'; flowId: string; productIdx: number | 'new' };
 
 const BAR_COLORS = ['#E24B4A', '#378ADD', '#534AB7', '#3B6D11', '#C45500', '#639922', '#0F6E56'];
 
 // ─── 흐름 상세 (A/B/C/D) ─────────────────────────────
 
 interface FlowDetailProps {
-  flowKey: FlowKey;
   flow: Flow;
+  termLabel: string;
   onEdit: (mode: EditorMode) => void;
   onAmount: (sourceIdx: number, amt: number) => void;
   onRemoveSource: (sourceIdx: number) => void;
@@ -305,7 +408,7 @@ interface FlowDetailProps {
   onRemoveProduct: (productIdx: number) => void;
 }
 
-function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, onRemoveProduct }: FlowDetailProps) {
+function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, onRemoveProduct }: FlowDetailProps) {
   const hub = lookupHub(flow.hubId);
   const total = sourceTotal(flow);
 
@@ -314,7 +417,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
       {/* 흐름 헤더 */}
       <div style={{ marginBottom: 14, padding: '12px 14px', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, background: TERM_STYLE[flow.term].bg, color: TERM_STYLE[flow.term].color, padding: '3px 8px', borderRadius: 99 }}>{FLOW_TERM_LABELS[flowKey]}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, background: TERM_STYLE[flow.term].bg, color: TERM_STYLE[flow.term].color, padding: '3px 8px', borderRadius: 99 }}>{termLabel}</span>
           {flow.kind !== '일반' && (
             <span style={{ fontSize: 10, background: flow.badgeBg, color: flow.badgeColor, padding: '3px 8px', borderRadius: 99, fontWeight: 700 }}>{flow.kind}</span>
           )}
@@ -330,7 +433,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
         sub="이 통장들에서 가져와요 (금액 직접 수정 가능)"
         action={
           <button
-            onClick={() => onEdit({ type: 'source-pick', flowKey, sourceIdx: 'new' })}
+            onClick={() => onEdit({ type: 'source-pick', flowId: flow.id, sourceIdx: 'new' })}
             style={{ fontSize: 11, fontWeight: 600, color: '#3182F6', background: '#EFF6FF', border: 'none', borderRadius: 99, padding: '4px 10px', cursor: 'pointer' }}
           >
             + 통장 추가
@@ -341,7 +444,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
           {flow.sources.map((s, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 10 }}>
               <button
-                onClick={() => onEdit({ type: 'source-pick', flowKey, sourceIdx: i })}
+                onClick={() => onEdit({ type: 'source-pick', flowId: flow.id, sourceIdx: i })}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', minWidth: 0, flex: 1 }}
               >
                 <Logo letter={s.logo} bg={s.bg} color={s.color} size={26} imgSrc={s.imgSrc} />
@@ -383,7 +486,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
         sub={flow.kind === '일반' ? '여기에 한 번 모아둬요' : `${flow.kind} 계좌로 모아둬요`}
         action={
           <button
-            onClick={() => onEdit({ type: 'hub-pick', flowKey })}
+            onClick={() => onEdit({ type: 'hub-pick', flowId: flow.id })}
             style={{ fontSize: 11, fontWeight: 600, color: '#3182F6', background: '#EFF6FF', border: 'none', borderRadius: 99, padding: '4px 10px', cursor: 'pointer' }}
           >
             변경
@@ -391,7 +494,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
         }
       >
         <button
-          onClick={() => onEdit({ type: 'hub-pick', flowKey })}
+          onClick={() => onEdit({ type: 'hub-pick', flowId: flow.id })}
           style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: hub.cardBg, border: `1px solid ${hub.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}
         >
           <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={30} imgSrc={hub.imgSrc} />
@@ -411,7 +514,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
         sub="상품을 탭하면 변경할 수 있어요"
         action={
           <button
-            onClick={() => onEdit({ type: 'product-pick', flowKey, productIdx: 'new' })}
+            onClick={() => onEdit({ type: 'product-pick', flowId: flow.id, productIdx: 'new' })}
             style={{ fontSize: 11, fontWeight: 600, color: '#3182F6', background: '#EFF6FF', border: 'none', borderRadius: 99, padding: '4px 10px', cursor: 'pointer' }}
           >
             + 상품 추가
@@ -433,7 +536,7 @@ function FlowDetail({ flowKey, flow, onEdit, onAmount, onRemoveSource, onPct, on
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none', gap: 8 }}>
               <button
-                onClick={() => onEdit({ type: 'product-pick', flowKey, productIdx: i })}
+                onClick={() => onEdit({ type: 'product-pick', flowId: flow.id, productIdx: i })}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', minWidth: 0, flex: 1, textAlign: 'left' }}
               >
                 <ProductIcon icon={prod.icon} color={prod.iconColor} size={16} />
@@ -491,13 +594,12 @@ const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0
 // 파스텔 톤
 const PIE_TERM_COLORS: Record<FlowTerm, string> = { 단기: '#FECACA', 중기: '#FDE68A', 장기: '#BBF7D0' };
 
-// 탭·배지 색상
+// 탭·배지 색상 (FlowTerm 기준 — 라벨에 숫자 붙어도 prefix로 매칭)
 const TERM_COLORS: Record<string, { bg: string; text: string }> = {
-  all:   { bg: '#ffffff', text: '#0f172a' },
-  단기:  { bg: '#FECACA', text: '#991B1B' },
-  중기:  { bg: '#FDE68A', text: '#92400E' },
-  장기1: { bg: '#BBF7D0', text: '#166534' },
-  장기2: { bg: '#BBF7D0', text: '#166534' },
+  all:  { bg: '#ffffff', text: '#0f172a' },
+  단기: { bg: '#FECACA', text: '#991B1B' },
+  중기: { bg: '#FDE68A', text: '#92400E' },
+  장기: { bg: '#BBF7D0', text: '#166534' },
 };
 
 function PieChart({ data }: { data: { pct: number; color: string; label: string; amt: number }[] }) {
@@ -573,19 +675,17 @@ function ProductBar({ products }: { products: FlowProduct[] }) {
   );
 }
 
-function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; onSelectFlow: (k: FlowKey) => void }) {
-  const allEntries = Object.entries(flows) as [FlowKey, Flow][];
-
+function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowLabels: Record<string, string>; onSelectFlow: (id: string) => void }) {
   // 항상 전체 기준으로 요약 계산
-  const totalMonthly = allEntries.reduce((sum, [, f]) => sum + sourceTotal(f), 0);
+  const totalMonthly = flows.reduce((sum, f) => sum + sourceTotal(f), 0);
   // 투자액 가중 평균 수익률 — 각 플로우의 연 수익률을 투자 비중으로 가중
   const weightedRate = totalMonthly > 0
-    ? allEntries.reduce((sum, [, f]) => sum + parseRatePct(f.rate) * sourceTotal(f), 0) / totalMonthly
+    ? flows.reduce((sum, f) => sum + parseRatePct(f.rate) * sourceTotal(f), 0) / totalMonthly
     : 0;
 
   // 파이 차트 — 기간별 비중
   const termAmounts: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
-  allEntries.forEach(([, f]) => { termAmounts[f.term] += sourceTotal(f); });
+  flows.forEach(f => { termAmounts[f.term] += sourceTotal(f); });
   const pieData = (['단기', '중기', '장기'] as FlowTerm[])
     .filter(t => termAmounts[t] > 0)
     .map(t => ({ pct: (termAmounts[t] / totalMonthly) * 100, color: PIE_TERM_COLORS[t], label: t, amt: termAmounts[t] }));
@@ -624,15 +724,15 @@ function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; on
       </div>
 
       {/* 흐름 카드 목록 */}
-      {allEntries.map(([key, f]) => {
+      {flows.map(f => {
         const hub = lookupHub(f.hubId);
         const total = sourceTotal(f);
-        const termLabel = FLOW_TERM_LABELS[key];
-        const tc = TERM_COLORS[termLabel] ?? TERM_COLORS.all;
+        const termLabel = flowLabels[f.id] ?? f.term;
+        const tc = TERM_COLORS[f.term] ?? TERM_COLORS.all;
         return (
           <button
-            key={key}
-            onClick={() => onSelectFlow(key)}
+            key={f.id}
+            onClick={() => onSelectFlow(f.id)}
             style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 16, padding: '12px 14px' }}
           >
             {/* Row 1: 기간 배지 + kind 배지 | 자세히 보기 */}
@@ -699,12 +799,17 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
   );
 }
 
-function SourcePickerModal({ currentName, onClose, onPick }: { currentName?: string; onClose: () => void; onPick: (a: AccountItem) => void }) {
+function SourcePickerModal({ catalog, currentName, onClose, onPick }: { catalog: AccountItem[]; currentName?: string; onClose: () => void; onPick: (a: AccountItem) => void }) {
   return (
     <ModalShell title="통장 선택" onClose={onClose}>
       <div style={{ padding: 14, overflowY: 'auto' }}>
+        {catalog.length === 0 && (
+          <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>
+            추가 가능한 통장이 없어요.
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {SOURCE_CATALOG.map(a => {
+          {catalog.map(a => {
             const isCurrent = currentName === a.name;
             return (
               <button
@@ -733,9 +838,9 @@ function SourcePickerModal({ currentName, onClose, onPick }: { currentName?: str
   );
 }
 
-function HubPickerModal({ currentId, onClose, onPick }: { currentId: string; onClose: () => void; onPick: (h: HubItem) => void }) {
+function HubPickerModal({ catalog, currentId, onClose, onPick }: { catalog: HubItem[]; currentId: string; onClose: () => void; onPick: (h: HubItem) => void }) {
   const [filter, setFilter] = useState<'전체' | '일반' | 'IRP' | 'ISA'>('전체');
-  const filtered = filter === '전체' ? HUB_CATALOG : HUB_CATALOG.filter(h => h.kind === filter);
+  const filtered = filter === '전체' ? catalog : catalog.filter(h => h.kind === filter);
   return (
     <ModalShell title="모으는 계좌 선택" onClose={onClose}>
       <div style={{ padding: '10px 14px 0' }}>
@@ -792,19 +897,19 @@ function HubPickerModal({ currentId, onClose, onPick }: { currentId: string; onC
   );
 }
 
-function ProductPickerModal({ currentId, mode, onClose, onPick }: { currentId?: string; mode: 'add' | 'replace'; onClose: () => void; onPick: (p: ProductItem) => void }) {
+function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }: { catalog: ProductItem[]; currentId?: string; mode: 'add' | 'replace'; onClose: () => void; onPick: (p: ProductItem) => void }) {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'전체' | ProductItem['type']>('전체');
   const [selected, setSelected] = useState<ProductItem | null>(currentId ? lookupProduct(currentId) : null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return PRODUCT_CATALOG.filter(p => {
+    return catalog.filter(p => {
       if (typeFilter !== '전체' && p.type !== typeFilter) return false;
       if (!q) return true;
       return p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || p.type.toLowerCase().includes(q);
     });
-  }, [query, typeFilter]);
+  }, [catalog, query, typeFilter]);
 
   const recommended = filtered.filter(p => p.recommended);
   const others = filtered.filter(p => !p.recommended);
@@ -926,46 +1031,74 @@ function ProductPickerModal({ currentId, mode, onClose, onPick }: { currentId?: 
 export default function AssetPortfolio() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
-  const [termTab, setTermTab] = useState<TermTab>('all');
-  const [detailFlowKey, setDetailFlowKey] = useState<FlowKey | null>(null);
-  const [flows, setFlows] = useState<Record<FlowKey, Flow>>(INITIAL_FLOWS);
+  const location = useLocation();
+  // 햄버거 → '포트폴리오 재설정' 으로 진입한 경우만 'edit' — 헤더 문구가 달라짐
+  const isEditMode = (location.state as { mode?: string } | null)?.mode === 'edit';
+  const [termTab, setTermTab] = useState<TermTab>('all');        // 'all' 또는 flow.id
+  const [detailFlowId, setDetailFlowId] = useState<string | null>(null);
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [availableAssets, setAvailableAssets] = useState<AvailableAsset[]>([]);
+  const [productCatalog, setProductCatalog] = useState<ProductItem[]>([]);
   const [editor, setEditor] = useState<EditorMode>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const updateFlow = (key: FlowKey, patch: (prev: Flow) => Flow) => {
-    setFlows(prev => ({ ...prev, [key]: patch(prev[key]) }));
+  // API 병렬: 흐름 / 통장 후보 / 상품 카탈로그
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([getPortfolioFlows(), getAvailableAssets(), getProducts()])
+      .then(([flowsRes, assetsRes, productsRes]) => {
+        if (cancelled) return;
+        setFlows(flowsRes.flows.map(apiToFlow));
+        setAvailableAssets(assetsRes.assets);
+        // dynamicHubs/Products 캐시 미리 채워두기 (lookup 호환)
+        assetsRes.assets.forEach(assetToHubItem);
+        setProductCatalog(productsRes.products.map(productToCatalogItem));
+      })
+      .catch(e => {
+        if (cancelled) return;
+        console.error('포트폴리오 조회 실패:', e);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // flow.id → 탭 라벨 (단기/단기1/단기2 …)
+  const flowLabels = useMemo(() => buildFlowTabLabels(flows), [flows]);
+
+  // 동적 탭: 전체 + 각 흐름
+  const tabs = useMemo<{ key: TermTab; label: string }[]>(() => [
+    { key: 'all', label: '전체' },
+    ...flows.map(f => ({ key: f.id, label: flowLabels[f.id] ?? f.term })),
+  ], [flows, flowLabels]);
+
+  const updateFlow = (id: string, patch: (prev: Flow) => Flow) => {
+    setFlows(prev => prev.map(f => f.id === id ? patch(f) : f));
   };
 
-  const handleAmount = (key: FlowKey, sourceIdx: number, amt: number) => {
-    updateFlow(key, f => ({
-      ...f,
-      sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, amt } : s),
-    }));
+  const handleAmount = (id: string, sourceIdx: number, amt: number) => {
+    updateFlow(id, f => ({ ...f, sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, amt } : s) }));
   };
 
-  const handleRemoveSource = (key: FlowKey, sourceIdx: number) => {
-    updateFlow(key, f => ({
-      ...f,
-      sources: f.sources.filter((_, i) => i !== sourceIdx),
-    }));
+  const handleRemoveSource = (id: string, sourceIdx: number) => {
+    updateFlow(id, f => ({ ...f, sources: f.sources.filter((_, i) => i !== sourceIdx) }));
   };
 
-  const handlePct = (key: FlowKey, productIdx: number, pct: number) => {
-    updateFlow(key, f => ({
-      ...f,
-      products: f.products.map((p, i) => i === productIdx ? { ...p, pct } : p),
-    }));
+  const handlePct = (id: string, productIdx: number, pct: number) => {
+    updateFlow(id, f => ({ ...f, products: f.products.map((p, i) => i === productIdx ? { ...p, pct } : p) }));
   };
 
   const handleSourcePick = (a: AccountItem) => {
     if (!editor || editor.type !== 'source-pick') return;
-    const { flowKey, sourceIdx } = editor;
-    updateFlow(flowKey, f => {
+    const { flowId, sourceIdx } = editor;
+    updateFlow(flowId, f => {
       if (sourceIdx === 'new') {
-        return { ...f, sources: [...f.sources, { logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, amt: 0, imgSrc: a.imgSrc }] };
+        return { ...f, sources: [...f.sources, { logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, amt: 0, imgSrc: a.imgSrc, assetId: a.id }] };
       }
       return {
         ...f,
-        sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, imgSrc: a.imgSrc } : s),
+        sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, imgSrc: a.imgSrc, assetId: a.id } : s),
       };
     });
     setEditor(null);
@@ -973,50 +1106,130 @@ export default function AssetPortfolio() {
 
   const handleHubPick = (h: HubItem) => {
     if (!editor || editor.type !== 'hub-pick') return;
-    updateFlow(editor.flowKey, f => ({ ...f, hubId: h.id, kind: h.kind }));
+    updateFlow(editor.flowId, f => ({ ...f, hubId: h.id, kind: h.kind }));
     setEditor(null);
   };
 
   const handleProductPick = (p: ProductItem) => {
     if (!editor || editor.type !== 'product-pick') return;
-    const { flowKey, productIdx } = editor;
-    updateFlow(flowKey, f => {
+    const { flowId, productIdx } = editor;
+    const apiType = productApiTypeById.get(p.id) ?? 'STOCK';
+    updateFlow(flowId, f => {
       if (productIdx === 'new') {
         const barColor = BAR_COLORS[f.products.length % BAR_COLORS.length];
-        return { ...f, products: [...f.products, { productId: p.id, pct: 0, barColor }] };
+        return { ...f, products: [...f.products, { productId: p.id, pct: 0, barColor, productType: apiType }] };
       }
       return {
         ...f,
-        products: f.products.map((prod, i) => i === productIdx ? { ...prod, productId: p.id } : prod),
+        products: f.products.map((prod, i) => i === productIdx ? { ...prod, productId: p.id, productType: apiType } : prod),
       };
     });
     setEditor(null);
   };
 
-  const handleRemoveProduct = (key: FlowKey, productIdx: number) => {
-    updateFlow(key, f => ({
-      ...f,
-      products: f.products.filter((_, i) => i !== productIdx),
-    }));
+  const handleRemoveProduct = (id: string, productIdx: number) => {
+    updateFlow(id, f => ({ ...f, products: f.products.filter((_, i) => i !== productIdx) }));
   };
 
-  // 단기/중기/장기1/장기2 모두 단일 flow — 탭 클릭 시 바로 FlowDetail 진입
-  const TERM_DIRECT: Partial<Record<string, FlowKey>> = { 단기: 'a', 중기: 'b', 장기1: 'c', 장기2: 'd' };
-  const directKey = termTab !== 'all' ? (TERM_DIRECT[termTab] ?? null) : null;
-  const activeFlowKey = directKey ?? detailFlowKey;
-  const showDetail = activeFlowKey !== null;
+  // "관리 시작하기" — 모든 흐름 일괄 PATCH 후 대시보드로
+  const buildRequest = (f: Flow): PortfolioFlowUpdateRequest => ({
+    gatheringAssetId: f.hubId || null,
+    sources: f.sources
+      .filter(s => s.assetId)
+      .map(s => ({ assetId: s.assetId!, amount: s.amt * 10000 })),  // 만원 → 원
+    products: f.products.map(p => ({
+      productId: p.productId.startsWith('dyn-') ? null : p.productId,
+      productType: p.productType,
+      productRatio: p.pct,
+      assetId: null,
+    })),
+  });
 
-  const handleBack = () => {
-    if (directKey) {
-      // 단기/중기 직접 탭 → 전체 탭으로
-      setTermTab('all');
-    } else if (detailFlowKey) {
-      // 장기 또는 전체 탭의 상세 → 목록으로
-      setDetailFlowKey(null);
-    } else {
-      navigate(-1);
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      const updatedList = await Promise.all(
+        flows.map(f => updatePortfolioFlow(f.id, buildRequest(f))),
+      );
+      setFlows(updatedList.map(apiToFlow));
+      navigate('/dashboard');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '저장 실패');
+      setSaving(false);
     }
   };
+
+  // 활성 흐름: 탭에서 흐름 선택했으면 그 흐름, 아니면 카드 클릭으로 들어간 detailFlowId
+  const activeFlowId = termTab !== 'all' ? termTab : detailFlowId;
+  const activeFlow = activeFlowId ? flows.find(f => f.id === activeFlowId) ?? null : null;
+  const showDetail = activeFlow != null;
+
+  // 편집 모달에서 참조할 flow
+  const editorFlow = editor && 'flowId' in editor ? flows.find(f => f.id === editor.flowId) ?? null : null;
+
+  // 현재 모든 흐름에서 사용 중인 통장 id 집합 (끌어오기 + 모으기)
+  const usedAssetIds = useMemo(() => {
+    const s = new Set<string>();
+    flows.forEach(f => {
+      if (f.hubId) s.add(f.hubId);
+      f.sources.forEach(src => { if (src.assetId) s.add(src.assetId); });
+    });
+    return s;
+  }, [flows]);
+
+  // 변경 중인 자기 자신은 후보에서 빼지 말고 그대로 보여주기 위한 예외 id
+  const exceptionAssetId: string | null = useMemo(() => {
+    if (!editor || !editorFlow) return null;
+    if (editor.type === 'source-pick' && editor.sourceIdx !== 'new') {
+      return editorFlow.sources[editor.sourceIdx]?.assetId ?? null;
+    }
+    if (editor.type === 'hub-pick') {
+      return editorFlow.hubId || null;
+    }
+    return null;
+  }, [editor, editorFlow]);
+
+  // 모달용 동적 카탈로그
+  //   sourceCatalog (끌어오기) — 통장 카테고리만 (STOCK/IRP/ISA 제외)
+  //   hubCatalog    (모으기)   — 통장 + 절세 계좌 (STOCK 제외)
+  //   공통: 이미 다른 곳에서 쓰이는 통장은 제외, 단 변경 중인 자기 자신은 예외로 포함
+  const sourceCatalog = useMemo(() =>
+    availableAssets
+      .filter(a => SOURCE_ASSET_TYPES.has(a.assetType ?? ''))
+      .filter(a => !usedAssetIds.has(a.id) || a.id === exceptionAssetId)
+      .map(assetToAccountItem),
+    [availableAssets, usedAssetIds, exceptionAssetId]);
+
+  const hubCatalog = useMemo(() =>
+    availableAssets
+      .filter(a => HUB_ASSET_TYPES.has(a.assetType ?? ''))
+      .filter(a => !usedAssetIds.has(a.id) || a.id === exceptionAssetId)
+      .map(assetToHubItem),
+    [availableAssets, usedAssetIds, exceptionAssetId]);
+
+  const handleBack = () => {
+    if (termTab !== 'all') setTermTab('all');
+    else if (detailFlowId) setDetailFlowId(null);
+    else navigate(-1);
+  };
+
+  // 로딩 / 에러 / 빈 상태
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #e2e8f0', borderTopColor: '#0f172a', animation: 'spin 0.8s linear infinite' }} />
+      </div>
+    );
+  }
+  if (flows.length === 0) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, background: '#f8fafc', fontFamily: "'Pretendard', sans-serif" }}>
+        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>아직 만들어진 포트폴리오 흐름이 없어요.</p>
+        <button onClick={() => navigate(-1)} style={{ fontSize: 12, fontWeight: 600, padding: '8px 16px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>뒤로가기</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: "'Pretendard', sans-serif", background: '#f8fafc', minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '0 0 48px' }}>
@@ -1033,29 +1246,34 @@ export default function AssetPortfolio() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
-          <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>자산 처방전</h1>
+          <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            {isEditMode ? '포트폴리오 재설정' : '자산 처방전'}
+          </h1>
         </div>
 
         <div style={{ padding: '12px 16px 0' }}>
           {!showDetail && (
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
               <p style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, margin: 0 }}>
-                {USER_NAME}님의 자산<br />이렇게 불려드릴게요
+                {isEditMode
+                  ? <>흐름과 상품 구성을<br />원하는 대로 수정해보세요</>
+                  : <>{USER_NAME}님의 자산<br />이렇게 불려드릴게요</>}
               </p>
-              <img src={pillImg} alt="처방전" style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
+              <img src={pillImg} alt={isEditMode ? '재설정' : '처방전'} style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
             </div>
           )}
 
           {/* 탭 — 상세 뷰일 때 숨김 */}
           {!showDetail && (
             <div style={{ display: 'flex', background: '#f1f5f9', padding: 3, borderRadius: 14, marginBottom: 16, gap: 2 }}>
-              {TERM_TABS.map(({ key, label }) => {
+              {tabs.map(({ key, label }) => {
                 const isActive = termTab === key;
-                const c = TERM_COLORS[key] ?? TERM_COLORS.all;
+                const flowOfTab = key === 'all' ? null : flows.find(f => f.id === key);
+                const c = flowOfTab ? (TERM_COLORS[flowOfTab.term] ?? TERM_COLORS.all) : TERM_COLORS.all;
                 return (
                   <button
                     key={key}
-                    onClick={() => { setTermTab(key); setDetailFlowKey(null); }}
+                    onClick={() => { setTermTab(key); setDetailFlowId(null); }}
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 11, border: 'none', cursor: 'pointer',
                       fontSize: 11, fontWeight: 700, transition: 'all .15s',
@@ -1075,30 +1293,39 @@ export default function AssetPortfolio() {
             </div>
           )}
 
-          {/* 개요 — 전체·장기 탭에서 상세 미선택 */}
+          {/* 개요 — 전체 탭에서 상세 미선택 */}
           {!showDetail && (
-            <AllOverview flows={flows} onSelectFlow={setDetailFlowKey} />
+            <AllOverview flows={flows} flowLabels={flowLabels} onSelectFlow={setDetailFlowId} />
           )}
 
-          {/* 상세 — 단기/중기 직접 진입 or 카드 클릭 진입 */}
-          {showDetail && activeFlowKey && (
+          {/* 상세 — 탭 직접 진입 or 카드 클릭 진입 */}
+          {showDetail && activeFlow && (
             <FlowDetail
-              flowKey={activeFlowKey}
-              flow={flows[activeFlowKey]}
+              flow={activeFlow}
+              termLabel={flowLabels[activeFlow.id] ?? activeFlow.term}
               onEdit={setEditor}
-              onAmount={(idx, amt) => handleAmount(activeFlowKey, idx, amt)}
-              onRemoveSource={(idx) => handleRemoveSource(activeFlowKey, idx)}
-              onPct={(idx, pct) => handlePct(activeFlowKey, idx, pct)}
-              onRemoveProduct={(idx) => handleRemoveProduct(activeFlowKey, idx)}
+              onAmount={(idx, amt) => handleAmount(activeFlow.id, idx, amt)}
+              onRemoveSource={(idx) => handleRemoveSource(activeFlow.id, idx)}
+              onPct={(idx, pct) => handlePct(activeFlow.id, idx, pct)}
+              onRemoveProduct={(idx) => handleRemoveProduct(activeFlow.id, idx)}
             />
           )}
 
-          {/* 하단 버튼 — overview일 때만 */}
+          {/* 하단 버튼 — overview일 때만 (모든 흐름 일괄 저장 후 대시보드 이동) */}
           {!showDetail && (
             <div style={{ marginTop: 24 }}>
-              <button onClick={() => navigate('/dashboard')}
-                style={{ width: '100%', padding: '16px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}>
-                관리 시작하기
+              <button
+                onClick={handleSaveAll}
+                disabled={saving}
+                style={{
+                  width: '100%', padding: '16px 0', fontSize: 15, fontWeight: 700,
+                  background: saving ? '#94a3b8' : '#3182F6', color: '#fff',
+                  border: 'none', borderRadius: 14,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 12px rgba(49,130,246,0.2)',
+                }}
+              >
+                {saving ? '저장 중…' : '관리 시작하기'}
               </button>
             </div>
           )}
@@ -1108,22 +1335,25 @@ export default function AssetPortfolio() {
       {/* 편집 모달들 */}
       {editor?.type === 'source-pick' && (
         <SourcePickerModal
-          currentName={editor.sourceIdx !== 'new' ? flows[editor.flowKey].sources[editor.sourceIdx]?.name : undefined}
+          catalog={sourceCatalog}
+          currentName={editor.sourceIdx !== 'new' ? editorFlow?.sources[editor.sourceIdx]?.name : undefined}
           onClose={() => setEditor(null)}
           onPick={handleSourcePick}
         />
       )}
-      {editor?.type === 'hub-pick' && (
+      {editor?.type === 'hub-pick' && editorFlow && (
         <HubPickerModal
-          currentId={flows[editor.flowKey].hubId}
+          catalog={hubCatalog}
+          currentId={editorFlow.hubId}
           onClose={() => setEditor(null)}
           onPick={handleHubPick}
         />
       )}
       {editor?.type === 'product-pick' && (
         <ProductPickerModal
+          catalog={productCatalog}
           mode={editor.productIdx === 'new' ? 'add' : 'replace'}
-          currentId={editor.productIdx === 'new' ? undefined : flows[editor.flowKey].products[editor.productIdx].productId}
+          currentId={editor.productIdx === 'new' ? undefined : editorFlow?.products[editor.productIdx]?.productId}
           onClose={() => setEditor(null)}
           onPick={handleProductPick}
         />

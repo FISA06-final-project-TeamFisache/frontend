@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { generatePrescriptions } from '../api/agentApi';
 import doctorImg from '../assets/doctor.png';
 
-const DISPLAY_MS = 4000;
+const MIN_DISPLAY_MS = 4000;
 const FADE_MS = 500;
 
 export default function PrescriptionComplete() {
@@ -11,13 +12,24 @@ export default function PrescriptionComplete() {
   const navigate = useNavigate();
   const [exiting, setExiting] = useState(false);
 
+  // StrictMode 이중 마운트 또는 빠른 재방문 시 generatePrescriptions 중복 호출 방지
+  const calledRef = useRef(false);
+
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setExiting(true), DISPLAY_MS);
-    const navTimer = setTimeout(() => navigate('/asset-portfolio', { replace: true }), DISPLAY_MS + FADE_MS);
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(navTimer);
-    };
+    if (calledRef.current) return;
+    calledRef.current = true;
+
+    const minDisplay = new Promise<void>(resolve => setTimeout(resolve, MIN_DISPLAY_MS));
+    const apiCall = generatePrescriptions().catch((e: unknown) => {
+      console.error('[PrescriptionComplete] generatePrescriptions 실패:', e);
+    });
+
+    Promise.all([apiCall, minDisplay]).then(() => {
+      setExiting(true);
+      setTimeout(() => {
+        navigate('/asset-portfolio', { replace: true });
+      }, FADE_MS);
+    });
   }, [navigate]);
 
   return (
