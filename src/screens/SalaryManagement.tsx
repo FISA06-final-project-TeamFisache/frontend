@@ -25,6 +25,11 @@ const SPEND_PLANS = [
   { id: '2', name: '파킹통장',   tag: '비상금', amount:   300_000, delta: 30_000, color: '#6366F1', logo: tossLogo  },
 ];
 
+const MOCK_INVEST_PLANS = [
+  { id: 'mock-i1', name: '토스뱅크', tag: '단기', amount: 1_200_000, delta: 0, editedDelta: 20000, color: '#3b82f6', logo: tossLogo, term: '단', institution: '토스뱅크' },
+  { id: 'mock-i2', name: '투자증권', tag: '중기', amount: 1_200_000, delta: 0, editedDelta: 0, color: '#3b82f6', logo: shinhanLogo, term: '중', institution: '신한은행' },
+];
+
 const BANK_META: Record<string, { bg: string; imgSrc: string }> = {
   '카카오뱅크': { bg: '#FEE500', imgSrc: kakaoLogo },
   '토스뱅크':   { bg: '#3182F6', imgSrc: tossLogo  },
@@ -37,9 +42,9 @@ const BANK_META: Record<string, { bg: string; imgSrc: string }> = {
 };
 
 const TERM_META: Record<string, { label: string; bg: string; text: string }> = {
-  '단': { label: '단기', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  '중': { label: '중기', bg: 'bg-blue-100',    text: 'text-blue-700'    },
-  '장': { label: '장기', bg: 'bg-purple-100',  text: 'text-purple-700'  },
+  '단': { label: '단기', bg: 'bg-red-100',     text: 'text-red-700'     },
+  '중': { label: '중기', bg: 'bg-amber-100',   text: 'text-amber-700'   },
+  '장': { label: '장기', bg: 'bg-emerald-100', text: 'text-emerald-700' },
 };
 
 const ALL_ACCOUNTS = [
@@ -52,6 +57,16 @@ const REASONS = [
   '생활비 카테고리 지난달 32,000원 초과',
   '비상금 최근 3개월 미인출',
   '투자 비율 20% 유지 기준 충족',
+];
+
+const SPEND_REASONS = [
+  '생활비 카테고리 지난달 32,000원 초과',
+  '비상금 최근 3개월 미인출',
+];
+
+const INVEST_REASONS = [
+  '단기 목적 자산(생활 여유 자금)의 유동성 확보와 우대 금리 혜택을 위해 추천해요',
+  '중기 목표 자금 마련 및 안정적 가치 상승을 위한 자산 분산 투자처예요',
 ];
 
 interface Plan {
@@ -82,65 +97,42 @@ export default function SalaryManagement({ onClose }: Props) {
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
   const [newTag,        setNewTag]        = useState('');
 
-  const dragRef = useRef<{
-    startY: number;
-    startDelta: number;
-    planId: string;
-    setter: React.Dispatch<React.SetStateAction<Plan[]>>;
-  } | null>(null);
 
-  // 전역 drag 이벤트 (mouse + touch, non-passive)
-  useEffect(() => {
-    const move = (y: number) => {
-      const d = dragRef.current;
-      if (!d) return;
-      const steps = Math.round((d.startY - y) / 5);
-      d.setter(prev => prev.map(p => p.id === d.planId ? { ...p, editedDelta: d.startDelta + steps * 1000 } : p));
-    };
-    const onMouseMove = (e: MouseEvent) => move(e.clientY);
-    const onTouchMove = (e: TouchEvent) => {
-      if (!dragRef.current) return;
-      e.preventDefault();
-      move(e.touches[0].clientY);
-    };
-    const onEnd = () => { dragRef.current = null; };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onEnd);
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onEnd);
-    return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onEnd);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onEnd);
-    };
-  }, []);
 
   useEffect(() => {
     getPortfolioFlows()
       .then(({ flows }) => {
-        setInvestPlans(
-          flows.filter(f => f.isActive).map(f => {
-            const inst = f.gatheringAsset?.institution ?? null;
-            const rate = f.products.find(p => p.interestRate != null)?.interestRate ?? null;
-            return {
-              id: f.id,
-              name: f.title,
-              tag: f.term ?? '투자',
-              amount: f.gatheringAsset?.balance ?? 0,
-              delta: 0,
-              editedDelta: 0,
-              color: '#10B981',
-              logo: inst ? (BANK_META[inst]?.imgSrc ?? wooriLogo) : wooriLogo,
-              term: f.term,
-              institution: inst,
-              interestRate: rate,
-            };
-          }),
-        );
+        const activeFlows = flows.filter(f => f.isActive);
+        if (activeFlows.length > 0) {
+          setInvestPlans(
+            activeFlows.map(f => {
+              const inst = f.gatheringAsset?.institution ?? null;
+              const rate = f.products.find(p => p.interestRate != null)?.interestRate ?? null;
+              return {
+                id: f.id,
+                name: f.gatheringAsset?.institution ?? '투자계좌',
+                tag: f.term ?? '투자',
+                amount: f.gatheringAsset?.balance ?? 0,
+                delta: 0,
+                editedDelta: 20000,
+                color: '#3b82f6',
+                logo: inst ? (BANK_META[inst]?.imgSrc ?? wooriLogo) : wooriLogo,
+                term: f.term,
+                institution: inst,
+                interestRate: rate,
+              };
+            }),
+          );
+        } else {
+          // 데이터베이스에 데이터가 없을 때 스크린샷과 동일한 목업 제공
+          setInvestPlans(MOCK_INVEST_PLANS);
+        }
       })
-      .catch(err => console.error('투자 계획 조회 실패:', err));
+      .catch(err => {
+        console.error('투자 계획 조회 실패:', err);
+        // API 에러 시에도 스크린샷 화면이 조절 가능하게 목업 폴백 제공
+        setInvestPlans(MOCK_INVEST_PLANS);
+      });
   }, []);
 
   const spendDelta  = spendPlans.reduce((s, p)  => s + p.editedDelta, 0);
@@ -253,15 +245,16 @@ export default function SalaryManagement({ onClose }: Props) {
   // ── 상세 (재설정) ─────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-200 flex justify-center font-sans">
-      <div className="w-full max-w-[390px] min-h-screen bg-white relative shadow-2xl">
+      <div className="w-full max-w-[390px] h-screen flex flex-col bg-white relative shadow-2xl overflow-hidden">
 
-        <header className="flex items-center justify-between p-4 bg-white sticky top-0 z-20 border-b border-slate-100">
+
+        <header className="flex items-center justify-between p-4 bg-white border-b border-slate-100 shrink-0">
           <button className="p-2" onClick={() => setView('summary')}><ChevronLeft className="w-6 h-6" /></button>
           <h1 className="font-semibold text-lg">월급 관리</h1>
           <button className="p-2 text-slate-400" onClick={onClose}><X className="w-5 h-5" /></button>
         </header>
 
-        <main className="p-5 pt-4 pb-40">
+        <main className="flex-1 overflow-y-auto p-5 pt-4 pb-6">
 
           {/* 급여통장 노드 */}
           <div className="flex flex-col items-center mb-1">
@@ -277,10 +270,10 @@ export default function SalaryManagement({ onClose }: Props) {
 
           {/* T자 분기선 */}
           <div className="relative h-7 pointer-events-none">
-            <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[3px] h-[14px] bg-slate-700" />
-            <div className="absolute left-[25%] right-[25%] top-[12px] h-[3px] bg-slate-700 rounded-sm" />
-            <div className="absolute left-[25%] -translate-x-1/2 top-[12px] w-[3px] h-[16px] bg-slate-700" />
-            <div className="absolute right-[25%] translate-x-1/2 top-[12px] w-[3px] h-[16px] bg-slate-700" />
+            <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[2px] h-[14px] bg-slate-300" />
+            <div className="absolute left-[25%] right-[25%] top-[12px] h-[2px] bg-slate-300 rounded-sm" />
+            <div className="absolute left-[25%] -translate-x-1/2 top-[12px] w-[2px] h-[16px] bg-slate-300" />
+            <div className="absolute right-[25%] translate-x-1/2 top-[12px] w-[2px] h-[16px] bg-slate-300" />
           </div>
 
           {/* 탭 노드 */}
@@ -307,9 +300,20 @@ export default function SalaryManagement({ onClose }: Props) {
 
           {/* 계좌 트리 */}
           <div className="relative mt-3">
-            {/* 수직선 — spend: 계좌추가 중앙에서 끝, invest: 마지막 카드에서 끝 */}
-            <div className={`absolute top-0 w-[3px] bg-slate-700 rounded-sm z-0
-              ${activeTab === 'spend' ? 'left-6 bottom-6' : 'right-6 bottom-0'}`} />
+            {/* 브랜치 연결선 (Symmetrical Dynamic SVG Path - 오버랩 처리로 선 끊김 방지) */}
+            <div className="relative h-8 w-full pointer-events-none mb-1">
+              <svg className="absolute inset-0 w-full h-full text-slate-300 overflow-visible" fill="none" stroke="currentColor">
+                <path
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d={activeTab === 'spend'
+                    ? "M 87.5 -8 L 87.5 16 L 24 16 L 24 40"
+                    : "M 262.5 -8 L 262.5 16 L 326 16 L 326 40"
+                  }
+                />
+              </svg>
+            </div>
 
             <div className="space-y-5 relative">
               {activePlans.map((plan, idx) => {
@@ -318,14 +322,29 @@ export default function SalaryManagement({ onClose }: Props) {
                 const abs = Math.abs(plan.editedDelta);
                 const termInfo = plan.term ? TERM_META[plan.term] : null;
                 const meta = isInvest && plan.institution ? BANK_META[plan.institution] : null;
+                const isLast = idx === activePlans.length - 1;
+
+                // 💡 동적 안전 조절 한도 계산 (마이너스 차단 & 전체 월급 인상분(10만원) 한도 내 배분 가능)
+                const minVal = 0; // 마이너스 불가능
+                const safeMax = Math.max(0, plan.editedDelta + remain);
 
                 return (
                   <div key={plan.id} className={`relative pt-2 ${isInvest ? 'pr-12 pl-1' : 'pl-12 pr-1'}`}>
+                    {/* 수직선 세그먼트 (top-[-8px] 오버랩을 적용하여 dynamic SVG와 Flawless하게 결합) */}
+                    {isInvest ? (
+                      /* 투자 탭: 우측 수직선 */
+                      <div className={`absolute right-[23px] top-[-8px] w-[2px] bg-slate-300 z-0
+                        ${isLast ? 'h-[52px]' : '-bottom-5'}`} />
+                    ) : (
+                      /* 지출 탭: 좌측 수직선 (항상 뒤에 계좌 추가 버튼이 있으므로 아래로 쭉 연결) */
+                      <div className="absolute left-[23px] top-[-8px] w-[2px] bg-slate-300 z-0 -bottom-5" />
+                    )}
+
                     {/* 수평 화살표 */}
-                    <svg className={`absolute top-11 w-6 h-4 text-slate-700 ${isInvest ? 'right-6' : 'left-6'}`}
+                    <svg className={`absolute top-11 w-6 h-4 text-slate-300 ${isInvest ? 'right-6' : 'left-6'}`}
                       fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none"
                       style={isInvest ? { transform: 'scaleX(-1)' } : undefined}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M0 12h20M16 6l6 6-6 6" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M0 12h20M16 6l6 6-6 6" />
                     </svg>
 
                     <div className="bg-white border border-slate-200 rounded-2xl p-4">
@@ -333,8 +352,7 @@ export default function SalaryManagement({ onClose }: Props) {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           {isInvest ? (
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shrink-0"
-                              style={{ backgroundColor: meta?.bg ?? '#94A3B8' }}>
+                            <div className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                               <img src={meta?.imgSrc ?? plan.logo} alt="" className="w-5 h-5 object-contain" />
                             </div>
                           ) : (
@@ -361,28 +379,71 @@ export default function SalaryManagement({ onClose }: Props) {
                         <p className="text-xs text-emerald-600 font-medium text-right mb-1">연 {plan.interestRate}%</p>
                       )}
 
-                      {/* 스크럽 영역 */}
-                      <div className="flex items-center">
-                        <div
-                          className={`flex-1 flex items-baseline gap-1 justify-center py-2 select-none cursor-ns-resize rounded-xl hover:bg-slate-50 active:bg-slate-100 transition-colors ${isNeg ? 'text-blue-500' : 'text-red-500'}`}
-                          onMouseDown={e => {
-                            dragRef.current = { startY: e.clientY, startDelta: plan.editedDelta, planId: plan.id, setter: setActivePlans };
-                          }}
-                          onTouchStart={e => {
-                            dragRef.current = { startY: e.touches[0].clientY, startDelta: plan.editedDelta, planId: plan.id, setter: setActivePlans };
-                          }}
-                        >
-                          <span className="text-xl font-bold">{isNeg ? '−' : '+'}{fmt(abs)}</span>
-                          <span className="text-sm text-slate-400 font-normal ml-0.5">원</span>
+                      {/* 컴팩트 조정 영역 (수동 조절 스크롤 제거, + - 5000원 버튼 및 AI 추천 팁 제공) */}
+                      <div className="mt-2.5 flex items-center gap-2">
+                        {/* 컴팩트 디스플레이 필 */}
+                        <div className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-2 py-1 flex items-center justify-between">
+                          {/* 마이너스 버튼 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextVal = plan.editedDelta - 5000;
+                              if (nextVal >= minVal) {
+                                setActivePlans(prev => prev.map(p => p.id === plan.id ? { ...p, editedDelta: nextVal } : p));
+                              }
+                            }}
+                            disabled={plan.editedDelta <= minVal}
+                            className={`w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center font-extrabold text-xs focus:outline-none transition-all
+                              ${plan.editedDelta <= minVal ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-slate-600 active:scale-95'}`}
+                          >
+                            -
+                          </button>
+
+                          {/* 중앙 정합 금액값 */}
+                          <div className="flex items-center gap-1 font-extrabold text-sm">
+                            <span className={plan.editedDelta > 0 ? 'text-red-500' : 'text-slate-500'}>
+                              {plan.editedDelta > 0 ? '+' : ''}{fmt(plan.editedDelta)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">원</span>
+
+                            {/* 미세다이얼 아이콘 */}
+                            <svg className={`w-3.5 h-3.5 ml-1 text-slate-300 shrink-0 ${plan.editedDelta !== 0 ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                              <circle cx={12} cy={12} r={9} strokeDasharray="3 3" />
+                              <circle cx={12} cy={12} r={3} />
+                            </svg>
+                          </div>
+
+                          {/* 플러스 버튼 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextVal = plan.editedDelta + 5000;
+                              if (nextVal <= safeMax) {
+                                setActivePlans(prev => prev.map(p => p.id === plan.id ? { ...p, editedDelta: nextVal } : p));
+                              }
+                            }}
+                            disabled={plan.editedDelta >= safeMax}
+                            className={`w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center font-extrabold text-xs focus:outline-none transition-all
+                              ${plan.editedDelta >= safeMax ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-slate-600 active:scale-95'}`}
+                          >
+                            +
+                          </button>
                         </div>
-                        <div className="relative shrink-0">
-                          <button onMouseEnter={() => setTooltip(plan.id)} onMouseLeave={() => setTooltip(null)} className="p-2">
-                            <HelpCircle className="w-4 h-4 text-slate-300" />
+
+                        {/* AI 추천 팁 툴팁 */}
+                        <div className="relative shrink-0 flex items-center">
+                          <button
+                            type="button"
+                            onMouseEnter={() => setTooltip(plan.id)}
+                            onMouseLeave={() => setTooltip(null)}
+                            className="p-1.5 focus:outline-none rounded-full bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors"
+                          >
+                            <HelpCircle className="w-4 h-4 text-slate-400 hover:text-slate-500 transition-colors" />
                           </button>
                           {tooltip === plan.id && (
-                            <div className="absolute right-0 bottom-8 w-60 bg-slate-800 text-white text-xs px-3 py-2.5 rounded-xl shadow-xl z-50 leading-relaxed pointer-events-none">
-                              <div className="absolute -bottom-1 right-4 w-2 h-2 bg-slate-800 rotate-45" />
-                              💡 {REASONS[idx] ?? 'AI 추천 조정 금액이에요'}
+                            <div className="absolute right-0 bottom-8 w-60 bg-slate-800 text-white text-[11px] px-3 py-2.5 rounded-xl shadow-xl z-50 leading-relaxed pointer-events-none">
+                              <div className="absolute -bottom-1 right-3.5 w-2 h-2 bg-slate-800 rotate-45" />
+                              💡 {(isInvest ? INVEST_REASONS : SPEND_REASONS)[idx] ?? 'AI 추천 조정 금액이에요'}
                             </div>
                           )}
                         </div>
@@ -395,9 +456,12 @@ export default function SalaryManagement({ onClose }: Props) {
               {/* 계좌 추가 — spend 탭에서만 */}
               {activeTab === 'spend' && (
                 <div className="relative pt-2 pl-12 pr-1">
-                  <svg className="absolute top-7 left-6 w-6 h-4 text-slate-700"
+                  {/* 마지막 계좌 추가 항목으로 이어지는 수직선 (화살표 높이인 h-[28px]까지만 뻗고 정밀하게 종료. top-[-8px] 적용) */}
+                  <div className="absolute left-[23px] top-[-8px] w-[2px] bg-slate-300 z-0 h-[36px]" />
+
+                  <svg className="absolute top-7 left-6 w-6 h-4 text-slate-300 pointer-events-none"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M0 12h20M16 6l6 6-6 6" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M0 12h20M16 6l6 6-6 6" />
                   </svg>
                   <button onClick={openAddModal}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors font-semibold text-sm active:scale-[0.98]">
@@ -409,8 +473,8 @@ export default function SalaryManagement({ onClose }: Props) {
           </div>
         </main>
 
-        {/* 하단 고정 바 */}
-        <div className="fixed bottom-0 max-w-[390px] w-full bg-white border-t border-slate-100 px-5 pt-3 pb-6 z-20 shadow-[0_-8px_16px_-8px_rgba(0,0,0,0.06)]">
+        {/* 하단 고정 바 (h-screen flex layout으로 완벽 격리 및 고정) */}
+        <div className="bg-white border-t border-slate-100 px-5 pt-3 pb-6 shrink-0 shadow-[0_-8px_16px_-8px_rgba(0,0,0,0.06)] z-20">
           <div className="flex justify-between items-baseline mb-0.5">
             <span className="text-xs font-semibold text-slate-500">통장에 남은 금액</span>
             <div className="flex items-baseline gap-1">
@@ -442,7 +506,7 @@ export default function SalaryManagement({ onClose }: Props) {
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-2">계좌 선택</label>
                 <div className="space-y-2">
-                  {ALL_ACCOUNTS.filter(a => !activePlans.some(p => p.name === a.name)).map(acc => {
+                  {ALL_ACCOUNTS.map(acc => {
                     const isSel = selectedAccId === acc.id;
                     return (
                       <button key={acc.id} type="button"
