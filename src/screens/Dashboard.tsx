@@ -156,7 +156,7 @@ function SalaryDonutChart({ data, total, totalAmt }: {
           </>
         ) : (
           <>
-            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>이 급여</div>
+            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>급여</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{total}</div>
           </>
         )}
@@ -585,16 +585,30 @@ export default function Dashboard() {
   // ── 표시용 헬퍼 ─────────────────────────────────────────
   const fmtManwon = (n: number) => `${Math.round(n / 10000).toLocaleString()}만 원`;
 
-  // 월급 분배 도넛 데이터 (API allocations → SalaryDonutChart 슬라이스)
+  // 월급 분배 도넛 데이터 (allocations + 투자 + 잉여금 → SalaryDonutChart 슬라이스)
   const SALARY_PALETTE = ['#EF9F27', '#7F77DD', '#378ADD', '#1D9E75', '#e2e8f0'];
+  const INVEST_COLOR = '#1D9E75';
+  const SURPLUS_COLOR = '#cbd5e1';
   const salarySlices: PortfolioSlice[] = dashboard
-    ? dashboard.salaryPlan.allocations.map((a, i) => ({
-        label: a.purpose ?? '기타',
-        pct: dashboard.salaryPlan.monthlyIncome > 0
-          ? Math.round(a.plannedAmount / dashboard.salaryPlan.monthlyIncome * 100)
-          : 0,
-        color: SALARY_PALETTE[i % SALARY_PALETTE.length],
-      }))
+    ? (() => {
+        const income = dashboard.salaryPlan.monthlyIncome;
+        const toPct = (amt: number) => income > 0 ? Math.round(amt / income * 100) : 0;
+
+        const allocSlices = dashboard.salaryPlan.allocations.map((a, i) => ({
+          label: a.purpose ?? '기타',
+          pct: toPct(a.plannedAmount),
+          color: SALARY_PALETTE[i % SALARY_PALETTE.length],
+        }));
+
+        const slices: PortfolioSlice[] = [...allocSlices];
+        if (dashboard.salaryPlan.investmentAmount > 0) {
+          slices.push({ label: '투자', pct: toPct(dashboard.salaryPlan.investmentAmount), color: INVEST_COLOR });
+        }
+        if (dashboard.salaryPlan.surplus > 0) {
+          slices.push({ label: '잉여금', pct: toPct(dashboard.salaryPlan.surplus), color: SURPLUS_COLOR });
+        }
+        return slices;
+      })()
     : [];
 
   // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑)
