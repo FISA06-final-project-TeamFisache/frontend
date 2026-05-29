@@ -6,6 +6,7 @@ import tossLogo  from '../assets/banks/toss.png';
 import heroImg   from '../assets/hero.png';
 
 type View = 'summary' | 'detail' | 'success';
+type Tab  = 'spend' | 'invest';
 
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
@@ -13,19 +14,21 @@ const fmt = (n: number) => n.toLocaleString('ko-KR');
 const SALARY       = 3_200_000;
 const SALARY_DELTA = 100_000;
 const SPEND        = 2_000_000;
-const SPEND_DELTA  =  80_000;
 const INVEST       = 1_200_000;
-const INVEST_DELTA =  20_000;
 
-const PLANS = [
+const SPEND_PLANS = [
   { id: '1', name: '입출금통장', tag: '생활비', amount: 1_500_000, delta: 50_000, color: '#F59E0B', logo: kakaoLogo },
   { id: '2', name: '파킹통장',   tag: '비상금', amount:   300_000, delta: 30_000, color: '#6366F1', logo: tossLogo  },
 ];
 
+const INVEST_PLANS = [
+  { id: '3', name: '자동투자',   tag: '투자',   amount: 1_200_000, delta: 20_000, color: '#10B981', logo: wooriLogo },
+];
+
 const ALL_ACCOUNTS = [
-  { id: 'a1', name: '입출금통장',  bank: '카카오뱅크', logo: kakaoLogo },
-  { id: 'a2', name: '파킹통장',   bank: '토스뱅크',  logo: tossLogo  },
-  { id: 'a3', name: '급여통장',   bank: '우리은행',  logo: wooriLogo },
+  { id: 'a1', name: '입출금통장', bank: '카카오뱅크', logo: kakaoLogo },
+  { id: 'a2', name: '파킹통장',  bank: '토스뱅크',  logo: tossLogo  },
+  { id: 'a3', name: '급여통장',  bank: '우리은행',  logo: wooriLogo },
 ];
 
 const REASONS = [
@@ -40,13 +43,23 @@ interface Props {
 }
 
 export default function SalaryManagement({ onClose }: Props) {
-  const [view,    setView]    = useState<View>('summary');
-  const [plans,   setPlans]   = useState(PLANS.map(p => ({ ...p, editedDelta: p.delta, locked: false })));
-  const [tooltip, setTooltip] = useState<string | null>(null);
-  const [showAddModal,     setShowAddModal]     = useState(false);
-  const [selectedAccId,    setSelectedAccId]    = useState<string | null>(null);
-  const [newTag,           setNewTag]           = useState('');
-  const [deleteTargetIdx,  setDeleteTargetIdx]  = useState<number | null>(null);
+  const [view,        setView]        = useState<View>('summary');
+  const [activeTab,   setActiveTab]   = useState<Tab>('spend');
+  const [spendPlans,  setSpendPlans]  = useState(SPEND_PLANS.map(p => ({ ...p, editedDelta: p.delta, locked: false })));
+  const [investPlans, setInvestPlans] = useState(INVEST_PLANS.map(p => ({ ...p, editedDelta: p.delta, locked: false })));
+  const [tooltip,     setTooltip]     = useState<string | null>(null);
+  const [showAddModal,   setShowAddModal]   = useState(false);
+  const [selectedAccId,  setSelectedAccId]  = useState<string | null>(null);
+  const [newTag,         setNewTag]         = useState('');
+  const [deleteTarget,   setDeleteTarget]   = useState<{ tab: Tab; idx: number } | null>(null);
+
+  const spendDelta  = spendPlans.reduce((s, p)  => s + p.editedDelta, 0);
+  const investDelta = investPlans.reduce((s, p) => s + p.editedDelta, 0);
+  const remain      = SALARY_DELTA - spendDelta - investDelta;
+  const isOver      = remain < 0;
+
+  const activePlans    = activeTab === 'spend' ? spendPlans    : investPlans;
+  const setActivePlans = activeTab === 'spend' ? setSpendPlans : setInvestPlans;
 
   const openAddModal = () => { setSelectedAccId(null); setNewTag(''); setShowAddModal(true); };
 
@@ -54,7 +67,7 @@ export default function SalaryManagement({ onClose }: Props) {
     const acc = ALL_ACCOUNTS.find(a => a.id === selectedAccId);
     const tag = newTag.trim();
     if (!acc || !tag) return;
-    setPlans(prev => [...prev, {
+    setActivePlans(prev => [...prev, {
       id: String(Date.now()), name: acc.name, tag,
       amount: 0, delta: 0, editedDelta: 0,
       locked: false, color: '#94A3B8', logo: acc.logo,
@@ -67,7 +80,6 @@ export default function SalaryManagement({ onClose }: Props) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center font-sans px-5 gap-3 py-10 relative">
 
-        {/* X 버튼 */}
         <button
           onClick={onClose}
           className="fixed top-5 right-5 z-50 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors"
@@ -75,33 +87,27 @@ export default function SalaryManagement({ onClose }: Props) {
           <X className="w-5 h-5" />
         </button>
 
-        {/* 섹션 1: 월급 변동 */}
         <div className="w-full max-w-[360px] bg-white rounded-2xl shadow-sm px-5 py-4">
           <p className="text-xs text-slate-400 mb-1">이번 달 월급 변동</p>
-          <p className="text-3xl font-extrabold text-red-500">
-            +{fmt(SALARY_DELTA)}원
-          </p>
+          <p className="text-3xl font-extrabold text-red-500">+{fmt(SALARY_DELTA)}원</p>
           <p className="text-xs text-slate-400 mt-1">우리은행 급여통장 · 지난달 대비</p>
         </div>
 
-        {/* 섹션 2: AI 근거 */}
         <div className="w-full max-w-[360px] bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 space-y-1.5">
           {REASONS.map((r, i) => (
             <p key={i} className="text-xs text-amber-800 leading-relaxed">{r}</p>
           ))}
         </div>
 
-        {/* 섹션 3: 배분 리스트 + 버튼 */}
         <div className="w-full max-w-[360px] bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 pt-4 pb-2 space-y-2">
 
-            {/* 지출할 금액: 하나의 회색 박스 */}
             <div className="flex items-stretch gap-0 bg-slate-100 rounded-2xl overflow-hidden">
               <div className="flex items-center justify-center flex-shrink-0 px-3 py-4">
                 <p className="text-xs font-bold text-slate-600 whitespace-nowrap">지출할 금액</p>
               </div>
               <div className="flex-1 flex flex-col justify-center gap-2 pr-3 py-3">
-                {plans.map(p => (
+                {spendPlans.map(p => (
                   <div key={p.id} className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
@@ -110,21 +116,34 @@ export default function SalaryManagement({ onClose }: Props) {
                       <span className="text-sm font-semibold text-slate-800 truncate">{p.name}</span>
                       <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-xs font-medium flex-shrink-0">{p.tag}</span>
                     </div>
-                    <span className="text-sm font-bold text-red-500 flex-shrink-0">+{fmt(p.delta)}원</span>
+                    <span className="text-sm font-bold text-red-500 flex-shrink-0">+{fmt(p.editedDelta)}원</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 투자할 금액 */}
-            <div className="flex items-center justify-between bg-slate-100 rounded-2xl px-4 py-3">
-              <p className="text-sm font-bold text-blue-600">투자할 금액</p>
-              <span className="text-sm font-bold text-red-500">+{fmt(INVEST_DELTA)}원</span>
+            <div className="flex items-stretch gap-0 bg-slate-100 rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-center flex-shrink-0 px-3 py-4">
+                <p className="text-xs font-bold text-blue-600 whitespace-nowrap">투자할 금액</p>
+              </div>
+              <div className="flex-1 flex flex-col justify-center gap-2 pr-3 py-3">
+                {investPlans.map(p => (
+                  <div key={p.id} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+                        <img src={p.logo} alt={p.name} className="w-5 h-5 object-contain" />
+                      </div>
+                      <span className="text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                      <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-xs font-medium flex-shrink-0">{p.tag}</span>
+                    </div>
+                    <span className="text-sm font-bold text-red-500 flex-shrink-0">+{fmt(p.editedDelta)}원</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
           </div>
 
-          {/* 버튼 */}
           <div className="flex border-t border-slate-100 mt-3">
             <button
               onClick={() => setView('detail')}
@@ -136,7 +155,7 @@ export default function SalaryManagement({ onClose }: Props) {
               onClick={() => setView('success')}
               className="flex-1 py-4 text-blue-600 font-bold text-sm hover:bg-blue-50 transition-colors"
             >
-              확인
+              이대로 하기
             </button>
           </div>
         </div>
@@ -149,7 +168,7 @@ export default function SalaryManagement({ onClose }: Props) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center font-sans gap-4">
         <img src={heroImg} alt="Pori" className="w-32 h-32 object-contain" />
-        <h2 className="text-xl font-bold text-slate-800">통장 나누기 완료</h2>
+        <h2 className="text-xl font-bold text-slate-800">월급 나누기 완료</h2>
         <button
           onClick={onClose}
           className="mt-2 px-12 py-3 bg-blue-600 text-white font-bold rounded-xl text-base hover:bg-blue-700 transition-colors"
@@ -161,15 +180,12 @@ export default function SalaryManagement({ onClose }: Props) {
   }
 
   // ── 월급 관리 상세 (재설정) ────────────────────────────
-  const totalEditedDelta = plans.reduce((s, p) => s + p.editedDelta, 0);
-  const remain           = SALARY_DELTA - INVEST_DELTA - totalEditedDelta;
-  const isOver           = remain < 0;
+  const bottomLabel = activeTab === 'spend' ? '통장에 남은 금액' : '배분 남은 금액';
 
   return (
     <div className="min-h-screen bg-gray-200 flex justify-center font-sans">
-      <div className="w-full max-w-[390px] min-h-screen bg-white relative shadow-2xl pb-32">
+      <div className="w-full max-w-[390px] min-h-screen bg-white relative shadow-2xl pb-44">
 
-        {/* 헤더 */}
         <header className="flex items-center justify-between p-4 bg-white sticky top-0 z-20 border-b border-slate-100">
           <button className="p-2" onClick={() => setView('summary')}>
             <ChevronLeft className="w-6 h-6" />
@@ -189,9 +205,7 @@ export default function SalaryManagement({ onClose }: Props) {
               우리은행 급여통장
             </p>
             <div className="border-2 border-slate-700 rounded-2xl px-6 py-2.5 shadow-sm bg-white text-center">
-              <p className="text-xs text-slate-400">
-                {fmt(SALARY)}<span className="ml-0.5">원</span>
-              </p>
+              <p className="text-xs text-slate-400">{fmt(SALARY)}<span className="ml-0.5">원</span></p>
               <p className="text-sm font-bold text-red-500 mt-0.5">+{fmt(SALARY_DELTA)}원</p>
             </div>
           </div>
@@ -204,26 +218,38 @@ export default function SalaryManagement({ onClose }: Props) {
             <div className="absolute right-[25%] translate-x-1/2 top-[12px] w-[3px] h-[16px] bg-slate-700" />
           </div>
 
-          {/* 지출할 금액 / 투자할 금액 */}
+          {/* 지출할 금액 / 투자할 금액 노드 — 자동계산 */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-xs font-semibold text-slate-400 mb-1 text-center">지출할 금액 ①</p>
               <div className="border-2 border-slate-700 rounded-2xl px-3 py-2.5 bg-white text-center">
-                <p className="text-xs text-slate-400">
-                  {fmt(SPEND)}<span className="ml-0.5">원</span>
-                </p>
-                <p className="text-sm font-bold text-red-500">+{fmt(SPEND_DELTA)}원</p>
+                <p className="text-xs text-slate-400">{fmt(SPEND)}<span className="ml-0.5">원</span></p>
+                <p className="text-sm font-bold text-red-500">+{fmt(spendDelta)}원</p>
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold text-blue-500 mb-1 text-center">투자할 금액</p>
+              <p className="text-xs font-semibold text-blue-400 mb-1 text-center">투자할 금액</p>
               <div className="border-2 border-blue-400 rounded-2xl px-3 py-2.5 bg-blue-50 text-center">
-                <p className="text-xs text-slate-400">
-                  {fmt(INVEST)}<span className="ml-0.5">원</span>
-                </p>
-                <p className="text-sm font-bold text-red-500">+{fmt(INVEST_DELTA)}원</p>
+                <p className="text-xs text-slate-400">{fmt(INVEST)}<span className="ml-0.5">원</span></p>
+                <p className="text-sm font-bold text-red-500">+{fmt(investDelta)}원</p>
               </div>
             </div>
+          </div>
+
+          {/* 탭 */}
+          <div className="flex rounded-xl overflow-hidden border border-slate-200 mb-4">
+            <button
+              onClick={() => setActiveTab('spend')}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${activeTab === 'spend' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+            >
+              지출할 금액
+            </button>
+            <button
+              onClick={() => setActiveTab('invest')}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors border-l border-slate-200 ${activeTab === 'invest' ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+            >
+              투자할 금액
+            </button>
           </div>
 
           {/* 계좌 트리 */}
@@ -231,7 +257,7 @@ export default function SalaryManagement({ onClose }: Props) {
             <div className="absolute left-6 top-[-14px] bottom-[3px] w-[3px] bg-slate-700 rounded-sm z-0" />
 
             <div className="space-y-5 relative">
-              {plans.map((plan, idx) => (
+              {activePlans.map((plan, idx) => (
                 <div key={plan.id} className="relative pl-12 pr-1 pt-2">
                   <svg className="absolute left-6 top-11 w-6 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M0 12h20M16 6l6 6-6 6" />
@@ -250,7 +276,7 @@ export default function SalaryManagement({ onClose }: Props) {
                           {plan.tag}
                         </span>
                         <button
-                          onClick={() => setPlans(prev => prev.map((p, i) => i === idx ? { ...p, locked: !p.locked } : p))}
+                          onClick={() => setActivePlans(prev => prev.map((p, i) => i === idx ? { ...p, locked: !p.locked } : p))}
                           className="p-1.5 rounded-full hover:bg-slate-100 transition-colors"
                         >
                           {plan.locked
@@ -258,7 +284,7 @@ export default function SalaryManagement({ onClose }: Props) {
                             : <LockOpen className="w-4 h-4 text-blue-400" />}
                         </button>
                         <button
-                          onClick={() => setDeleteTargetIdx(idx)}
+                          onClick={() => setDeleteTarget({ tab: activeTab, idx })}
                           className="p-1.5 rounded-full hover:bg-rose-50 transition-colors"
                         >
                           <Trash2 className="w-4 h-4 text-slate-300 hover:text-rose-400" />
@@ -278,7 +304,7 @@ export default function SalaryManagement({ onClose }: Props) {
                           value={fmt(plan.editedDelta)}
                           onChange={e => {
                             const v = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10) || 0;
-                            setPlans(prev => prev.map((p, i) => i === idx ? { ...p, editedDelta: v } : p));
+                            setActivePlans(prev => prev.map((p, i) => i === idx ? { ...p, editedDelta: v } : p));
                           }}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-3 pr-8 text-right font-bold text-red-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed"
                         />
@@ -328,22 +354,22 @@ export default function SalaryManagement({ onClose }: Props) {
           </div>
         </main>
 
-        {/* 하단 바 */}
-        <div className="fixed bottom-0 max-w-[390px] w-full bg-white border-t border-slate-200 p-4 pb-6 z-20 flex justify-between items-center shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
-          <div>
-            <span className="text-xs font-semibold text-slate-500 mb-0.5">배분 남은 금액</span>
-            <div className="text-2xl font-extrabold flex items-baseline gap-1">
-              <span className={isOver ? 'text-red-500' : 'text-blue-600'}>{fmt(remain)}</span>
+        {/* 하단 바 — 완료 버튼 가운데 */}
+        <div className="fixed bottom-0 max-w-[390px] w-full bg-white border-t border-slate-200 px-4 pt-3 pb-6 z-20 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+          <div className="flex justify-between items-baseline mb-1">
+            <span className="text-xs font-semibold text-slate-500">{bottomLabel}</span>
+            <div className="flex items-baseline gap-1">
+              <span className={`text-2xl font-extrabold ${isOver ? 'text-red-500' : 'text-blue-600'}`}>{fmt(remain)}</span>
               <span className="text-lg text-slate-400">원</span>
             </div>
-            <span className={`text-[10px] text-red-500 font-medium h-3 mt-0.5 transition-opacity ${isOver ? 'opacity-100' : 'opacity-0'}`}>
-              +{fmt(SALARY_DELTA)}원보다 많이 배분했어요
-            </span>
           </div>
+          <span className={`block text-[10px] text-red-500 font-medium h-3 mb-2 transition-opacity ${isOver ? 'opacity-100' : 'opacity-0'}`}>
+            +{fmt(SALARY_DELTA)}원보다 많이 배분했어요
+          </span>
           <button
             disabled={isOver}
             onClick={() => setView('success')}
-            className={`${isOver ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white px-8 py-3.5 rounded-xl font-bold text-lg transition-colors shadow-md flex items-center gap-2`}
+            className={`w-full ${isOver ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3.5 rounded-xl font-bold text-lg transition-colors shadow-md flex items-center justify-center gap-2`}
           >
             완료 <Check className="w-5 h-5" />
           </button>
@@ -364,7 +390,7 @@ export default function SalaryManagement({ onClose }: Props) {
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-2">계좌 선택</label>
                 <div className="space-y-2">
-                  {ALL_ACCOUNTS.filter(a => !plans.some(p => p.name === a.name)).map(acc => {
+                  {ALL_ACCOUNTS.filter(a => !activePlans.some(p => p.name === a.name)).map(acc => {
                     const isSelected = selectedAccId === acc.id;
                     return (
                       <button
@@ -409,7 +435,7 @@ export default function SalaryManagement({ onClose }: Props) {
       )}
 
       {/* 계좌 삭제 확인 모달 */}
-      {deleteTargetIdx !== null && (
+      {deleteTarget !== null && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl w-11/12 max-w-sm overflow-hidden shadow-2xl">
             <div className="p-7 text-center pt-8">
@@ -417,13 +443,29 @@ export default function SalaryManagement({ onClose }: Props) {
                 <Trash2 className="w-7 h-7 text-rose-500" />
               </div>
               <p className="text-slate-800 text-lg font-medium leading-relaxed">
-                <span className="font-bold text-slate-900">{plans[deleteTargetIdx]?.name}</span> 계좌를<br />삭제할까요?
+                <span className="font-bold text-slate-900">
+                  {deleteTarget.tab === 'spend'
+                    ? spendPlans[deleteTarget.idx]?.name
+                    : investPlans[deleteTarget.idx]?.name}
+                </span> 계좌를<br />삭제할까요?
               </p>
               <p className="text-xs text-slate-400 mt-2">삭제한 배분은 다른 계좌로 다시 나눠야 해요.</p>
             </div>
             <div className="flex border-t border-slate-100 bg-slate-50">
-              <button onClick={() => setDeleteTargetIdx(null)} className="flex-1 py-4 text-slate-500 font-semibold hover:bg-slate-100 transition-colors border-r border-slate-200">취소</button>
-              <button onClick={() => { setPlans(prev => prev.filter((_, i) => i !== deleteTargetIdx)); setDeleteTargetIdx(null); }} className="flex-1 py-4 text-rose-600 font-bold hover:bg-rose-50 transition-colors">삭제</button>
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-4 text-slate-500 font-semibold hover:bg-slate-100 transition-colors border-r border-slate-200">취소</button>
+              <button
+                onClick={() => {
+                  if (deleteTarget.tab === 'spend') {
+                    setSpendPlans(prev => prev.filter((_, i) => i !== deleteTarget.idx));
+                  } else {
+                    setInvestPlans(prev => prev.filter((_, i) => i !== deleteTarget.idx));
+                  }
+                  setDeleteTarget(null);
+                }}
+                className="flex-1 py-4 text-rose-600 font-bold hover:bg-rose-50 transition-colors"
+              >
+                삭제
+              </button>
             </div>
           </div>
         </div>
