@@ -102,6 +102,7 @@ interface Flow {
   projectedPeriod: string;   // '6개월' | '1년' | '4년'
   badgeBg: string;
   badgeColor: string;
+  amount: number;            // 흐름별 월 납입 금액 (만원)
   sources: FlowSource[];
   products: FlowProduct[];
 }
@@ -247,6 +248,7 @@ function apiToFlow(dto: PortfolioFlow): Flow {
     rate: '+0.0%', projected: '-', projectedPeriod: '6개월',
     badgeBg: kind === 'IRP' ? '#FFF4E6' : kind === 'ISA' ? '#FEF3C7' : '#EEEDFE',
     badgeColor: kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
+    amount: Math.round((dto.amount ?? 0) / 10000), // 원 → 만원
     sources, products,
   };
 }
@@ -675,20 +677,20 @@ function ProductBar({ products }: { products: FlowProduct[] }) {
   );
 }
 
-function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowLabels: Record<string, string>; onSelectFlow: (id: string) => void }) {
-  // 항상 전체 기준으로 요약 계산
-  const totalMonthly = flows.reduce((sum, f) => sum + sourceTotal(f), 0);
-  // 투자액 가중 평균 수익률 — 각 플로우의 연 수익률을 투자 비중으로 가중
-  const weightedRate = totalMonthly > 0
-    ? flows.reduce((sum, f) => sum + parseRatePct(f.rate) * sourceTotal(f), 0) / totalMonthly
+function AllOverview({ flows, flowLabels, monthlyInvestAmount, onSelectFlow }: { flows: Flow[]; flowLabels: Record<string, string>; monthlyInvestAmount: number; onSelectFlow: (id: string) => void }) {
+  // 흐름 amount 합계 (수익률 가중평균/파이 계산용)
+  const totalFlowAmount = flows.reduce((sum, f) => sum + f.amount, 0);
+  // 투자액 가중 평균 수익률 — 각 플로우의 연 수익률을 흐름 비중으로 가중
+  const weightedRate = totalFlowAmount > 0
+    ? flows.reduce((sum, f) => sum + parseRatePct(f.rate) * f.amount, 0) / totalFlowAmount
     : 0;
 
-  // 파이 차트 — 기간별 비중
+  // 파이 차트 — 기간별 비중 (흐름 amount 기준)
   const termAmounts: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
-  flows.forEach(f => { termAmounts[f.term] += sourceTotal(f); });
+  flows.forEach(f => { termAmounts[f.term] += f.amount; });
   const pieData = (['단기', '중기', '장기'] as FlowTerm[])
     .filter(t => termAmounts[t] > 0)
-    .map(t => ({ pct: (termAmounts[t] / totalMonthly) * 100, color: PIE_TERM_COLORS[t], label: t, amt: termAmounts[t] }));
+    .map(t => ({ pct: totalFlowAmount > 0 ? (termAmounts[t] / totalFlowAmount) * 100 : 0, color: PIE_TERM_COLORS[t], label: t, amt: termAmounts[t] }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -702,12 +704,12 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
               <div>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>월 총 투자액</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{totalMonthly}만 원</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{monthlyInvestAmount}만 원</div>
               </div>
               <div>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>예상 1년 수익</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', lineHeight: 1.2 }}>+{weightedRate.toFixed(1)}%</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {Math.round(totalMonthly * weightedRate / 100)}만 원</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {Math.round(monthlyInvestAmount * weightedRate / 100)}만 원</div>
               </div>
             </div>
             {/* 범례 */}
@@ -726,7 +728,6 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
       {/* 흐름 카드 목록 */}
       {flows.map(f => {
         const hub = lookupHub(f.hubId);
-        const total = sourceTotal(f);
         const termLabel = flowLabels[f.id] ?? f.term;
         const tc = TERM_COLORS[f.term] ?? TERM_COLORS.all;
         return (
@@ -760,7 +761,7 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
                 <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={20} imgSrc={hub.imgSrc} />
                 <span style={{ fontSize: 11, color: '#64748b', marginLeft: 3 }}>{hub.hubLabel}</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {total}만 원</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {f.amount}만 원</span>
             </div>
 
             {/* Row 3: 상품 바 */}
@@ -1037,6 +1038,7 @@ export default function AssetPortfolio() {
   const [termTab, setTermTab] = useState<TermTab>('all');        // 'all' 또는 flow.id
   const [detailFlowId, setDetailFlowId] = useState<string | null>(null);
   const [flows, setFlows] = useState<Flow[]>([]);
+  const [monthlyInvestAmount, setMonthlyInvestAmount] = useState<number>(0);   // 만원 단위
   const [availableAssets, setAvailableAssets] = useState<AvailableAsset[]>([]);
   const [productCatalog, setProductCatalog] = useState<ProductItem[]>([]);
   const [editor, setEditor] = useState<EditorMode>(null);
@@ -1051,6 +1053,7 @@ export default function AssetPortfolio() {
       .then(([flowsRes, assetsRes, productsRes]) => {
         if (cancelled) return;
         setFlows(flowsRes.flows.map(apiToFlow));
+        setMonthlyInvestAmount(Math.round((flowsRes.monthlyInvestAmount ?? 0) / 10000));
         setAvailableAssets(assetsRes.assets);
         // dynamicHubs/Products 캐시 미리 채워두기 (lookup 호환)
         assetsRes.assets.forEach(assetToHubItem);
@@ -1295,7 +1298,7 @@ export default function AssetPortfolio() {
 
           {/* 개요 — 전체 탭에서 상세 미선택 */}
           {!showDetail && (
-            <AllOverview flows={flows} flowLabels={flowLabels} onSelectFlow={setDetailFlowId} />
+            <AllOverview flows={flows} flowLabels={flowLabels} monthlyInvestAmount={monthlyInvestAmount} onSelectFlow={setDetailFlowId} />
           )}
 
           {/* 상세 — 탭 직접 진입 or 카드 클릭 진입 */}
