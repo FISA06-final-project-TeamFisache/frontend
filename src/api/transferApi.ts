@@ -57,15 +57,6 @@ export async function getTransferPlans(year: number, month: number): Promise<Tra
 }
 
 /**
- * POST /transfer-plans/generate — AI 기반 이체 계획 생성
- */
-export async function createTransferPlans(): Promise<TransferPlanList> {
-  const res = await api.post<CommonResponse<TransferPlanList>>('/transfer-plans/generate');
-  if (!res.success) throw new Error(res.message || '이체 계획 생성 실패');
-  return res.data;
-}
-
-/**
  * PATCH /transfer-plans/{id} — 이체 계획 금액 수정
  */
 export async function updateTransferPlan(id: string, plannedAmount: number): Promise<void> {

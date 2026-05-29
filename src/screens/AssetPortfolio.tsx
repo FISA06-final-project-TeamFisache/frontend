@@ -1,6 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getPortfolioFlows, getAvailableAssets, updatePortfolioFlow } from '../api/portfolioFlowApi';
+import type { AvailableAsset, PortfolioFlow } from '../api/portfolioFlowApi';
 import pillImg from '../assets/pill.png';
 import kakaoImg  from '../assets/banks/kakao.png';
 import tossImg   from '../assets/banks/toss.png';
@@ -104,7 +106,7 @@ const PRODUCT_CATALOG: ProductItem[] = [
 
 // ─── Flow 타입 ───────────────────────────────────────
 
-interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; imgSrc?: string; }
+interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; imgSrc?: string; assetId?: string; }
 interface FlowProduct { productId: string; pct: number; barColor: string; }
 
 type FlowTerm = '단기' | '중기' | '장기';
@@ -124,6 +126,8 @@ interface Flow {
   badgeColor: string;
   sources: FlowSource[];
   products: FlowProduct[];
+  apiId?: string; // 백엔드 flow UUID
+  gatheringAssetId?: string; // 백엔드 gathering asset UUID
 }
 
 const TERM_STYLE: Record<FlowTerm, { bg: string; color: string }> = {
@@ -699,35 +703,51 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
   );
 }
 
-function SourcePickerModal({ currentName, onClose, onPick }: { currentName?: string; onClose: () => void; onPick: (a: AccountItem) => void }) {
+function SourcePickerModal({ currentName, availableAssets, onClose, onPick }: { currentName?: string; availableAssets: AvailableAsset[]; onClose: () => void; onPick: (a: AccountItem) => void }) {
+  const items: AccountItem[] = availableAssets.length > 0
+    ? availableAssets.map(a => ({
+        id: a.id,
+        bank: a.institution ?? '',
+        name: a.accountName ?? '',
+        number: a.assetNumber ?? '',
+        logo: (a.institution ?? '?').slice(0, 1),
+        bg: '#E2E8F0',
+        color: '#0F172A',
+      }))
+    : SOURCE_CATALOG;
+
   return (
     <ModalShell title="통장 선택" onClose={onClose}>
       <div style={{ padding: 14, overflowY: 'auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {SOURCE_CATALOG.map(a => {
-            const isCurrent = currentName === a.name;
-            return (
-              <button
-                key={a.id}
-                onClick={() => onPick(a)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                  background: isCurrent ? '#EFF6FF' : '#fff',
-                  border: `1.5px solid ${isCurrent ? '#3182F6' : '#e2e8f0'}`,
-                  borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                <Logo letter={a.logo} bg={a.bg} color={a.color} size={32} imgSrc={a.imgSrc} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>{a.bank}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 1 }}>{a.name}</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', marginTop: 1 }}>{a.number}</div>
-                </div>
-                {isCurrent && <span style={{ fontSize: 11, color: '#3182F6', fontWeight: 700 }}>현재</span>}
-              </button>
-            );
-          })}
-        </div>
+        {items.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '24px 0' }}>연동된 계좌가 없습니다</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {items.map(a => {
+              const isCurrent = currentName === a.name;
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => onPick(a)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                    background: isCurrent ? '#EFF6FF' : '#fff',
+                    border: `1.5px solid ${isCurrent ? '#3182F6' : '#e2e8f0'}`,
+                    borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <Logo letter={a.logo} bg={a.bg} color={a.color} size={32} imgSrc={a.imgSrc} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>{a.bank}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 1 }}>{a.name}</div>
+                    <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', marginTop: 1 }}>{a.number}</div>
+                  </div>
+                  {isCurrent && <span style={{ fontSize: 11, color: '#3182F6', fontWeight: 700 }}>현재</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </ModalShell>
   );
@@ -923,6 +943,69 @@ function ProductPickerModal({ currentId, mode, onClose, onPick }: { currentId?: 
 
 // ─── 메인 컴포넌트 ─────────────────────────────────
 
+function apiFlowToFrontend(apiFlow: PortfolioFlow, key: FlowKey): Flow {
+  const FLOW_LABELS: Record<FlowKey, { label: string; shortLabel: string }> = {
+    a: { label: '알약 A', shortLabel: '알약A' },
+    b: { label: '알약 B', shortLabel: '알약B' },
+    c: { label: '알약 C', shortLabel: '알약C' },
+    d: { label: '알약 D', shortLabel: '알약D' },
+  };
+
+  const termMap: Record<string, FlowTerm> = { 단기: '단기', 중기: '중기', 장기: '장기' };
+  const term: FlowTerm = termMap[apiFlow.term ?? ''] ?? '단기';
+
+  let kind: '일반' | 'IRP' | 'ISA' = '일반';
+  const gType = apiFlow.gatheringAsset?.assetType?.toUpperCase() ?? '';
+  if (gType === 'IRP') kind = 'IRP';
+  else if (gType === 'ISA') kind = 'ISA';
+
+  // hubId 매핑: gathering asset institution → HUB_CATALOG
+  const gInstitution = apiFlow.gatheringAsset?.institution ?? '';
+  const matchedHub = HUB_CATALOG.find(h => h.hubLabel.includes(gInstitution) || gInstitution.includes(h.hubLabel.split(' ')[0]));
+  const hubId = matchedHub?.id ?? HUB_CATALOG[0].id;
+
+  // 가중 평균 수익률
+  const weightedRate = apiFlow.products.length > 0
+    ? apiFlow.products.reduce((sum, p) => sum + (p.interestRate ?? 0) * ((p.productRatio ?? 0) / 100), 0)
+    : 0;
+
+  const sources: FlowSource[] = apiFlow.sources.map((s, i) => ({
+    logo: (s.institution ?? '?').slice(0, 1),
+    bg: '#E2E8F0',
+    color: '#0F172A',
+    bank: s.institution ?? '',
+    name: s.accountName ?? '',
+    number: s.assetNumber ?? '',
+    amt: Math.round((s.amount ?? 0) / 10000),
+    assetId: s.assetId ?? undefined,
+    imgSrc: undefined,
+  }));
+
+  const products: FlowProduct[] = apiFlow.products.map((p, i) => ({
+    productId: p.productId ?? `api-${p.id}`,
+    pct: p.productRatio ?? 0,
+    barColor: BAR_COLORS[i % BAR_COLORS.length],
+  }));
+
+  return {
+    ...FLOW_LABELS[key],
+    title: apiFlow.title,
+    summary: apiFlow.summary ?? '',
+    term,
+    kind,
+    hubId,
+    rate: `+${weightedRate.toFixed(1)}%`,
+    projected: '-',
+    projectedPeriod: '1년',
+    badgeBg: '#EEEDFE',
+    badgeColor: '#534AB7',
+    sources,
+    products,
+    apiId: apiFlow.id,
+    gatheringAssetId: apiFlow.gatheringAsset?.id ?? undefined,
+  };
+}
+
 export default function AssetPortfolio() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
@@ -930,6 +1013,30 @@ export default function AssetPortfolio() {
   const [detailFlowKey, setDetailFlowKey] = useState<FlowKey | null>(null);
   const [flows, setFlows] = useState<Record<FlowKey, Flow>>(INITIAL_FLOWS);
   const [editor, setEditor] = useState<EditorMode>(null);
+  const [availableAssets, setAvailableAssets] = useState<AvailableAsset[]>([]);
+
+  useEffect(() => {
+    // 포트폴리오 흐름 로드
+    getPortfolioFlows()
+      .then(res => {
+        const keys: FlowKey[] = ['a', 'b', 'c', 'd'];
+        const loaded: Partial<Record<FlowKey, Flow>> = {};
+        res.flows.forEach((apiFlow, i) => {
+          if (i < keys.length) {
+            loaded[keys[i]] = apiFlowToFrontend(apiFlow, keys[i]);
+          }
+        });
+        if (Object.keys(loaded).length > 0) {
+          setFlows(prev => ({ ...prev, ...loaded }));
+        }
+      })
+      .catch(err => console.error('[AssetPortfolio] 흐름 로드 실패:', err));
+
+    // 사용 가능한 계좌 로드 (source picker용)
+    getAvailableAssets()
+      .then(assets => setAvailableAssets(assets))
+      .catch(err => console.error('[AssetPortfolio] 계좌 로드 실패:', err));
+  }, []);
 
   const updateFlow = (key: FlowKey, patch: (prev: Flow) => Flow) => {
     setFlows(prev => ({ ...prev, [key]: patch(prev[key]) }));
@@ -961,11 +1068,11 @@ export default function AssetPortfolio() {
     const { flowKey, sourceIdx } = editor;
     updateFlow(flowKey, f => {
       if (sourceIdx === 'new') {
-        return { ...f, sources: [...f.sources, { logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, amt: 0, imgSrc: a.imgSrc }] };
+        return { ...f, sources: [...f.sources, { logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, amt: 0, imgSrc: a.imgSrc, assetId: a.id }] };
       }
       return {
         ...f,
-        sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, imgSrc: a.imgSrc } : s),
+        sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, imgSrc: a.imgSrc, assetId: a.id } : s),
       };
     });
     setEditor(null);
@@ -1096,7 +1203,26 @@ export default function AssetPortfolio() {
           {/* 하단 버튼 — overview일 때만 */}
           {!showDetail && (
             <div style={{ marginTop: 24 }}>
-              <button onClick={() => navigate('/dashboard')}
+              <button onClick={async () => {
+                // 변경된 흐름 저장
+                const entries = Object.entries(flows) as [FlowKey, Flow][];
+                await Promise.allSettled(
+                  entries
+                    .filter(([, f]) => f.apiId)
+                    .map(([, f]) => updatePortfolioFlow(f.apiId!, {
+                      gatheringAssetId: f.gatheringAssetId ?? null,
+                      sources: f.sources
+                        .filter(s => s.assetId)
+                        .map(s => ({ assetId: s.assetId!, amount: s.amt * 10000 })),
+                      products: f.products.map(p => ({
+                        productId: p.productId.startsWith('api-') ? null : p.productId,
+                        productType: 'STOCK',
+                        productRatio: p.pct,
+                      })),
+                    }))
+                );
+                navigate('/dashboard');
+              }}
                 style={{ width: '100%', padding: '16px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}>
                 관리 시작하기
               </button>
@@ -1109,6 +1235,7 @@ export default function AssetPortfolio() {
       {editor?.type === 'source-pick' && (
         <SourcePickerModal
           currentName={editor.sourceIdx !== 'new' ? flows[editor.flowKey].sources[editor.sourceIdx]?.name : undefined}
+          availableAssets={availableAssets}
           onClose={() => setEditor(null)}
           onPick={handleSourcePick}
         />

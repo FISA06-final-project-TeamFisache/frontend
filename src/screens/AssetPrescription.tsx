@@ -9,8 +9,8 @@ import kbLogo from '../assets/banks/kb.png';
 import hanaLogo from '../assets/banks/hana.png';
 import miraeLogo from '../assets/banks/mirae.png';
 import { useAuth } from '../contexts/AuthContext';
-import type { AgentRecommend } from '../api/agentApi';
-import type { Asset } from '../api/assetApi';
+import { generateRecommend, type AgentRecommend } from '../api/agentApi';
+import { getAssets, type Asset } from '../api/assetApi';
 
 const BANK_LOGOS: Record<string, string> = {
   '카카오뱅크': kakaoLogo,
@@ -96,12 +96,28 @@ export default function AssetPrescription() {
   const location = useLocation();
 
   const state = location.state as { recommend?: AgentRecommend; assets?: Asset[] } | null;
-  const recommend: AgentRecommend | null = state?.recommend ?? null;
-  const rawAssets: Asset[] = state?.assets ?? [];
 
-  const TOTAL_SALARY    = recommend?.salary            ?? 3_200_000;
-  const FIXED_EXPENSE   = recommend?.totalFixedExpense ?? 245_000;
-  const INVESTMENT_AMOUNT = recommend?.investAmount    ?? 1_200_000;
+  const [recommend, setRecommend] = useState<AgentRecommend | null>(state?.recommend ?? null);
+  const [rawAssets, setRawAssets] = useState<Asset[]>(state?.assets ?? []);
+  const [apiLoading, setApiLoading] = useState(!state?.recommend);
+
+  // state로 받은 데이터가 없으면 직접 호출 (PrescriptionIntro → 직접 진입 경우)
+  useEffect(() => {
+    if (state?.recommend) return;
+    setApiLoading(true);
+    Promise.all([
+      generateRecommend().catch(() => null),
+      getAssets().catch(() => []),
+    ]).then(([rec, assets]) => {
+      setRecommend(rec);
+      setRawAssets(assets);
+    }).finally(() => setApiLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const TOTAL_SALARY      = recommend?.salary            ?? 0;
+  const FIXED_EXPENSE     = recommend?.totalFixedExpense ?? 0;
+  const INVESTMENT_AMOUNT = recommend?.investAmount      ?? 0;
 
   const salaryAccount = useMemo(() => rawAssets.find(a => a.isSalary) ?? null, [rawAssets]);
   const baseLinkedAccounts: LinkedAccount[] = useMemo(() => assetsToLinkedAccounts(rawAssets), [rawAssets]);
@@ -110,10 +126,7 @@ export default function AssetPrescription() {
     if (recommend?.rebalancingPlans?.length) {
       return recommend.rebalancingPlans.map((p, i) => planToAccount(p, rawAssets, i, TOTAL_SALARY));
     }
-    return [
-      { id: 0, bank: '입출금통장', bankName: '카카오뱅크', tag: '생활비', amount: 1_500_000, percent: 47, isPinned: true, color: TAG_COLORS[0] },
-      { id: 1, bank: '파킹통장',   bankName: '토스뱅크',   tag: '비상금', amount: 300_000,   percent: 9,  isPinned: false, color: TAG_COLORS[3] },
-    ];
+    return [];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recommend, rawAssets]);
 
@@ -138,6 +151,13 @@ export default function AssetPrescription() {
   }, []);
 
   const [investmentAmount, setInvestmentAmount] = useState(INVESTMENT_AMOUNT);
+
+  // API 응답이 비동기로 오면 state 동기화
+  useEffect(() => {
+    if (!recommend) return;
+    setInvestmentAmount(recommend.investAmount ?? 0);
+    setAccounts(initAccounts);
+  }, [recommend]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalAmount = accounts.reduce((sum, a) => sum + a.amount, 0);
   const spendAmount = TOTAL_SALARY - investmentAmount;
@@ -242,7 +262,16 @@ export default function AssetPrescription() {
         </header>
 
         <main className="p-5 pt-2">
-          {/* 헤더 텍스트 */}
+          {/* 로딩 중 */}
+          {apiLoading && (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-500 rounded-full animate-spin" />
+              <p className="text-sm text-slate-400">Pori가 분석 중이에요...</p>
+            </div>
+          )}
+
+          {/* 본문 */}
+          {!apiLoading && <>
           <h2 className="text-base font-bold leading-snug mb-3.5 text-slate-800">
             <span className="text-blue-600">Pori</span>가 {USER_NAME}님에 맞게 월급을 나눠봤어요!
           </h2>
@@ -300,7 +329,9 @@ export default function AssetPrescription() {
                   {showFixedInfo && (
                     <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[220px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 transform rotate-45" />
-                      고정 지출(월세, 보험, 통신비) <span className="font-bold text-blue-300">{formatNumber(FIXED_EXPENSE)}원</span>은 신한 고정지출 통장에 먼저 빼놨어요.
+                      {recommend?.fixedExpenseComment
+                        ? recommend.fixedExpenseComment
+                        : <>고정 지출 <span className="font-bold text-blue-300">{formatNumber(FIXED_EXPENSE)}원</span>은 먼저 빼놨어요.</>}
                     </div>
                   )}
                 </span>
@@ -445,6 +476,7 @@ export default function AssetPrescription() {
               </div>
             </div>
           </div>
+          </>}
 
         </main>
 

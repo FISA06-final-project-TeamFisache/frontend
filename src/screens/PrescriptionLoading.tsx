@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { generateRecommend, generatePrescriptions } from '../api/agentApi';
+import type { AgentRecommend } from '../api/agentApi';
+import { getAssets } from '../api/assetApi';
+import type { Asset } from '../api/assetApi';
 
 
 interface StepRowProps {
@@ -43,11 +47,22 @@ export default function PrescriptionLoading() {
   const [spinnerVisible, setSpinnerVisible] = useState(true);
   const [complete, setComplete] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const recommendRef = useRef<Promise<AgentRecommend | null>>(null as unknown as Promise<AgentRecommend | null>);
+  const assetsRef    = useRef<Promise<Asset[]>>(null as unknown as Promise<Asset[]>);
 
   useEffect(() => {
-    const t: ReturnType<typeof setTimeout>[] = [];
+    // 3개 API 병렬 호출 (애니메이션과 동시)
+    recommendRef.current = generateRecommend().catch(err => {
+      console.error('[PrescriptionLoading] generateRecommend 실패:', err);
+      return null;
+    });
+    assetsRef.current = getAssets().catch(() => []);
+    // generatePrescriptions: DB에 포트폴리오 흐름 생성 (AssetPortfolio에서 사용)
+    generatePrescriptions().catch(err =>
+      console.error('[PrescriptionLoading] generatePrescriptions 실패:', err)
+    );
 
-    // TODO: 실제 API 호출은 여기서 시작. 응답이 9s 이전에 오면 즉시 다음 화면으로 갈 수 있도록 race 처리 가능.
+    const t: ReturnType<typeof setTimeout>[] = [];
 
     t.push(setTimeout(() => setSteps(s => ({ ...s, s1: true })), 1800));
     t.push(setTimeout(() => { setChecks(c => ({ ...c, c1: true })); setMainVisible(false); }, 2500));
@@ -65,7 +80,13 @@ export default function PrescriptionLoading() {
     t.push(setTimeout(() => { setChecks(c => ({ ...c, c3: true })); setSpinnerVisible(false); }, 5300));
     t.push(setTimeout(() => setComplete(true), 6500));
     t.push(setTimeout(() => setExiting(true), 8500));
-    t.push(setTimeout(() => navigate('/asset-prescription', { replace: true }), 9000));
+    t.push(setTimeout(async () => {
+      const [recommend, assets] = await Promise.all([
+        recommendRef.current,
+        assetsRef.current,
+      ]);
+      navigate('/asset-prescription', { replace: true, state: { recommend, assets } });
+    }, 9000));
 
     return () => t.forEach(clearTimeout);
   }, [navigate]);

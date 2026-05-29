@@ -87,3 +87,12 @@ export async function generatePrescriptions(): Promise<AgentPrescriptions> {
   if (!res.success) throw new Error(res.message || '포트폴리오 처방 생성 중 오류가 발생했습니다.');
   return res.data;
 }
+
+/**
+ * POST /agent/event/prescriptions — 이벤트 기반 AI 처방전 생성
+ */
+export async function generateEventPrescriptions(): Promise<AgentPrescriptions> {
+  const res = await api.post<CommonResponse<AgentPrescriptions>>('/agent/event/prescriptions');
+  if (!res.success) throw new Error(res.message || '이벤트 포트폴리오 처방 생성 중 오류가 발생했습니다.');
+  return res.data;
+}

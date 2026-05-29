@@ -8,16 +8,10 @@ import wooriLogo   from '../assets/banks/woori.png';
 import kbLogo      from '../assets/banks/kb.png';
 import tossLogo    from '../assets/banks/toss.png';
 import hanaLogo    from '../assets/banks/hana.png';
+import { setSalaryAccount, connectAutoTransfer } from '../api/assetApi';
+import type { Asset } from '../api/assetApi';
 
 type Step = 'account-select' | 'transfer-setup';
-
-interface LinkedAccount {
-  id: string;
-  bankId: string;
-  name: string;
-  type: string;
-  balance: number;
-}
 
 interface Account {
   id: string;
@@ -28,39 +22,24 @@ interface Account {
   isWoori: boolean;
 }
 
-const BANK_INFO: Record<string, { name: string; logo?: string; isWoori: boolean }> = {
-  woori:   { name: '우리은행',   logo: wooriLogo,   isWoori: true  },
-  kakao:   { name: '카카오뱅크', logo: kakaoLogo,   isWoori: false },
-  shinhan: { name: '신한은행',   logo: shinhanLogo, isWoori: false },
-  kb:      { name: '국민은행',   logo: kbLogo,      isWoori: false },
-  toss:    { name: '토스뱅크',   logo: tossLogo,    isWoori: false },
-  hana:    { name: '하나은행',   logo: hanaLogo,    isWoori: false },
+const BANK_LOGOS: Record<string, string | undefined> = {
+  '우리은행':   wooriLogo,
+  '카카오뱅크': kakaoLogo,
+  '신한은행':   shinhanLogo,
+  '국민은행':   kbLogo,
+  '토스뱅크':   tossLogo,
+  '하나은행':   hanaLogo,
+  '미래에셋':   undefined,
 };
 
-const DEFAULT_ACCOUNTS: Account[] = [
-  { id: 'woori-1',   bank: '우리은행', logo: wooriLogo,   name: '우월한 월급 통장',     balance: 3_850_000, isWoori: true  },
-  { id: 'shinhan-1', bank: '신한은행', logo: shinhanLogo, name: '쏠편한 입출금통장',    balance: 3_200_000, isWoori: false },
-  { id: 'hana-2',    bank: '하나은행', logo: hanaLogo,    name: '급여하나 월복리 적금', balance: 3_600_000, isWoori: false },
-];
-
-const toAccount = (acc: LinkedAccount): Account => {
-  const info = BANK_INFO[acc.bankId] ?? { name: acc.bankId, isWoori: false };
-  return { id: acc.id, bank: info.name, logo: info.logo, name: acc.name, balance: acc.balance, isWoori: info.isWoori };
-};
-
-// 자동이체 입금받을 우리은행 계좌 후보 (TODO: 실제 사용자 보유 계좌 API 연동)
-interface WooriDestination {
-  id: string;
-  name: string;
-  number: string;
-  description: string;
-}
-
-const WOORI_DESTINATIONS: WooriDestination[] = [
-  { id: 'woori-salary', name: '우월한 월급 통장', number: '1002-***-345678', description: '주거래 우대 · 수수료 면제' },
-  { id: 'woori-park',   name: '우리WON 파킹 통장',       number: '1002-***-998877', description: '연 2.0% · 수시입출금'  },
-  { id: 'woori-saving', name: 'WON 적금',        number: '1002-***-234567', description: '연 4.1% · 12개월 적금' },
-];
+const assetToAccount = (asset: Asset): Account => ({
+  id: asset.id,
+  bank: asset.institution,
+  logo: BANK_LOGOS[asset.institution],
+  name: asset.accountName,
+  balance: asset.balance,
+  isWoori: asset.bankType === 'WOORI',
+});
 
 function PhoneFrame({ children, bottomLabel }: { children: React.ReactNode; bottomLabel?: string }) {
   return (
@@ -83,33 +62,66 @@ export default function SalarySelect() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const linkedAccounts: LinkedAccount[] = location.state?.linkedAccounts ?? [];
+  const assets: Asset[] = location.state?.assets ?? [];
 
   const [accounts, setAccounts] = useState<Account[]>(
-    linkedAccounts.length > 0
-      ? linkedAccounts.filter(a => a.name.includes('급여') || a.name.includes('월급')).map(toAccount)
-      : DEFAULT_ACCOUNTS
+    assets
+      .filter(a => ['CHECKING', 'PARKING', 'SAVINGS', 'SAVING'].includes(a.assetType))
+      .map(assetToAccount)
   );
   const [step, setStep] = useState<Step>('account-select');
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [transferAccount, setTransferAccount] = useState<WooriDestination>(WOORI_DESTINATIONS[0]);
   const [transferDate, setTransferDate] = useState(25);
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const otherAccounts = linkedAccounts.filter(l => !accounts.some(a => a.id === l.id));
+  const wooriAssets = assets.filter(a => a.bankType === 'WOORI');
+  const [transferAccount, setTransferAccount] = useState<Account | null>(
+    wooriAssets.length > 0 ? assetToAccount(wooriAssets[0]) : null
+  );
 
-  const handleAddFromModal = (linked: LinkedAccount) => {
-    const newAcc = toAccount(linked);
+  const otherAssets = assets.filter(a => !accounts.some(acc => acc.id === a.id));
+
+  const handleAddFromModal = (asset: Asset) => {
+    const newAcc = assetToAccount(asset);
     setAccounts(prev => [...prev, newAcc]);
     setSelectedAccount(newAcc);
     setShowModal(false);
+  };
+
+  const handleWooriConfirm = async () => {
+    if (!selectedAccount) return;
+    setSubmitting(true);
+    try {
+      await setSalaryAccount(selectedAccount.id);
+      navigate('/porti-survey');
+    } catch (err) {
+      console.error('[SalarySelect] setSalaryAccount 실패:', err);
+      navigate('/porti-survey');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleTransferConfirm = async () => {
+    if (!selectedAccount || !transferAccount) return;
+    setSubmitting(true);
+    try {
+      await setSalaryAccount(selectedAccount.id);
+      await connectAutoTransfer(transferAccount.id, transferDate);
+      navigate('/porti-survey');
+    } catch (err) {
+      console.error('[SalarySelect] 자동이체 설정 실패:', err);
+      navigate('/porti-survey');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ── Step 1: 계좌 선택 ────────────────────────────────────
   if (step === 'account-select') return (
     <PhoneFrame>
       <div className="flex-1 px-6 pt-8 flex flex-col overflow-y-auto">
-        {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800 leading-snug mt-1">
             급여가 들어오는<br />주거래 통장을<br />선택해 주세요
@@ -117,38 +129,41 @@ export default function SalarySelect() {
           <img src={heroImg} alt="마스코트" className="w-24 h-24 object-contain -mt-0.1 -mr-0.1" />
         </div>
 
-        {/* Account List */}
         <div className="space-y-3 flex-1">
-          {accounts.map(acc => (
-            <button
-              key={acc.id}
-              onClick={() => setSelectedAccount(acc)}
-              className={`w-full text-left p-4 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
-                selectedAccount?.id === acc.id
-                  ? 'border-blue-400 bg-blue-50'
-                  : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                  {acc.logo
-                    ? <img src={acc.logo} alt={acc.bank} className="w-8 h-8 object-contain" />
-                    : <span className="text-xs font-bold text-gray-600">{acc.bank.slice(0, 2)}</span>
-                  }
+          {accounts.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">연동된 계좌가 없습니다</p>
+          ) : (
+            accounts.map(acc => (
+              <button
+                key={acc.id}
+                onClick={() => setSelectedAccount(acc)}
+                className={`w-full text-left p-4 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
+                  selectedAccount?.id === acc.id
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                    {acc.logo
+                      ? <img src={acc.logo} alt={acc.bank} className="w-8 h-8 object-contain" />
+                      : <span className="text-xs font-bold text-gray-600">{acc.bank.slice(0, 2)}</span>
+                    }
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-medium mb-0.5">{acc.bank}</p>
+                    <p className="text-sm font-bold text-gray-800">{acc.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{acc.balance.toLocaleString()}원</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-medium mb-0.5">{acc.bank}</p>
-                  <p className="text-sm font-bold text-gray-800">{acc.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{acc.balance.toLocaleString()}원</p>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                  selectedAccount?.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                }`}>
+                  {selectedAccount?.id === acc.id && <div className="w-2 h-2 rounded-full bg-white" />}
                 </div>
-              </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
-                selectedAccount?.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-              }`}>
-                {selectedAccount?.id === acc.id && <div className="w-2 h-2 rounded-full bg-white" />}
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          )}
 
           <button
             onClick={() => setShowModal(true)}
@@ -159,87 +174,62 @@ export default function SalarySelect() {
         </div>
       </div>
 
-      {/* Bottom Button */}
       <div className="px-6 pb-8 pt-4 shrink-0">
         <button
-          disabled={!selectedAccount}
+          disabled={!selectedAccount || submitting}
           onClick={() => {
             if (selectedAccount?.isWoori) {
-              navigate('/porti-survey');
+              handleWooriConfirm();
             } else {
               setStep('transfer-setup');
             }
           }}
           className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-1 transition active:scale-95"
         >
-          {selectedAccount?.isWoori ? '완료' : '계속 · 자동이체 연결'}
-          <ChevronRight className="w-5 h-5" />
+          {submitting ? '처리 중...' : selectedAccount?.isWoori ? '완료' : '계속 · 자동이체 연결'}
+          {!submitting && <ChevronRight className="w-5 h-5" />}
         </button>
       </div>
 
-      {/* 계좌 추가 모달 */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
-          {/* 배경 오버레이 */}
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowModal(false)} />
-
-          {/* 바텀시트 */}
           <div className="relative w-full max-w-[390px] bg-white rounded-t-3xl max-h-[70vh] flex flex-col shadow-2xl">
-            {/* 핸들 바 */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 bg-gray-300 rounded-full" />
             </div>
-
-            {/* 헤더 */}
             <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 shrink-0">
               <h3 className="text-base font-bold text-gray-800">다른 계좌 선택</h3>
               <button onClick={() => setShowModal(false)} className="p-1 rounded-full hover:bg-gray-100 transition">
                 <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
-
-            {/* 계좌 목록 */}
             <div className="overflow-y-auto flex-1 px-6 py-4">
-              {otherAccounts.length === 0 ? (
+              {otherAssets.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 py-8">연결된 추가 계좌가 없습니다</p>
               ) : (
-                <div className="space-y-5">
-                  {Object.entries(
-                    otherAccounts.reduce((groups, linked) => {
-                      if (!groups[linked.bankId]) groups[linked.bankId] = [];
-                      groups[linked.bankId].push(linked);
-                      return groups;
-                    }, {} as Record<string, LinkedAccount[]>)
-                  ).map(([bankId, accs]) => {
-                    const info = BANK_INFO[bankId] ?? { name: bankId, isWoori: false };
+                <div className="space-y-2">
+                  {otherAssets.map(asset => {
+                    const acc = assetToAccount(asset);
                     return (
-                      <div key={bankId}>
-                        <p className="text-xs font-bold text-gray-400 mb-2 px-1">{info.name}</p>
-                        <div className="space-y-2">
-                          {accs.map(linked => (
-                            <button
-                              key={linked.id}
-                              onClick={() => handleAddFromModal(linked)}
-                              className="w-full text-left px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white hover:border-blue-300 active:scale-[0.98] flex items-center gap-3 transition"
-                            >
-                              <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                                {info.logo
-                                  ? <img src={info.logo} alt={info.name} className="w-7 h-7 object-contain" />
-                                  : <span className="text-xs font-bold text-gray-600">{info.name.slice(0, 2)}</span>
-                                }
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">{linked.type}</span>
-                                  <span className="text-sm font-bold text-gray-800 truncate">{linked.name}</span>
-                                </div>
-                                <p className="text-xs text-gray-500">{linked.balance.toLocaleString()}원</p>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
-                            </button>
-                          ))}
+                      <button
+                        key={asset.id}
+                        onClick={() => handleAddFromModal(asset)}
+                        className="w-full text-left px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white hover:border-blue-300 active:scale-[0.98] flex items-center gap-3 transition"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                          {acc.logo
+                            ? <img src={acc.logo} alt={acc.bank} className="w-7 h-7 object-contain" />
+                            : <span className="text-xs font-bold text-gray-600">{acc.bank.slice(0, 2)}</span>
+                          }
                         </div>
-                      </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-gray-400 mb-0.5">{acc.bank}</p>
+                          <p className="text-sm font-bold text-gray-800 truncate">{acc.name}</p>
+                          <p className="text-xs text-gray-500">{acc.balance.toLocaleString()}원</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                      </button>
                     );
                   })}
                 </div>
@@ -252,10 +242,11 @@ export default function SalarySelect() {
   );
 
   // ── Step 2: 자동이체 설정 (타행 전용) ───────────────────
+  const wooriAccounts = assets.filter(a => a.bankType === 'WOORI').map(assetToAccount);
+
   return (
     <PhoneFrame bottomLabel="자동이체 설정">
       <div className="flex-1 px-6 pt-6 flex flex-col overflow-y-auto">
-        {/* Back */}
         <button onClick={() => setStep('account-select')} className="flex items-center gap-1 text-gray-400 hover:text-gray-600 mb-6 -ml-1">
           <ChevronLeft className="w-5 h-5" />
           <span className="text-sm">뒤로</span>
@@ -266,7 +257,6 @@ export default function SalarySelect() {
           월급이 들어오면 지정일에 아래 계좌로 자동 이체됩니다
         </p>
 
-        {/* 출금 계좌 → 입금 계좌 */}
         <div className="bg-gray-50 rounded-2xl p-4 mb-5">
           <p className="text-xs text-gray-500 mb-3 font-medium">이체 경로</p>
           <div className="flex items-center gap-2">
@@ -277,39 +267,38 @@ export default function SalarySelect() {
             <ChevronRight className="w-4 h-4 text-blue-400 shrink-0" />
             <div className="flex-1 bg-blue-50 rounded-xl p-3 border border-blue-200">
               <p className="text-[10px] text-blue-400 mb-0.5">우리은행</p>
-              <p className="text-xs font-bold text-blue-700">{transferAccount.name}</p>
+              <p className="text-xs font-bold text-blue-700">{transferAccount?.name ?? '계좌 없음'}</p>
             </div>
           </div>
         </div>
 
-        {/* 입금 계좌 선택 */}
-        <div className="mb-5">
-          <p className="text-sm font-bold text-gray-600 mb-3">입금 받을 우리은행 계좌</p>
-          <div className="space-y-2">
-            {WOORI_DESTINATIONS.map(acc => (
+        {wooriAccounts.length > 0 && (
+          <div className="mb-5">
+            <p className="text-sm font-bold text-gray-600 mb-3">입금 받을 우리은행 계좌</p>
+            <div className="space-y-2">
+              {wooriAccounts.map(acc => (
                 <button
                   key={acc.id}
                   onClick={() => setTransferAccount(acc)}
                   className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
-                    transferAccount.id === acc.id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-white'
+                    transferAccount?.id === acc.id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-white'
                   }`}
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-gray-800">{acc.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{acc.description}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{acc.number}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{acc.bank}</p>
                   </div>
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ml-2 ${
-                    transferAccount.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                    transferAccount?.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
                   }`}>
-                    {transferAccount.id === acc.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                    {transferAccount?.id === acc.id && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                 </button>
               ))}
             </div>
           </div>
+        )}
 
-        {/* 자동이체일 선택 */}
         <div className="mb-5">
           <p className="text-sm font-bold text-gray-600 mb-3">자동이체일</p>
           <div className="grid grid-cols-7 gap-2">
@@ -332,7 +321,6 @@ export default function SalarySelect() {
           </p>
         </div>
 
-        {/* 확인 요약 */}
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 flex-1">
           <div className="space-y-1.5 text-sm text-blue-700">
             <div className="flex justify-between">
@@ -341,7 +329,7 @@ export default function SalarySelect() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">이체 계좌</span>
-              <span className="font-bold">{transferAccount.name}</span>
+              <span className="font-bold">{transferAccount?.name ?? '-'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">이체일</span>
@@ -353,11 +341,11 @@ export default function SalarySelect() {
 
       <div className="px-6 pb-8 pt-4 shrink-0">
         <button
-          onClick={() => navigate('/porti-survey')}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-1 transition active:scale-95"
+          onClick={handleTransferConfirm}
+          disabled={submitting || !transferAccount}
+          className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-1 transition active:scale-95"
         >
-          <Check className="w-5 h-5" />
-          완료
+          {submitting ? '처리 중...' : <><Check className="w-5 h-5" /> 완료</>}
         </button>
       </div>
     </PhoneFrame>

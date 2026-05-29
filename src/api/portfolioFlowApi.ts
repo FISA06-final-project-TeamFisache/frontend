@@ -1,5 +1,10 @@
 import { api } from './client';
-import type { CommonResponse } from './userApi';
+
+interface CommonResponse<T = unknown> {
+  success: boolean;
+  message: string;
+  data: T;
+}
 
 export interface PortfolioFlowGatheringAsset {
   id: string;
@@ -36,6 +41,7 @@ export interface PortfolioFlow {
   title: string;
   summary: string | null;
   term: string | null;
+  amount: number | null;
   isActive: boolean;
   gatheringAsset: PortfolioFlowGatheringAsset | null;
   sources: PortfolioFlowSourceItem[];
@@ -43,6 +49,7 @@ export interface PortfolioFlow {
 }
 
 export interface PortfolioFlowListResponse {
+  monthlyInvestAmount: number;
   flows: PortfolioFlow[];
 }
 

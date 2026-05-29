@@ -533,9 +533,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     getNotifications()
-      .then(res => setNotiItems(res.notifications.map(n => {
+      .then(notifications => setNotiItems(notifications.map(n => {
         const { icon, iconBg } = notiTypeToIcon(n.type);
-        return { id: n.id, icon, iconBg, title: n.title, body: n.body, time: formatRelativeTime(n.createdAt), read: n.isRead };
+        return { id: n.id, icon, iconBg, title: n.title, body: n.content, time: formatRelativeTime(n.sentAt), read: n.isRead };
       })))
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps

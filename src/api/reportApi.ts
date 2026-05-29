@@ -16,19 +16,36 @@ export interface ReportSummary {
   createdAt: string;
 }
 
+export interface AssetSnapshot {
+  snapshotDate: string;
+  totalAmount: number;
+}
+
+export interface WeeklyExpense {
+  week: number;
+  currCumulative: number;
+  prevCumulative: number;
+}
+
+export interface CategoryExpenseItem {
+  category: string;
+  amount: number;
+  prevAmount: number | null;
+  ratio: number;
+  hoverComment: string | null;
+}
+
 export interface ReportDetail extends ReportSummary {
-  monthlyChange: number | null;
-  portfolios: unknown | null;
-  portfolioComment: string | null;
-  expenseCategories: unknown | null;
-  expenseAnalysis: unknown | null;
-  recommendedRebalanceRatio: unknown | null;
-  nextMonthGuideline: string | null;
   trendComment: string | null;
   eventComment: string | null;
   marketCondition: string | null;
+  guideline: string | null;
   performanceStatus: string | null;
   performanceComment: string | null;
+  goalProgress: number;
+  assetSnapshots: AssetSnapshot[];
+  weeklyExpenses: WeeklyExpense[];
+  categoryExpenses: CategoryExpenseItem[];
 }
 
 /**
