@@ -8,22 +8,21 @@ import hanaLogo    from '../assets/banks/hana.png';
 import kbLogo      from '../assets/banks/kb.png';
 import miraeLogo   from '../assets/banks/mirae.png';
 import heroImg     from '../assets/hero.png';
-import { getPortfolioItems } from '../api/portfolioApi';
+import { getPortfolioItems, updatePortfolios } from '../api/portfolioApi';
+import { getTransferPlans } from '../api/transferApi';
+import { getAssets } from '../api/assetApi';
 
 type View = 'summary' | 'detail' | 'success';
 type Tab  = 'spend' | 'invest';
 
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
-const SALARY       = 3_200_000;
-const SALARY_DELTA = 100_000;
-const SPEND        = 2_000_000;
-const INVEST       = 1_200_000;
-
-const SPEND_PLANS = [
-  { id: '1', name: '입출금통장', tag: '생활비', amount: 1_500_000, delta: 50_000, color: '#F59E0B', logo: kakaoLogo },
-  { id: '2', name: '파킹통장',   tag: '비상금', amount:   300_000, delta: 30_000, color: '#6366F1', logo: tossLogo  },
-];
+const SPEND_TYPE_META: Record<string, { tag: string; color: string }> = {
+  SPENDING:  { tag: '생활비', color: '#F59E0B' },
+  EMERGENCY: { tag: '비상금', color: '#6366F1' },
+  TARGET:    { tag: '목표',   color: '#10B981' },
+  SAVING:    { tag: '저축',   color: '#3B82F6' },
+};
 
 const MOCK_INVEST_PLANS = [
   { id: 'mock-i1', name: '토스뱅크', tag: '단기', amount: 1_200_000, delta: 0, editedDelta: 20000, color: '#3b82f6', logo: tossLogo, term: '단', institution: '토스뱅크' },
@@ -53,11 +52,6 @@ const PRODUCT_TYPE_META: Record<string, { tag: string; term: string }> = {
   STOCK:   { tag: '주식',  term: '장' },
 };
 
-const ALL_ACCOUNTS = [
-  { id: 'a1', name: '입출금통장', bank: '카카오뱅크', logo: kakaoLogo },
-  { id: 'a2', name: '파킹통장',  bank: '토스뱅크',  logo: tossLogo  },
-  { id: 'a3', name: '급여통장',  bank: '우리은행',  logo: wooriLogo },
-];
 
 const REASONS = [
   '생활비 카테고리 지난달 32,000원 초과',
@@ -87,6 +81,7 @@ interface Plan {
   term?: string | null;
   institution?: string | null;
   interestRate?: number | null;
+  productType?: string;
 }
 
 interface Props {
@@ -96,14 +91,65 @@ interface Props {
 export default function SalaryManagement({ onClose }: Props) {
   const [view,       setView]       = useState<View>('summary');
   const [activeTab,  setActiveTab]  = useState<Tab>('spend');
-  const [spendPlans, setSpendPlans] = useState<Plan[]>(SPEND_PLANS.map(p => ({ ...p, editedDelta: p.delta })));
+  const [spendPlans, setSpendPlans] = useState<Plan[]>([]);
   const [investPlans, setInvestPlans] = useState<Plan[]>([]);
+  const [salary,     setSalary]     = useState(0);
+  const [salaryDelta, setSalaryDelta] = useState(0);
+  const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>(null);
+  const [accounts,   setAccounts]   = useState<Array<{ id: string; name: string; bank: string; logo: string }>>([]);
   const [tooltip,    setTooltip]    = useState<string | null>(null);
   const [showAddModal,  setShowAddModal]  = useState(false);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
   const [newTag,        setNewTag]        = useState('');
 
 
+
+  useEffect(() => {
+    const now = new Date();
+    Promise.all([
+      getTransferPlans(now.getFullYear(), now.getMonth() + 1),
+      getAssets(),
+    ])
+      .then(([planData, assets]) => {
+        const assetMap = new Map(assets.map(a => [a.id, a]));
+        const salaryAsset = assets.find(a => a.isSalary);
+        if (salaryAsset) {
+          setSalary(salaryAsset.balance);
+          setSalaryAccount({
+            institution: salaryAsset.institution,
+            logo: BANK_META[salaryAsset.institution]?.imgSrc ?? wooriLogo,
+          });
+        }
+        setSalaryDelta(planData.salaryAmount ?? planData.totalAmount ?? 0);
+        if (planData.plans.length > 0) {
+          setSpendPlans(
+            planData.plans.map(p => {
+              const asset = p.assetId ? assetMap.get(p.assetId) : null;
+              const typeMeta = SPEND_TYPE_META[p.assetType] ?? { tag: p.assetType, color: '#94A3B8' };
+              return {
+                id: p.id,
+                name: asset?.accountName ?? p.institution ?? '계좌',
+                tag: typeMeta.tag,
+                amount: asset?.balance ?? 0,
+                delta: p.plannedAmount,
+                editedDelta: p.plannedAmount,
+                color: typeMeta.color,
+                logo: p.institution ? (BANK_META[p.institution]?.imgSrc ?? wooriLogo) : wooriLogo,
+              };
+            }),
+          );
+        }
+        setAccounts(
+          assets.map(a => ({
+            id: a.id,
+            name: a.accountName,
+            bank: a.institution,
+            logo: BANK_META[a.institution]?.imgSrc ?? wooriLogo,
+          })),
+        );
+      })
+      .catch(err => console.error('이체 계획 조회 실패:', err));
+  }, []);
 
   useEffect(() => {
     getPortfolioItems()
@@ -125,6 +171,7 @@ export default function SalaryManagement({ onClose }: Props) {
                 term: meta.term,
                 institution: inst,
                 interestRate: null,
+                productType: item.productType,
               };
             }),
           );
@@ -139,8 +186,22 @@ export default function SalaryManagement({ onClose }: Props) {
 
   const spendDelta  = spendPlans.reduce((s, p)  => s + p.editedDelta, 0);
   const investDelta = investPlans.reduce((s, p) => s + p.editedDelta, 0);
-  const remain      = SALARY_DELTA - spendDelta - investDelta;
+  const remain      = salaryDelta - spendDelta - investDelta;
   const isOver      = remain < 0;
+
+  const handleConfirm = async () => {
+    try {
+      const portfolios = investPlans.map(p => ({
+        assetType: p.productType ?? p.tag,
+        assetAmount: p.editedDelta,
+        assetId: p.id,
+      }));
+      await updatePortfolios(portfolios, investDelta);
+    } catch (err) {
+      console.error('[SalaryManagement] PATCH /portfolios 실패:', err);
+    }
+    setView('success');
+  };
 
   const activePlans    = activeTab === 'spend' ? spendPlans    : investPlans;
   const setActivePlans = activeTab === 'spend' ? setSpendPlans : setInvestPlans;
@@ -148,7 +209,7 @@ export default function SalaryManagement({ onClose }: Props) {
   const openAddModal = () => { setSelectedAccId(null); setNewTag(''); setShowAddModal(true); };
 
   const addAccount = () => {
-    const acc = ALL_ACCOUNTS.find(a => a.id === selectedAccId);
+    const acc = accounts.find(a => a.id === selectedAccId);
     const tag = newTag.trim();
     if (!acc || !tag) return;
     setActivePlans(prev => [...prev, {
@@ -182,8 +243,8 @@ export default function SalaryManagement({ onClose }: Props) {
 
             {/* Box 1: 월급 변동 */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 text-center">
-              <p className="text-xs text-slate-400 mb-1.5">우리은행 급여통장 · 지난달 대비</p>
-              <p className="text-3xl font-extrabold text-red-500">+{fmt(SALARY_DELTA)}원</p>
+              <p className="text-xs text-slate-400 mb-1.5">{salaryAccount?.institution ?? '급여'} 급여통장 · 이번달 배분 금액</p>
+              <p className="text-3xl font-extrabold text-red-500">+{fmt(salaryDelta)}원</p>
             </div>
 
             {/* Box 2: Pori 조언 */}
@@ -266,7 +327,7 @@ export default function SalaryManagement({ onClose }: Props) {
               className="flex-1 py-4 text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors border-r border-slate-100">
               재설정
             </button>
-            <button onClick={() => setView('success')}
+            <button onClick={handleConfirm}
               className="flex-1 py-4 text-blue-600 font-bold text-sm hover:bg-blue-50 transition-colors">
               이대로 하기
             </button>
@@ -307,12 +368,12 @@ export default function SalaryManagement({ onClose }: Props) {
           {/* 급여통장 노드 */}
           <div className="flex flex-col items-center mb-1">
             <p className="text-xs font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
-              <img src={wooriLogo} alt="" className="w-4 h-4 rounded-full object-contain" />
-              우리은행 급여통장
+              <img src={salaryAccount?.logo ?? wooriLogo} alt="" className="w-4 h-4 rounded-full object-contain" />
+              {salaryAccount?.institution ?? '급여'} 급여통장
             </p>
             <div className="border-2 border-slate-700 rounded-2xl px-6 py-2.5 shadow-sm bg-white text-center">
-              <p className="text-xs text-slate-400">{fmt(SALARY)}<span className="ml-0.5">원</span></p>
-              <p className="text-sm font-bold text-red-500 mt-0.5">+{fmt(SALARY_DELTA)}원</p>
+              <p className="text-xs text-slate-400">{fmt(salary)}<span className="ml-0.5">원</span></p>
+              <p className="text-sm font-bold text-red-500 mt-0.5">+{fmt(salaryDelta)}원</p>
             </div>
           </div>
 
@@ -329,7 +390,7 @@ export default function SalaryManagement({ onClose }: Props) {
             <button onClick={() => setActiveTab('spend')} className="text-left w-full">
               <p className={`text-xs font-semibold mb-1 text-center transition-colors ${activeTab === 'spend' ? 'text-slate-600' : 'text-slate-300'}`}>지출할 금액</p>
               <div className={`rounded-2xl px-3 py-2.5 text-center transition-all ${activeTab === 'spend' ? 'border-2 border-slate-700 bg-white' : 'border border-slate-200 bg-white opacity-50'}`}>
-                <p className="text-xs text-slate-400">{fmt(SPEND)}<span className="ml-0.5">원</span></p>
+                <p className="text-xs text-slate-400">{fmt(spendDelta)}<span className="ml-0.5">원</span></p>
                 <p className={`text-sm font-bold ${spendDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
                   {spendDelta < 0 ? '−' : '+'}{fmt(Math.abs(spendDelta))}원
                 </p>
@@ -338,7 +399,7 @@ export default function SalaryManagement({ onClose }: Props) {
             <button onClick={() => setActiveTab('invest')} className="text-left w-full">
               <p className={`text-xs font-semibold mb-1 text-center transition-colors ${activeTab === 'invest' ? 'text-blue-400' : 'text-slate-300'}`}>투자할 금액</p>
               <div className={`rounded-2xl px-3 py-2.5 text-center transition-all ${activeTab === 'invest' ? 'border-2 border-blue-400 bg-blue-50' : 'border border-slate-200 bg-white opacity-50'}`}>
-                <p className="text-xs text-slate-400">{fmt(INVEST)}<span className="ml-0.5">원</span></p>
+                <p className="text-xs text-slate-400">{fmt(investDelta)}<span className="ml-0.5">원</span></p>
                 <p className={`text-sm font-bold ${investDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
                   {investDelta < 0 ? '−' : '+'}{fmt(Math.abs(investDelta))}원
                 </p>
@@ -516,9 +577,9 @@ export default function SalaryManagement({ onClose }: Props) {
             </div>
           </div>
           <span className={`block text-[10px] text-red-500 font-medium h-3 mb-2 transition-opacity ${isOver ? 'opacity-100' : 'opacity-0'}`}>
-            +{fmt(SALARY_DELTA)}원보다 많이 배분했어요
+            +{fmt(salaryDelta)}원보다 많이 배분했어요
           </span>
-          <button disabled={isOver} onClick={() => setView('success')}
+          <button disabled={isOver} onClick={handleConfirm}
             className={`w-full ${isOver ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3.5 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2`}>
             완료 <Check className="w-5 h-5" />
           </button>
@@ -539,7 +600,7 @@ export default function SalaryManagement({ onClose }: Props) {
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-2">계좌 선택</label>
                 <div className="space-y-2">
-                  {ALL_ACCOUNTS.map(acc => {
+                  {accounts.map(acc => {
                     const isSel = selectedAccId === acc.id;
                     return (
                       <button key={acc.id} type="button"

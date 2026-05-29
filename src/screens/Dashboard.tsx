@@ -1129,51 +1129,7 @@ export default function Dashboard() {
   useEffect(() => {
     getNotifications()
       .then(list => {
-        const mockList: ApiNotification[] = [
-          {
-            id: 'mock-1',
-            type: 'SALARY_REBALANCING',
-            title: '월급이 들어왔네요!',
-            content: '새로 나눴어요! 확인하고 자동이체할게요.',
-            isRead: false,
-            sentAt: new Date(Date.now() - 60000).toISOString(),
-          },
-          {
-            id: 'mock-2',
-            type: 'SPENDING_TREND',
-            title: '밸런싱 붕괴 조짐이 보여요',
-            content: '이번 달 소비 속도가 빠르게 올라가고 있어요...',
-            isRead: false,
-            sentAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-          },
-          {
-            id: 'mock-3',
-            type: 'REPORT_READY',
-            title: '2026년 5월 월간 리포트가 도착했어요!',
-            content: '이주형님만을 위한 5월 종합 리포트...',
-            isRead: false,
-            sentAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-          },
-          {
-            id: 'mock-4',
-            type: 'CONCERT_INFO',
-            title: '이번 달 관심받고 있는 공연 소식이에요!',
-            content: '이주형님의 취향을 기반으로...',
-            isRead: false,
-            sentAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-          },
-          {
-            id: 'mock-5',
-            type: 'GOVT_POLICY',
-            title: '이주형님만을 위한 정부 정책을 가져왔어요',
-            content: '자격증 지원금을 신청해보세요! 최대 50만 원을 돌려받을 수 있어요.',
-            isRead: true,
-            sentAt: new Date(Date.now() - 48 * 3600000).toISOString(),
-          }
-        ];
-
-        const combined = [...mockList, ...list.filter(n => !mockList.some(m => m.title === n.title))];
-        const items = combined.map(toNotiItem);
+        const items = list.map(toNotiItem);
         setNotiItems(items);
         if (items.some(n => !n.read && n.icon === '💳')) {
           setBannerVisible(true);
@@ -1194,9 +1150,7 @@ export default function Dashboard() {
   const handleMarkRead = (id: string) => {
     const clicked = notiItems.find(n => n.id === id);
     setNotiItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    if (!id.startsWith('mock-')) {
-      readNotification(id).catch(err => console.error('[Dashboard] 읽음 처리 실패:', err));
-    }
+    readNotification(id).catch(err => console.error('[Dashboard] 읽음 처리 실패:', err));
     if (clicked && clicked.type === 'SPENDING_TREND') {
       setNotiOpen(false);
       setSpendingAlarmOpen(true);

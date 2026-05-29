@@ -55,6 +55,21 @@ export async function getPortfolioItems(): Promise<PortfolioItemList> {
 }
 
 /**
+ * POST /portfolios
+ * 포트폴리오 최초 저장 (온보딩 리밸런싱 확정)
+ */
+export async function createPortfolios(
+  portfolios: PortfolioItem[],
+  monthlyInvestAmount?: number,
+): Promise<PortfolioList> {
+  const body: { portfolios: PortfolioItem[]; monthlyInvestAmount?: number } = { portfolios };
+  if (monthlyInvestAmount !== undefined) body.monthlyInvestAmount = monthlyInvestAmount;
+  const response = await api.post<CommonResponse<PortfolioList>>('/portfolios', body);
+  if (!response.success) throw new Error(response.message || '포트폴리오 생성 중 오류가 발생했습니다.');
+  return response.data;
+}
+
+/**
  * PATCH /portfolios
  * 포트폴리오 수정 (리밸런싱 확정 저장)
  */
