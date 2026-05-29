@@ -8,7 +8,7 @@ import hanaLogo    from '../assets/banks/hana.png';
 import kbLogo      from '../assets/banks/kb.png';
 import miraeLogo   from '../assets/banks/mirae.png';
 import heroImg     from '../assets/hero.png';
-import { getPortfolioFlows } from '../api/portfolioFlowApi';
+import { getPortfolioItems } from '../api/portfolioApi';
 
 type View = 'summary' | 'detail' | 'success';
 type Tab  = 'spend' | 'invest';
@@ -45,6 +45,12 @@ const TERM_META: Record<string, { label: string; bg: string; text: string }> = {
   '단': { label: '단기', bg: 'bg-red-100',     text: 'text-red-700'     },
   '중': { label: '중기', bg: 'bg-amber-100',   text: 'text-amber-700'   },
   '장': { label: '장기', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+};
+
+const PRODUCT_TYPE_META: Record<string, { tag: string; term: string }> = {
+  DEPOSIT: { tag: '예금',  term: '단' },
+  BOND:    { tag: '채권',  term: '중' },
+  STOCK:   { tag: '주식',  term: '장' },
 };
 
 const ALL_ACCOUNTS = [
@@ -100,37 +106,33 @@ export default function SalaryManagement({ onClose }: Props) {
 
 
   useEffect(() => {
-    getPortfolioFlows()
-      .then(({ flows }) => {
-        const activeFlows = flows.filter(f => f.isActive);
-        if (activeFlows.length > 0) {
+    getPortfolioItems()
+      .then(({ items }) => {
+        if (items.length > 0) {
           setInvestPlans(
-            activeFlows.map(f => {
-              const inst = f.gatheringAsset?.institution ?? null;
-              const rate = f.products.find(p => p.interestRate != null)?.interestRate ?? null;
+            items.map(item => {
+              const meta = PRODUCT_TYPE_META[item.productType] ?? { tag: item.productType, term: null };
+              const inst = item.institution;
               return {
-                id: f.id,
-                name: f.gatheringAsset?.institution ?? '투자계좌',
-                tag: f.term ?? '투자',
-                amount: f.gatheringAsset?.balance ?? 0,
+                id: item.id,
+                name: inst ?? '투자계좌',
+                tag: meta.tag,
+                amount: item.balance ?? 0,
                 delta: 0,
-                editedDelta: 20000,
+                editedDelta: 0,
                 color: '#3b82f6',
                 logo: inst ? (BANK_META[inst]?.imgSrc ?? wooriLogo) : wooriLogo,
-                term: f.term,
+                term: meta.term,
                 institution: inst,
-                interestRate: rate,
+                interestRate: null,
               };
             }),
           );
         } else {
-          // 데이터베이스에 데이터가 없을 때 스크린샷과 동일한 목업 제공
           setInvestPlans(MOCK_INVEST_PLANS);
         }
       })
-      .catch(err => {
-        console.error('투자 계획 조회 실패:', err);
-        // API 에러 시에도 스크린샷 화면이 조절 가능하게 목업 폴백 제공
+      .catch(() => {
         setInvestPlans(MOCK_INVEST_PLANS);
       });
   }, []);
@@ -160,60 +162,106 @@ export default function SalaryManagement({ onClose }: Props) {
   // ── 요약 카드 ─────────────────────────────────────────
   if (view === 'summary') {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center font-sans px-5 gap-3 py-10 relative">
-        <button onClick={onClose}
-          className="fixed top-5 right-5 z-50 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors">
-          <X className="w-5 h-5" />
-        </button>
+      <div className="fixed inset-0 bg-black/40 z-50 flex flex-col items-center justify-end" onClick={onClose}>
+        <div className="w-full max-w-[375px] bg-[#f8fafc] rounded-t-[20px] max-h-[92vh] overflow-y-auto flex flex-col animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)]" onClick={e => e.stopPropagation()}>
+          {/* Header */}
+          <div className="px-4 py-3.5 flex items-center justify-between border-b border-slate-100 bg-white shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">💰</span>
+              <span className="text-base font-bold text-slate-800">월급 알림</span>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-base p-1 flex items-center justify-center">✕</button>
+          </div>
 
-        <div className="w-full max-w-[360px] bg-white rounded-2xl shadow-sm px-5 py-4">
-          <p className="text-xs text-slate-400 mb-1">이번 달 월급 변동</p>
-          <p className="text-3xl font-extrabold text-red-500">+{fmt(SALARY_DELTA)}원</p>
-          <p className="text-xs text-slate-400 mt-1">우리은행 급여통장 · 지난달 대비</p>
-        </div>
+          {/* Content Area */}
+          <div className="p-4 flex flex-col gap-3 overflow-y-auto">
+            {/* Title */}
+            <h3 className="text-lg font-bold text-slate-800 text-center mt-2.5 mb-1.5">
+              월급에 변동이 있어요
+            </h3>
 
-        <div className="w-full max-w-[360px] bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 space-y-1.5">
-          {REASONS.map((r, i) => <p key={i} className="text-xs text-amber-800 leading-relaxed">{r}</p>)}
-        </div>
+            {/* Box 1: 월급 변동 */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 text-center">
+              <p className="text-xs text-slate-400 mb-1.5">우리은행 급여통장 · 지난달 대비</p>
+              <p className="text-3xl font-extrabold text-red-500">+{fmt(SALARY_DELTA)}원</p>
+            </div>
 
-        <div className="w-full max-w-[360px] bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 pt-4 pb-2 space-y-2">
-            {[
-              { label: '지출할 금액', labelColor: 'text-slate-600', plans: spendPlans },
-              { label: '투자할 금액', labelColor: 'text-blue-600',  plans: investPlans },
-            ].map(({ label, labelColor, plans }) => (
-              <div key={label} className="flex items-stretch bg-slate-100 rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-center px-3 py-4">
-                  <p className={`text-xs font-bold whitespace-nowrap ${labelColor}`}>{label}</p>
+            {/* Box 2: Pori 조언 */}
+            <div className="bg-[#fffbeb] border border-[#fef3c7] rounded-2xl px-4 py-3.5 space-y-1.5">
+              {REASONS.map((r, i) => (
+                <p key={i} className="text-xs text-[#92400e] leading-relaxed">
+                  {r}
+                </p>
+              ))}
+            </div>
+
+            {/* Box 3: 세부 분배 계획 */}
+            <div className="flex flex-col gap-3">
+              {/* 지출할 금액 */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex">
+                {/* Left Label Column */}
+                <div className="w-[80px] shrink-0 bg-[#f8fafc] border-r border-slate-100 flex flex-col items-center justify-center p-2 text-center">
+                  <p className="text-xs font-bold text-slate-500 leading-tight">지출할<br />금액</p>
                 </div>
-                <div className="flex-1 flex flex-col justify-center gap-2 pr-3 py-3">
-                  {plans.map(p => {
-                    const isNeg = p.editedDelta < 0;
+                {/* Right Accounts List */}
+                <div className="flex-1 p-3.5 space-y-3.5 bg-white">
+                  {spendPlans.map(p => (
+                    <div key={p.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-slate-100">
+                          <img src={p.logo} alt="" className="w-4 h-4 object-contain" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-800 truncate">{p.name}</span>
+                        <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">{p.tag}</span>
+                      </div>
+                      <span className="text-xs font-extrabold text-red-500 shrink-0">
+                        +{fmt(Math.abs(p.editedDelta))}원
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 투자할 금액 */}
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex">
+                {/* Left Label Column */}
+                <div className="w-[80px] shrink-0 bg-[#f8fafc] border-r border-slate-100 flex flex-col items-center justify-center p-2 text-center">
+                  <p className="text-xs font-bold text-blue-600 leading-tight">투자할<br />금액</p>
+                </div>
+                {/* Right Accounts List */}
+                <div className="flex-1 p-3.5 space-y-3.5 bg-white">
+                  {investPlans.map(p => {
                     const termInfo = p.term ? TERM_META[p.term] : null;
                     return (
-                      <div key={p.id} className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                            <img src={p.logo} alt="" className="w-5 h-5 object-contain" />
+                      <div key={p.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-slate-100">
+                            <img src={p.logo} alt="" className="w-4 h-4 object-contain" />
                           </div>
-                          <span className="text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                          <span className="text-xs font-bold text-slate-800 truncate">{p.name}</span>
                           {termInfo ? (
-                            <span className={`${termInfo.bg} ${termInfo.text} px-2 py-0.5 rounded-md text-xs font-medium shrink-0`}>{termInfo.label}</span>
+                            <span className={`${termInfo.bg} ${termInfo.text} px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0`}>
+                              {termInfo.label}
+                            </span>
                           ) : (
-                            <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-xs font-medium shrink-0">{p.tag}</span>
+                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
+                              {p.tag}
+                            </span>
                           )}
                         </div>
-                        <span className={`text-sm font-bold shrink-0 ${isNeg ? 'text-blue-500' : 'text-red-500'}`}>
-                          {isNeg ? '−' : '+'}{fmt(Math.abs(p.editedDelta))}원
+                        <span className="text-xs font-extrabold text-red-500 shrink-0">
+                          +{fmt(Math.abs(p.editedDelta))}원
                         </span>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-          <div className="flex border-t border-slate-100 mt-3">
+
+          {/* Action Buttons */}
+          <div className="flex border-t border-slate-100 bg-white shrink-0 mt-3">
             <button onClick={() => setView('detail')}
               className="flex-1 py-4 text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors border-r border-slate-100">
               재설정
@@ -336,8 +384,9 @@ export default function SalaryManagement({ onClose }: Props) {
                       <div className={`absolute right-[23px] top-[-8px] w-[2px] bg-slate-300 z-0
                         ${isLast ? 'h-[52px]' : '-bottom-5'}`} />
                     ) : (
-                      /* 지출 탭: 좌측 수직선 (항상 뒤에 계좌 추가 버튼이 있으므로 아래로 쭉 연결) */
-                      <div className="absolute left-[23px] top-[-8px] w-[2px] bg-slate-300 z-0 -bottom-5" />
+                      /* 지출 탭: 좌측 수직선 (지출 탭에도 계좌 추가 버튼을 없앴으므로, 마지막 카드이면 h-[52px]로 끝맺음) */
+                      <div className={`absolute left-[23px] top-[-8px] w-[2px] bg-slate-300 z-0
+                        ${isLast ? 'h-[52px]' : '-bottom-5'}`} />
                     )}
 
                     {/* 수평 화살표 */}
@@ -453,22 +502,6 @@ export default function SalaryManagement({ onClose }: Props) {
                 );
               })}
 
-              {/* 계좌 추가 — spend 탭에서만 */}
-              {activeTab === 'spend' && (
-                <div className="relative pt-2 pl-12 pr-1">
-                  {/* 마지막 계좌 추가 항목으로 이어지는 수직선 (화살표 높이인 h-[28px]까지만 뻗고 정밀하게 종료. top-[-8px] 적용) */}
-                  <div className="absolute left-[23px] top-[-8px] w-[2px] bg-slate-300 z-0 h-[36px]" />
-
-                  <svg className="absolute top-7 left-6 w-6 h-4 text-slate-300 pointer-events-none"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M0 12h20M16 6l6 6-6 6" />
-                  </svg>
-                  <button onClick={openAddModal}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-colors font-semibold text-sm active:scale-[0.98]">
-                    <Plus className="w-4 h-4" />계좌 추가
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </main>
