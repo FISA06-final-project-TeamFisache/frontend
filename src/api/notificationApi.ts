@@ -1,5 +1,5 @@
 import { api } from './client';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { fetchEventSource, EventStreamContentType } from '@microsoft/fetch-event-source';
 
 const BASE_URL = 'http://localhost:8080/api/v1';
 
@@ -47,6 +47,10 @@ export function subscribeToNotifications(callbacks: {
     method: 'GET',
     headers: { Authorization: `Bearer ${token ?? ''}` },
     signal: ctrl.signal,
+    async onopen(response) {
+      if (response.ok && response.headers.get('content-type')?.startsWith(EventStreamContentType)) return;
+      throw new Error(`SSE 연결 실패 (${response.status})`);
+    },
     onmessage(event) {
       if (!event.data) return;
       try {
@@ -61,6 +65,7 @@ export function subscribeToNotifications(callbacks: {
     },
     onerror(err) {
       console.error('[SSE] 알림 구독 오류:', err);
+      throw err;
     },
   });
 
