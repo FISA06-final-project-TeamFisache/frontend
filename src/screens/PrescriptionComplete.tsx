@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { generatePrescriptions } from '../api/agentApi';
@@ -12,8 +12,12 @@ export default function PrescriptionComplete() {
   const navigate = useNavigate();
   const [exiting, setExiting] = useState(false);
 
+  // StrictMode 이중 마운트 또는 빠른 재방문 시 generatePrescriptions 중복 호출 방지
+  const calledRef = useRef(false);
+
   useEffect(() => {
-    let cancelled = false;
+    if (calledRef.current) return;
+    calledRef.current = true;
 
     const minDisplay = new Promise<void>(resolve => setTimeout(resolve, MIN_DISPLAY_MS));
     const apiCall = generatePrescriptions().catch((e: unknown) => {
@@ -21,14 +25,11 @@ export default function PrescriptionComplete() {
     });
 
     Promise.all([apiCall, minDisplay]).then(() => {
-      if (cancelled) return;
       setExiting(true);
       setTimeout(() => {
-        if (!cancelled) navigate('/asset-portfolio', { replace: true });
+        navigate('/asset-portfolio', { replace: true });
       }, FADE_MS);
     });
-
-    return () => { cancelled = true; };
   }, [navigate]);
 
   return (
