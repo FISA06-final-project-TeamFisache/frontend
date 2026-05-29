@@ -889,6 +889,14 @@ export default function Dashboard() {
       setNotiOpen(false);
       setSpendingAlarmOpen(true);
     }
+    if (clicked && clicked.type === 'REPORT_READY') {
+      setNotiOpen(false);
+      navigate('/monthly-report');
+    }
+    if (clicked && (clicked.type === 'SALARY_REBALANCING' || clicked.type === 'SALARY_ARRIVED')) {
+      setNotiOpen(false);
+      setSalaryMgmtOpen(true);
+    }
   };
 
   const handleMarkAll = () => {
