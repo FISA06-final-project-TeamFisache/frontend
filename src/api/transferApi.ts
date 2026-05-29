@@ -12,7 +12,7 @@ export interface TransferPlan {
   institution: string | null;
   assetType: string;       // SPENDING / EMERGENCY / TARGET / SAVING
   plannedAmount: number;
-  ratio: number;
+  ratio: number | null;
   isConfirmed: boolean;
   scheduledDate: number;
   year: number;
