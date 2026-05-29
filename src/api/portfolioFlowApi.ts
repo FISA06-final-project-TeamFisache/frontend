@@ -36,6 +36,7 @@ export interface PortfolioFlow {
   title: string;
   summary: string | null;
   term: string | null;          // '단' / '중' / '장'
+  amount: number | null;        // 모을 통장 월 납입 금액 (원)
   isActive: boolean;
   gatheringAsset: PortfolioFlowGatheringAsset | null;
   sources: PortfolioFlowSourceItem[];
@@ -43,6 +44,7 @@ export interface PortfolioFlow {
 }
 
 export interface PortfolioFlowListResponse {
+  monthlyInvestAmount: number | null;   // users.monthly_invest_amount — 월 총 투자액 (원)
   flows: PortfolioFlow[];
 }
 
