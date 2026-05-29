@@ -1,8 +1,17 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SalaryManagement from './SalaryManagement';
+import MonthlyReport from './MonthlyReport';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
+
+import wooriLogo   from '../assets/banks/woori.png';
+import kakaoLogo   from '../assets/banks/kakao.png';
+import tossLogo    from '../assets/banks/toss.png';
+import shinhanLogo from '../assets/banks/shinhan.png';
+import hanaLogo    from '../assets/banks/hana.png';
+import kbLogo      from '../assets/banks/kb.png';
+import miraeLogo   from '../assets/banks/mirae.png';
 import { getDashboard, type DashboardData, type DashboardCategoryExpense } from '../api/dashboardApi';
 import {
   getNotifications,
@@ -11,6 +20,13 @@ import {
   subscribeToNotifications,
   type Notification as ApiNotification,
 } from '../api/notificationApi';
+import {
+  getAssets,
+  getMyDataPreview,
+  syncAssets,
+  type Asset,
+  type PreviewAccount
+} from '../api/assetApi';
 
 
 interface Goal {
@@ -220,6 +236,39 @@ interface LinkedBank {
   accounts: LinkedAccount[];
 }
 
+const BANK_LOGOS: Record<string, string> = {
+  woori: wooriLogo,
+  kakao: kakaoLogo,
+  toss: tossLogo,
+  shinhan: shinhanLogo,
+  hana: hanaLogo,
+  kb: kbLogo,
+  mirae: miraeLogo,
+};
+
+const ALL_AVAILABLE_BANKS = [
+  { id: 'woori', name: '우리은행', short: '우리', badgeBg: '#DBEAFE', badgeColor: '#1E40AF', logo: wooriLogo },
+  { id: 'kakao', name: '카카오뱅크', short: '카카', badgeBg: '#FEF3C7', badgeColor: '#854D0E', logo: kakaoLogo },
+  { id: 'toss', name: '토스뱅크', short: '토스', badgeBg: '#DBEAFE', badgeColor: '#1D4ED8', logo: tossLogo },
+  { id: 'shinhan', name: '신한은행', short: '신한', badgeBg: '#DBEAFE', badgeColor: '#1E40AF', logo: shinhanLogo },
+  { id: 'hana', name: '하나은행', short: '하나', badgeBg: '#E0F2FE', badgeColor: '#0369A1', logo: hanaLogo },
+  { id: 'kb', name: 'KB국민은행', short: '국민', badgeBg: '#FEF3C7', badgeColor: '#B45309', logo: kbLogo },
+  { id: 'mirae', name: '미래에셋', short: '미래', badgeBg: '#FFEDD5', badgeColor: '#C2410C', logo: miraeLogo },
+];
+
+const UNLINKED_BANKS_DEFAULT_ACCOUNTS: Record<string, LinkedAccount[]> = {
+  hana: [
+    { id: 'hana-1', name: '하나 주거래 통장', number: '123-***-789012', type: '입출금', balance: 1_250_000 },
+  ],
+  kb: [
+    { id: 'kb-1', name: 'KB마이핏 통장', number: '456-***-123456', type: '입출금', balance: 800_000 },
+    { id: 'kb-2', name: 'KB국민 만능적금', number: '789-***-654321', type: '예·적금', balance: 5_000_000 },
+  ],
+  mirae: [
+    { id: 'mirae-1', name: '미래에셋 CMA 계좌', number: '321-***-987654', type: '증권', balance: 3_500_000 },
+  ],
+};
+
 // (하드) 계좌 연결 관리 — 별도 API 연동 전까지 mock 사용
 const LINKED_BANKS_MOCK: LinkedBank[] = [
   {
@@ -252,9 +301,77 @@ const LINKED_BANKS_MOCK: LinkedBank[] = [
   },
 ];
 
+const INST_TO_BANK_ID: Record<string, string> = {
+  '우리은행': 'woori',
+  '카카오뱅크': 'kakao',
+  '토스뱅크': 'toss',
+  '신한은행': 'shinhan',
+  '하나은행': 'hana',
+  'KB국민은행': 'kb',
+  '국민은행': 'kb',
+  '미래에셋': 'mirae',
+};
+
+const groupAssetsToBanks = (assets: Asset[]): LinkedBank[] => {
+  const groups: Record<string, LinkedAccount[]> = {};
+  assets.forEach(a => {
+    const instName = a.institution;
+    if (!groups[instName]) {
+      groups[instName] = [];
+    }
+    let typeStr: LinkedAccount['type'] = '입출금';
+    if (a.assetType === 'SAVINGS') {
+      typeStr = a.accountName.includes('적금') ? '예·적금' : '입출금';
+    } else if (a.assetType === 'INVESTMENT') {
+      typeStr = '증권';
+    }
+    
+    groups[instName].push({
+      id: a.id,
+      name: a.accountName,
+      number: a.assetNumber,
+      type: typeStr,
+      balance: a.balance
+    });
+  });
+
+  return Object.entries(groups).map(([inst, accounts]) => {
+    const bankId = INST_TO_BANK_ID[inst] ?? 'woori';
+    const meta = ALL_AVAILABLE_BANKS.find(b => b.id === bankId) ?? ALL_AVAILABLE_BANKS[0];
+    return {
+      id: bankId,
+      name: inst,
+      short: meta.short,
+      badgeBg: meta.badgeBg,
+      badgeColor: meta.badgeColor,
+      accounts
+    };
+  });
+};
+
 function AccountManagePanel({ onClose }: { onClose: () => void }) {
-  const [banks, setBanks] = useState<LinkedBank[]>(LINKED_BANKS_MOCK);
-  const [expandedBanks, setExpandedBanks] = useState<Record<string, boolean>>({});
+  const [banks, setBanks] = useState<LinkedBank[]>([]);
+  const [expandedBanks, setExpandedBanks] = useState<Record<string, boolean>>({ woori: true });
+  const [view, setView] = useState<'manage' | 'link'>('manage');
+  const [pendingRemoval, setPendingRemoval] = useState<{ bankId: string; accountId: string } | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 💡 실제 백엔드 API로부터 연동된 전체 자산 목록을 조회하여 화면에 바인딩
+    getAssets()
+      .then(assets => {
+        if (assets.length > 0) {
+          setBanks(groupAssetsToBanks(assets));
+        } else {
+          // 조회 결과가 비어 있을 경우 목업 데이터를 기본 바인딩
+          setBanks(LINKED_BANKS_MOCK);
+        }
+      })
+      .catch(err => {
+        console.error('실제 자산 목록 조회 실패, 목업 데이터를 기본 바인딩합니다:', err);
+        setBanks(LINKED_BANKS_MOCK);
+      });
+  }, []);
 
   const toggleBank = (id: string) =>
     setExpandedBanks(prev => ({ ...prev, [id]: !prev[id] }));
@@ -267,91 +384,281 @@ function AccountManagePanel({ onClose }: { onClose: () => void }) {
       .filter(b => b.accounts.length > 0));
   };
 
+  const handleLinkBank = async (bank: typeof ALL_AVAILABLE_BANKS[0]) => {
+    try {
+      // 1. 💡 마이데이터 미리보기 API를 통해 금융기관의 연동 가능한 실시간 계좌 정보 조회
+      const previewAccounts = await getMyDataPreview([bank.name]);
+      if (previewAccounts.length > 0) {
+        // 2. 💡 찾은 계좌 번호 목록을 실제 데이터베이스 자산 목록과 마이데이터 연동(동기화)
+        const assetNums = previewAccounts.map(a => a.assetNumber);
+        await syncAssets(assetNums);
+        
+        // 3. 💡 동기화 성공 후, 최신 자산 전체 목록을 재조회하여 화면에 갱신 바인딩
+        const updatedAssets = await getAssets();
+        setBanks(groupAssetsToBanks(updatedAssets));
+        setToastMsg(`${bank.name} 실시간 연동이 완료되었습니다.`);
+      } else {
+        // 백엔드 미리보기 결과가 비어있을 경우 고대비 모사(MOCK) 데이터로 안전 바인딩
+        const newAccounts = UNLINKED_BANKS_DEFAULT_ACCOUNTS[bank.id] ?? [
+          { id: `${bank.id}-default`, name: `${bank.name} 입출금 통장`, number: '123-***-999999', type: '입출금', balance: 1_000_000 }
+        ];
+        setBanks(prev => {
+          if (prev.some(b => b.id === bank.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: bank.id,
+              name: bank.name,
+              short: bank.short,
+              badgeBg: bank.badgeBg,
+              badgeColor: bank.badgeColor,
+              accounts: newAccounts
+            }
+          ];
+        });
+        setToastMsg(`${bank.name} 계좌를 불러왔어요!`);
+      }
+    } catch (err) {
+      console.error('MyData 백엔드 연동 API 호출 실패, 목업 시뮬레이션을 실행합니다:', err);
+      const newAccounts = UNLINKED_BANKS_DEFAULT_ACCOUNTS[bank.id] ?? [
+        { id: `${bank.id}-default`, name: `${bank.name} 입출금 통장`, number: '123-***-999999', type: '입출금', balance: 1_000_000 }
+      ];
+      setBanks(prev => {
+        if (prev.some(b => b.id === bank.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: bank.id,
+            name: bank.name,
+            short: bank.short,
+            badgeBg: bank.badgeBg,
+            badgeColor: bank.badgeColor,
+            accounts: newAccounts
+          }
+        ];
+      });
+      setToastMsg(`${bank.name} 계좌를 불러왔어요!`);
+    }
+    setView('manage');
+  };
+
+  useEffect(() => {
+    if (toastMsg) {
+      const t = setTimeout(() => setToastMsg(null), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [toastMsg]);
+
   return (
     <div style={{
       background: '#fff', borderRadius: '20px 20px 0 0',
       maxWidth: 375, width: '100%', maxHeight: '85vh',
       overflowY: 'auto',
       animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      position: 'relative',
     }}>
-      {/* 헤더 */}
-      <div style={{ padding: '16px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>🔗</span>
-          <span style={{ fontSize: 17, fontWeight: 500, color: '#0f172a' }}>내 계좌 연결 관리</span>
-          <span style={{ fontSize: 11, fontWeight: 500, background: '#E6F1FB', color: '#185FA5', padding: '1px 7px', borderRadius: 99 }}>
-            {banks.length}개 기관 · {totalAccounts}개 계좌
-          </span>
-        </div>
-        <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }} aria-label="닫기">✕</button>
-      </div>
-
-      {/* 은행 아코디언 리스트 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 12px 8px' }}>
-        {banks.map(bank => {
-          const expanded = !!expandedBanks[bank.id];
-          return (
-            <div key={bank.id} style={{ border: '0.5px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
-              {/* 은행 헤더 */}
-              <button
-                onClick={() => toggleBank(bank.id)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-              >
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: bank.badgeBg, color: bank.badgeColor, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {bank.short}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bank.name}</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{bank.accounts.length}개 계좌 연결</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-
-              {/* 계좌 목록 */}
-              {expanded && (
-                <div style={{ borderTop: '0.5px solid #f1f5f9', background: '#f8fafc' }}>
-                  {bank.accounts.map(acc => (
-                    <div key={acc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 10px 60px', borderBottom: '0.5px solid #f1f5f9' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, background: '#fff', color: '#475569', padding: '1px 6px', borderRadius: 99, border: '0.5px solid #e2e8f0' }}>{acc.type}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{acc.name}</span>
-                        </div>
-                        <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>{acc.number}</div>
-                        <div style={{ fontSize: 11, color: '#0f172a', marginTop: 2, fontWeight: 600 }}>{acc.balance.toLocaleString()}원</div>
-                      </div>
-                      <button
-                        onClick={() => removeAccount(bank.id, acc.id)}
-                        style={{ fontSize: 11, fontWeight: 600, color: '#ef4444', background: '#fff', border: '0.5px solid #fecaca', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', flexShrink: 0 }}
-                      >
-                        해제
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+      {view === 'manage' ? (
+        <>
+          {/* 헤더 */}
+          <div style={{ padding: '16px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>🔗</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: '#0f172a' }}>내 계좌 연결 관리</span>
+              <span style={{ fontSize: 11, fontWeight: 500, background: '#E6F1FB', color: '#185FA5', padding: '1px 7px', borderRadius: 99 }}>
+                {banks.length}개 기관 · {totalAccounts}개 계좌
+              </span>
             </div>
-          );
-        })}
-
-        {banks.length === 0 && (
-          <div style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
-            연결된 계좌가 없어요.<br />아래 버튼으로 새 기관을 연동해보세요.
+            <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }} aria-label="닫기">✕</button>
           </div>
-        )}
-      </div>
 
-      {/* 푸터: 추가 연동 */}
-      <div style={{ padding: '12px 16px 20px', borderTop: '0.5px solid #e2e8f0' }}>
-        <button
-          onClick={() => { onClose(); /* 라우터 이동은 부모에서 처리 */ }}
-          style={{ width: '100%', padding: '12px 0', fontSize: 13, fontWeight: 700, background: '#0f172a', color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer' }}
-        >
-          + 새 기관 연동하기
-        </button>
-      </div>
+          {/* 은행 아코디언 리스트 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 12px 8px' }}>
+            {banks.map(bank => {
+              const expanded = !!expandedBanks[bank.id];
+              return (
+                <div key={bank.id} style={{ border: '0.5px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+                  {/* 은행 헤더 */}
+                  <button
+                    onClick={() => toggleBank(bank.id)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                      {BANK_LOGOS[bank.id] ? (
+                        <img src={BANK_LOGOS[bank.id]} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', background: bank.badgeBg, color: bank.badgeColor, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {bank.short}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bank.name}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{bank.accounts.length}개 계좌 연결</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+
+                  {/* 계좌 목록 */}
+                  {expanded && (
+                    <div style={{ borderTop: '0.5px solid #f1f5f9', background: '#f8fafc' }}>
+                      {bank.accounts.map(acc => (
+                        <div key={acc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 12px 60px', borderBottom: '0.5px solid #f1f5f9' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, background: '#fff', color: '#475569', padding: '1px 6px', borderRadius: 99, border: '0.5px solid #e2e8f0', whiteSpace: 'nowrap' }}>{acc.type}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{acc.name}</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>{acc.number}</div>
+                            <div style={{ fontSize: 11, color: '#0f172a', marginTop: 2, fontWeight: 600 }}>{acc.balance.toLocaleString()}원</div>
+                          </div>
+                          <button
+                            onClick={() => setPendingRemoval({ bankId: bank.id, accountId: acc.id })}
+                            style={{ fontSize: 11, fontWeight: 600, color: '#ef4444', background: '#fff', border: '0.5px solid #fecaca', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', flexShrink: 0 }}
+                          >
+                            해제
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {banks.length === 0 && (
+              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                연결된 계좌가 없어요.<br />아래 버튼으로 새 기관을 연동해보세요.
+              </div>
+            )}
+          </div>
+
+          {/* 푸터: 추가 연동 */}
+          <div style={{ padding: '12px 16px 20px', borderTop: '0.5px solid #e2e8f0' }}>
+            <button
+              onClick={() => setView('link')}
+              style={{ width: '100%', padding: '12px 0', fontSize: 13, fontWeight: 700, background: '#0f172a', color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer' }}
+            >
+              + 새 기관 연동하기
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* 새 기관 연동 헤더 */}
+          <div style={{ padding: '16px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => setView('manage')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#0f172a', fontSize: 18, display: 'flex', alignItems: 'center', padding: '4px 8px 4px 0' }} aria-label="뒤로가기">
+                ←
+              </button>
+              <span style={{ fontSize: 17, fontWeight: 700, color: '#0f172a' }}>새 기관 연동하기</span>
+            </div>
+            <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }} aria-label="닫기">✕</button>
+          </div>
+
+          {/* 연동 가능한 전체 리스트 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '16px 16px 30px', overflowY: 'auto' }}>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 4px', fontWeight: 500 }}>연동할 금융기관을 선택해 주세요</p>
+            {ALL_AVAILABLE_BANKS.map(bank => {
+              const isConnected = banks.some(b => b.id === bank.id);
+              return (
+                <div
+                  key={bank.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '14px 16px', background: '#fff', border: '0.5px solid #e2e8f0',
+                    borderRadius: 16, boxShadow: '0 1px 2px 0 rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+                    <img src={bank.logo} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bank.name}</div>
+                    <div style={{ fontSize: 11, color: isConnected ? '#3b82f6' : '#94a3b8', marginTop: 2, fontWeight: 500 }}>
+                      {isConnected ? '연결 완료' : '미연결'}
+                    </div>
+                  </div>
+                  {isConnected ? (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', background: '#f8fafc', padding: '6px 12px', borderRadius: 10, border: '0.5px solid #e2e8f0' }}>
+                      연동됨
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleLinkBank(bank)}
+                      style={{
+                        fontSize: 12, fontWeight: 700, color: '#fff', background: '#1e3a8a',
+                        border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer',
+                        boxShadow: '0 1px 2px 0 rgba(30,58,138,0.2)'
+                      }}
+                    >
+                      연동하기
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ⚠️ 계좌 제거 팝업 */}
+      {pendingRemoval && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 20,
+            width: '85%', maxWidth: 300, padding: '24px 20px 20px',
+            textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+            <h4 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>계좌 연결 해제</h4>
+            <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5, margin: '0 0 20px' }}>
+              해제하시면 자산 목록에서 제외되어 자산이 없어집니다. 정말 해제하시겠습니까?
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setPendingRemoval(null)}
+                style={{
+                  flex: 1, padding: '12px 0', borderRadius: 12, border: '1px solid #e2e8f0',
+                  background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  removeAccount(pendingRemoval.bankId, pendingRemoval.accountId);
+                  setPendingRemoval(null);
+                }}
+                style={{
+                  flex: 1, padding: '12px 0', borderRadius: 12, border: 'none',
+                  background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                해제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 성공 토스트 */}
+      {toastMsg && (
+        <div style={{
+          position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
+          background: '#1e293b', color: '#fff', padding: '12px 24px', borderRadius: 99,
+          fontSize: 13, fontWeight: 600, zIndex: 1100, boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          {toastMsg}
+        </div>
+      )}
     </div>
   );
 }
@@ -741,7 +1048,7 @@ function SpendingAlarmPanel({ onClose, totalExpense, categories }: SpendingAlarm
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
-  const { userName: USER_NAME, logout, setUserName } = useAuth();
+  const { token, userName: USER_NAME, logout, setUserName } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -767,6 +1074,10 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     let cancelled = false;
     setLoadError(null);
     getDashboard()
@@ -777,11 +1088,12 @@ export default function Dashboard() {
       })
       .catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : '대시보드 조회 실패'); });
     return () => { cancelled = true; };
-  }, [setUserName]);
+  }, [token, navigate, setUserName]);
 
   // ── UI 상태 ──────────────────────────────────────────────
   const [bannerVisible, setBannerVisible] = useState(true);
   const [salaryMgmtOpen, setSalaryMgmtOpen] = useState(false);
+  const [monthlyReportOpen, setMonthlyReportOpen] = useState(false);
   const [anomalyOpen, setAnomalyOpen] = useState(false);
   const [recapOpen, setRecapOpen] = useState(false);
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
@@ -817,51 +1129,7 @@ export default function Dashboard() {
   useEffect(() => {
     getNotifications()
       .then(list => {
-        const mockList: ApiNotification[] = [
-          {
-            id: 'mock-1',
-            type: 'SALARY_REBALANCING',
-            title: '월급이 들어왔네요!',
-            content: '새로 나눴어요! 확인하고 자동이체할게요.',
-            isRead: false,
-            sentAt: new Date(Date.now() - 60000).toISOString(),
-          },
-          {
-            id: 'mock-2',
-            type: 'SPENDING_TREND',
-            title: '밸런싱 붕괴 조짐이 보여요',
-            content: '이번 달 소비 속도가 빠르게 올라가고 있어요...',
-            isRead: false,
-            sentAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-          },
-          {
-            id: 'mock-3',
-            type: 'REPORT_READY',
-            title: '2026년 5월 월간 리포트가 도착했어요!',
-            content: '이주형님만을 위한 5월 종합 리포트...',
-            isRead: false,
-            sentAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-          },
-          {
-            id: 'mock-4',
-            type: 'CONCERT_INFO',
-            title: '이번 달 관심받고 있는 공연 소식이에요!',
-            content: '이주형님의 취향을 기반으로...',
-            isRead: false,
-            sentAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-          },
-          {
-            id: 'mock-5',
-            type: 'GOVT_POLICY',
-            title: '이주형님만을 위한 정부 정책을 가져왔어요',
-            content: '자격증 지원금을 신청해보세요! 최대 50만 원을 돌려받을 수 있어요.',
-            isRead: true,
-            sentAt: new Date(Date.now() - 48 * 3600000).toISOString(),
-          }
-        ];
-
-        const combined = [...mockList, ...list.filter(n => !mockList.some(m => m.title === n.title))];
-        const items = combined.map(toNotiItem);
+        const items = list.map(toNotiItem);
         setNotiItems(items);
         if (items.some(n => !n.read && n.icon === '💳')) {
           setBannerVisible(true);
@@ -882,12 +1150,18 @@ export default function Dashboard() {
   const handleMarkRead = (id: string) => {
     const clicked = notiItems.find(n => n.id === id);
     setNotiItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    if (!id.startsWith('mock-')) {
-      readNotification(id).catch(err => console.error('[Dashboard] 읽음 처리 실패:', err));
-    }
+    readNotification(id).catch(err => console.error('[Dashboard] 읽음 처리 실패:', err));
     if (clicked && clicked.type === 'SPENDING_TREND') {
       setNotiOpen(false);
       setSpendingAlarmOpen(true);
+    }
+    if (clicked && clicked.type === 'REPORT_READY') {
+      setNotiOpen(false);
+      setMonthlyReportOpen(true);
+    }
+    if (clicked && (clicked.type === 'SALARY_REBALANCING' || clicked.type === 'SALARY_ARRIVED')) {
+      setNotiOpen(false);
+      setSalaryMgmtOpen(true);
     }
   };
 
@@ -1535,6 +1809,31 @@ export default function Dashboard() {
               totalExpense={dashboard.consumption.totalExpense}
               categories={dashboard.consumption.categories}
             />
+          </div>
+        </div>
+      )}
+
+      {/* 월간 리포트 overlay */}
+      {monthlyReportOpen && (
+        <div
+          onClick={() => setMonthlyReportOpen(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.4)', zIndex: 999,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            style={{
+              width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center',
+              background: '#fff', borderRadius: '20px 20px 0 0',
+              maxHeight: '92vh', overflowY: 'auto',
+              animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <MonthlyReport onClose={() => setMonthlyReportOpen(false)} />
           </div>
         </div>
       )}
