@@ -9,7 +9,7 @@ import kbLogo      from '../assets/banks/kb.png';
 import miraeLogo   from '../assets/banks/mirae.png';
 import heroImg     from '../assets/hero.png';
 import { getPortfolioItems, updatePortfolios } from '../api/portfolioApi';
-import { getTransferPlans } from '../api/transferApi';
+import { getTransferPlans, generateTransferPlans, updateTransferPlan } from '../api/transferApi';
 import { getAssets } from '../api/assetApi';
 
 type View = 'summary' | 'detail' | 'success';
@@ -121,23 +121,34 @@ export default function SalaryManagement({ onClose }: Props) {
           });
         }
         setSalaryDelta(planData.salaryAmount ?? planData.totalAmount ?? 0);
+
+        const mapPlans = (plans: typeof planData.plans) =>
+          plans.map(p => {
+            const asset = p.assetId ? assetMap.get(p.assetId) : null;
+            const typeMeta = SPEND_TYPE_META[p.assetType] ?? { tag: p.assetType, color: '#94A3B8' };
+            return {
+              id: p.id,
+              name: asset?.accountName ?? p.institution ?? '계좌',
+              tag: typeMeta.tag,
+              amount: asset?.balance ?? 0,
+              delta: p.plannedAmount,
+              editedDelta: p.plannedAmount,
+              color: typeMeta.color,
+              logo: p.institution ? (BANK_META[p.institution]?.imgSrc ?? wooriLogo) : wooriLogo,
+            };
+          });
+
         if (planData.plans.length > 0) {
-          setSpendPlans(
-            planData.plans.map(p => {
-              const asset = p.assetId ? assetMap.get(p.assetId) : null;
-              const typeMeta = SPEND_TYPE_META[p.assetType] ?? { tag: p.assetType, color: '#94A3B8' };
-              return {
-                id: p.id,
-                name: asset?.accountName ?? p.institution ?? '계좌',
-                tag: typeMeta.tag,
-                amount: asset?.balance ?? 0,
-                delta: p.plannedAmount,
-                editedDelta: p.plannedAmount,
-                color: typeMeta.color,
-                logo: p.institution ? (BANK_META[p.institution]?.imgSrc ?? wooriLogo) : wooriLogo,
-              };
-            }),
-          );
+          setSpendPlans(mapPlans(planData.plans));
+        } else {
+          generateTransferPlans()
+            .then(generated => {
+              if (generated.plans.length > 0) {
+                setSpendPlans(mapPlans(generated.plans));
+                setSalaryDelta(generated.salaryAmount ?? generated.totalAmount ?? 0);
+              }
+            })
+            .catch(err => console.error('이체 계획 자동 생성 실패:', err));
         }
         setAccounts(
           assets.map(a => ({
@@ -190,6 +201,15 @@ export default function SalaryManagement({ onClose }: Props) {
   const isOver      = remain < 0;
 
   const handleConfirm = async () => {
+    try {
+      await Promise.all(
+        spendPlans
+          .filter(p => p.editedDelta !== p.delta)
+          .map(p => updateTransferPlan(p.id, p.editedDelta)),
+      );
+    } catch (err) {
+      console.error('[SalaryManagement] PATCH /transfer-plans 실패:', err);
+    }
     try {
       const portfolios = investPlans.map(p => ({
         assetType: p.productType ?? p.tag,
