@@ -19,6 +19,8 @@ export interface DashboardAllocation {
 
 export interface DashboardSalaryPlan {
   monthlyIncome: number;
+  investmentAmount: number | null;
+  surplus: number | null;
   allocations: DashboardAllocation[];
 }
 

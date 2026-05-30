@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { generatePrescriptions } from '../api/agentApi';
 import doctorImg from '../assets/doctor.png';
 
 const DISPLAY_MS = 4000;
@@ -9,16 +10,21 @@ const FADE_MS = 500;
 export default function PrescriptionComplete() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [exiting, setExiting] = useState(false);
 
+  const investAmount = (location.state as { investAmount?: number } | null)?.investAmount;
+
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setExiting(true), DISPLAY_MS);
-    const navTimer = setTimeout(() => navigate('/asset-portfolio', { replace: true }), DISPLAY_MS + FADE_MS);
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(navTimer);
-    };
-  }, [navigate]);
+    const minWait = new Promise<void>(res => setTimeout(res, DISPLAY_MS));
+
+    Promise.all([generatePrescriptions(investAmount), minWait])
+      .catch(() => { /* API 실패 시 기존 데이터 유지 */ })
+      .finally(() => {
+        setExiting(true);
+        setTimeout(() => navigate('/asset-portfolio', { replace: true }), FADE_MS);
+      });
+  }, [navigate, investAmount]);
 
   return (
     <div className="min-h-screen bg-white flex justify-center font-sans overflow-hidden">

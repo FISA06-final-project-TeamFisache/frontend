@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
 import { getDashboard, type DashboardData } from '../api/dashboardApi';
+import SalaryManagement from './SalaryManagement';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notificationApi';
 import { getAssets, type Asset } from '../api/assetApi';
 
@@ -551,6 +552,7 @@ export default function Dashboard() {
   const [accountMgmtOpen,     setAccountMgmtOpen]     = useState(false);
   const [settingsOpen,        setSettingsOpen]        = useState(false);
   const [sidebarOpen,         setSidebarOpen]         = useState(false);
+  const [salaryMgmtOpen,      setSalaryMgmtOpen]      = useState(false);
   const [peerTab,             setPeerTab]             = useState<'asset' | 'product'>('asset');
   const [goals,               setGoals]               = useState<Goal[]>(() => {
     try { return JSON.parse(sessionStorage.getItem('user:goals') ?? '[]'); } catch { return []; }
@@ -577,15 +579,30 @@ export default function Dashboard() {
   const fmtManwon = (n: number) => `${Math.round(n / 10000).toLocaleString()}만 원`;
 
   // 월급 분배 도넛 데이터 (API allocations → SalaryDonutChart 슬라이스)
-  const SALARY_PALETTE = ['#EF9F27', '#7F77DD', '#378ADD', '#1D9E75', '#e2e8f0'];
+  const SALARY_PALETTE = ['#EF9F27', '#7F77DD', '#378ADD', '#1D9E75', '#94a3b8'];
   const salarySlices: PortfolioSlice[] = dashboard
-    ? dashboard.salaryPlan.allocations.map((a, i) => ({
-        label: a.purpose ?? '기타',
-        pct: dashboard.salaryPlan.monthlyIncome > 0
-          ? Math.round(a.plannedAmount / dashboard.salaryPlan.monthlyIncome * 100)
-          : 0,
-        color: SALARY_PALETTE[i % SALARY_PALETTE.length],
-      }))
+    ? (() => {
+        const income = dashboard.salaryPlan.monthlyIncome;
+        if (income <= 0) return [];
+
+        const slices: PortfolioSlice[] = dashboard.salaryPlan.allocations.map((a, i) => ({
+          label: a.purpose ?? '기타',
+          pct: Math.round(a.plannedAmount / income * 100),
+          color: SALARY_PALETTE[i % (SALARY_PALETTE.length - 2)],
+        }));
+
+        const investAmt = dashboard.salaryPlan.investmentAmount ?? 0;
+        if (investAmt > 0) {
+          slices.push({ label: '투자', pct: Math.round(investAmt / income * 100), color: '#1D9E75' });
+        }
+
+        const surplus = dashboard.salaryPlan.surplus ?? 0;
+        if (surplus > 0) {
+          slices.push({ label: '잔여', pct: Math.round(surplus / income * 100), color: '#94a3b8' });
+        }
+
+        return slices;
+      })()
     : [];
 
   // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑, (하드))
@@ -717,7 +734,7 @@ export default function Dashboard() {
                 {/* 3. 우측: 확인 버튼 - 우측 끝 테두리에서 살짝 왼쪽으로 당겨지도록 여백 설정 */}
                 <div style={{ flexShrink: 0, marginRight: 8, marginTop: 4 }}>
                   <button
-                    onClick={() => navigate('/asset-prescription')}
+                    onClick={() => setSalaryMgmtOpen(true)}
                     style={{ fontSize: 11, fontWeight: 600, padding: '6px 12px', background: '#854F0B', color: '#FAEEDA', border: 'none', borderRadius: 8, cursor: 'pointer' }}
                   >
                     확인 →
@@ -1152,6 +1169,11 @@ export default function Dashboard() {
             <AccountManagePanel onClose={() => setAccountMgmtOpen(false)} />
           </div>
         </div>
+      )}
+
+      {/* 월급 관리 모달 */}
+      {salaryMgmtOpen && (
+        <SalaryManagement onClose={() => setSalaryMgmtOpen(false)} />
       )}
 
       {/* 설정 패널 */}

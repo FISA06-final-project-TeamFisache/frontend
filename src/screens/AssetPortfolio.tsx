@@ -85,23 +85,23 @@ interface ProductItem {
 }
 
 const PRODUCT_CATALOG: ProductItem[] = [
-  // ETF
-  { id: 'etf-tiger-snp',  type: 'ETF',  name: 'TIGER S&P500',         description: '미국 대표 500개 기업에 분산 투자. 장기 우상향 기대 1순위.',          recommended: true,  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  { id: 'etf-kodex-nas',  type: 'ETF',  name: 'KODEX 나스닥100',      description: '미국 빅테크 100종목 추종. 변동성은 크지만 성장성 매력.',             recommended: true,  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  { id: 'etf-kodex-200',  type: 'ETF',  name: 'KODEX 200',            description: '코스피200 추종, 국내 시장 대표 ETF. 환율 영향이 적어요.',          recommended: false, icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  { id: 'etf-tiger-divi', type: 'ETF',  name: 'TIGER 미국배당다우존스', description: '꾸준한 배당 받기 좋은 미국 배당주 ETF. 안정 지향에 적합.',         recommended: false, icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
-  // 적금
-  { id: 'sav-woori',      type: '적금', name: '우리 정기적금',         description: '연 4.1% (12개월) · 우리은행 대표 정기적금 상품.',                   recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'sav-kakao-26',   type: '적금', name: '카카오뱅크 26주 적금',   description: '연 7.0%(최고) · 매주 늘려 모으는 26주 단기 적금.',                 recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'sav-toss',       type: '적금', name: '토스뱅크 자유적금',      description: '연 4.5% · 자유롭게 입금 가능한 적금.',                              recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'sav-shinhan',    type: '적금', name: '신한 쏠편한 적금',       description: '연 3.8% · 자동이체 우대 제공.',                                     recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  // TDF / 채권 / 리츠
-  { id: 'tdf-mirae-2045', type: 'TDF',  name: '미래에셋 TDF2045',     description: '은퇴시점(2045)에 맞춰 자동 자산배분. IRP 대표 상품.',              recommended: true,  icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7' },
-  { id: 'tdf-samsung',    type: 'TDF',  name: '삼성 한국형TDF2050',   description: '국내 자산 비중을 늘린 한국형 TDF. 환위험 완화.',                    recommended: false, icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7' },
-  { id: 'bnd-tiger-10y',  type: '채권', name: 'TIGER 국채10년',       description: '국채 10년물 추종. 안정적 이자 수익 기대.',                          recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'bnd-kodex-corp', type: '채권', name: 'KODEX 단기채권',       description: '단기 회사채/국공채 추종. 변동성 낮음.',                              recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
-  { id: 'reit-macq',      type: '리츠', name: '맥쿼리인프라',         description: '국내 인프라 리츠. 분기배당으로 현금흐름 확보.',                      recommended: true,  icon: 'trending-up', iconColor: '#0F6E56', badgeBg: '#E1F5EE', badgeColor: '#0F6E56' },
-  { id: 'reit-shinhan',   type: '리츠', name: '신한알파리츠',         description: '오피스/물류센터 리츠. 안정적 임대수익.',                              recommended: false, icon: 'trending-up', iconColor: '#0F6E56', badgeBg: '#E1F5EE', badgeColor: '#0F6E56' },
+  // ETF — DB명: 'TIGER 미국S&P500', 'KODEX 나스닥100'
+  { id: 'etf-tiger-snp',  type: 'ETF',  name: 'TIGER 미국S&P500',     description: '미국 대표 500개 기업에 분산 투자. 장기 우상향 기대 1순위.',      recommended: true,  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
+  { id: 'etf-kodex-nas',  type: 'ETF',  name: 'KODEX 나스닥100',      description: '미국 빅테크 100종목 추종. 변동성은 크지만 성장성 매력.',         recommended: true,  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
+  { id: 'etf-kodex-200',  type: 'ETF',  name: 'KODEX 200',            description: '코스피200 추종, 국내 시장 대표 ETF. 환율 영향이 적어요.',      recommended: false, icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
+  { id: 'etf-tiger-divi', type: 'ETF',  name: 'TIGER 미국배당다우존스', description: '꾸준한 배당 받기 좋은 미국 배당주 ETF. 안정 지향에 적합.',     recommended: false, icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D' },
+  // 적금 — DB명: 'WON 정기예금', '26주 적금', '토스 자유적금'
+  { id: 'sav-woori',      type: '적금', name: 'WON 정기예금',          description: '연 3.5% (12개월) · 우리은행 대표 정기예금 상품.',               recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
+  { id: 'sav-kakao-26',   type: '적금', name: '26주 적금',             description: '연 7.0%(최고) · 매주 늘려 모으는 26주 단기 적금.',             recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
+  { id: 'sav-toss',       type: '적금', name: '토스 자유적금',          description: '연 4.5% · 자유롭게 입금 가능한 적금.',                          recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
+  { id: 'sav-shinhan',    type: '적금', name: '신한 쏠편한 적금',       description: '연 3.8% · 자동이체 우대 제공.',                                 recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
+  // TDF / 채권 / 리츠 — DB명: '미래에셋 TDF2045'
+  { id: 'tdf-mirae-2045', type: 'TDF',  name: '미래에셋 TDF2045',     description: '은퇴시점(2045)에 맞춰 자동 자산배분. IRP 대표 상품.',          recommended: true,  icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7' },
+  { id: 'tdf-samsung',    type: 'TDF',  name: '삼성 한국형TDF2050',   description: '국내 자산 비중을 늘린 한국형 TDF. 환위험 완화.',                recommended: false, icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7' },
+  { id: 'bnd-tiger-10y',  type: '채권', name: 'TIGER 국채10년',       description: '국채 10년물 추종. 안정적 이자 수익 기대.',                      recommended: true,  icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
+  { id: 'bnd-kodex-corp', type: '채권', name: 'KODEX 단기채권',       description: '단기 회사채/국공채 추종. 변동성 낮음.',                          recommended: false, icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5' },
+  { id: 'reit-macq',      type: '리츠', name: '맥쿼리인프라',         description: '국내 인프라 리츠. 분기배당으로 현금흐름 확보.',                  recommended: true,  icon: 'trending-up', iconColor: '#0F6E56', badgeBg: '#E1F5EE', badgeColor: '#0F6E56' },
+  { id: 'reit-shinhan',   type: '리츠', name: '신한알파리츠',         description: '오피스/물류센터 리츠. 안정적 임대수익.',                          recommended: false, icon: 'trending-up', iconColor: '#0F6E56', badgeBg: '#E1F5EE', badgeColor: '#0F6E56' },
 ];
 
 // ─── Flow 타입 ───────────────────────────────────────
@@ -218,6 +218,16 @@ const TERM_TABS: { key: TermTab; label: string }[] = [
 const sourceTotal = (flow: Flow) => flow.sources.reduce((s, x) => s + x.amt, 0);
 const lookupHub = (id: string) => HUB_CATALOG.find(h => h.id === id) ?? HUB_CATALOG[0];
 const lookupProduct = (id: string) => PRODUCT_CATALOG.find(p => p.id === id) ?? PRODUCT_CATALOG[0];
+
+// PRODUCT_CATALOG type → 백엔드 ProductType 변환
+const CATALOG_TYPE_TO_BACKEND: Record<string, string> = {
+  'ETF':  'STOCK',
+  '적금': 'SAVING',
+  '주식': 'STOCK',
+  'TDF':  'IRP',
+  '채권': 'STOCK',
+  '리츠': 'STOCK',
+};
 
 // ─── 공통 서브컴포넌트 ─────────────────────────────
 
@@ -586,6 +596,12 @@ function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; on
   const weightedRate = totalMonthly > 0
     ? allEntries.reduce((sum, [, f]) => sum + parseRatePct(f.rate) * sourceTotal(f), 0) / totalMonthly
     : 0;
+  // 예상 1년 수익: 월 납입 연금 FV 공식 기준
+  const monthlyRate = weightedRate / 100 / 12;
+  const annualFV = monthlyRate > 0
+    ? totalMonthly * (Math.pow(1 + monthlyRate, 12) - 1) / monthlyRate
+    : totalMonthly * 12;
+  const annualReturn = Math.round(annualFV - totalMonthly * 12);
 
   // 파이 차트 — 기간별 비중
   const termAmounts: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
@@ -611,7 +627,7 @@ function AllOverview({ flows, onSelectFlow }: { flows: Record<FlowKey, Flow>; on
               <div>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>예상 1년 수익</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', lineHeight: 1.2 }}>+{weightedRate.toFixed(1)}%</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {Math.round(totalMonthly * weightedRate / 100)}만 원</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {annualReturn}만 원</div>
               </div>
             </div>
             {/* 범례 */}
@@ -951,8 +967,21 @@ function apiFlowToFrontend(apiFlow: PortfolioFlow, key: FlowKey): Flow {
     d: { label: '알약 D', shortLabel: '알약D' },
   };
 
-  const termMap: Record<string, FlowTerm> = { 단기: '단기', 중기: '중기', 장기: '장기' };
-  const term: FlowTerm = termMap[apiFlow.term ?? ''] ?? '단기';
+  const termMap: Record<string, FlowTerm> = {
+    단기: '단기', 단: '단기',
+    중기: '중기', 중: '중기',
+    장기: '장기', 장: '장기',
+  };
+  const term: FlowTerm = termMap[apiFlow.term ?? ''] ?? '중기';
+
+  // term → 목표 기간(년)
+  const termToYears = (t: FlowTerm): number => {
+    if (t === '단기') return 0.5;
+    if (t === '장기') return 4.0;
+    return 1.0;
+  };
+  const targetYears = termToYears(term);
+  const projectedPeriod = targetYears === 0.5 ? '6개월' : `${targetYears}년`;
 
   let kind: '일반' | 'IRP' | 'ISA' = '일반';
   const gType = apiFlow.gatheringAsset?.assetType?.toUpperCase() ?? '';
@@ -969,6 +998,19 @@ function apiFlowToFrontend(apiFlow: PortfolioFlow, key: FlowKey): Flow {
     ? apiFlow.products.reduce((sum, p) => sum + (p.interestRate ?? 0) * ((p.productRatio ?? 0) / 100), 0)
     : 0;
 
+  // 월 투자금 (원 단위) → 미래가치 계산
+  const monthlyAmtWon = apiFlow.sources.reduce((sum, s) => sum + (s.amount ?? 0), 0);
+  const monthlyRate = weightedRate / 100 / 12;
+  const months = Math.round(targetYears * 12);
+  const fvWon = monthlyRate > 0 && months > 0
+    ? Math.round(monthlyAmtWon * (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate)
+    : monthlyAmtWon * months;
+  const projected = fvWon >= 100_000_000
+    ? `${(fvWon / 100_000_000).toFixed(1)}억`
+    : fvWon >= 10_000
+    ? `${Math.round(fvWon / 10_000)}만`
+    : '-';
+
   const sources: FlowSource[] = apiFlow.sources.map((s, i) => ({
     logo: (s.institution ?? '?').slice(0, 1),
     bg: '#E2E8F0',
@@ -981,11 +1023,21 @@ function apiFlowToFrontend(apiFlow: PortfolioFlow, key: FlowKey): Flow {
     imgSrc: undefined,
   }));
 
-  const products: FlowProduct[] = apiFlow.products.map((p, i) => ({
-    productId: p.productId ?? `api-${p.id}`,
-    pct: p.productRatio ?? 0,
-    barColor: BAR_COLORS[i % BAR_COLORS.length],
-  }));
+  const products: FlowProduct[] = apiFlow.products.map((p, i) => {
+    // productName으로 카탈로그 매칭 시도 (UUID가 카탈로그 ID와 다를 수 있음)
+    const catalogMatch = p.productName
+      ? PRODUCT_CATALOG.find(c =>
+          c.name === p.productName ||
+          c.name.includes(p.productName!) ||
+          p.productName!.includes(c.name)
+        )
+      : null;
+    return {
+      productId: catalogMatch?.id ?? (p.productId ?? `api-${p.id}`),
+      pct: p.productRatio ?? 0,
+      barColor: BAR_COLORS[i % BAR_COLORS.length],
+    };
+  });
 
   return {
     ...FLOW_LABELS[key],
@@ -995,8 +1047,8 @@ function apiFlowToFrontend(apiFlow: PortfolioFlow, key: FlowKey): Flow {
     kind,
     hubId,
     rate: `+${weightedRate.toFixed(1)}%`,
-    projected: '-',
-    projectedPeriod: '1년',
+    projected,
+    projectedPeriod,
     badgeBg: '#EEEDFE',
     badgeColor: '#534AB7',
     sources,
@@ -1214,11 +1266,14 @@ export default function AssetPortfolio() {
                       sources: f.sources
                         .filter(s => s.assetId)
                         .map(s => ({ assetId: s.assetId!, amount: s.amt * 10000 })),
-                      products: f.products.map(p => ({
-                        productId: p.productId.startsWith('api-') ? null : p.productId,
-                        productType: 'STOCK',
-                        productRatio: p.pct,
-                      })),
+                      products: f.products.map(p => {
+                        const prod = lookupProduct(p.productId);
+                        return {
+                          productId: p.productId.startsWith('api-') ? null : p.productId,
+                          productType: CATALOG_TYPE_TO_BACKEND[prod.type] ?? 'STOCK',
+                          productRatio: p.pct,
+                        };
+                      }),
                     }))
                 );
                 navigate('/dashboard');

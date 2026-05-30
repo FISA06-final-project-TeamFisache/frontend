@@ -80,12 +80,36 @@ export async function generateRecommend(): Promise<AgentRecommend> {
 }
 
 /**
+ * PATCH /portfolios — 월급 배분 계좌 저장 (대시보드 월급 차트용)
+ */
+export async function savePortfolioAllocations(
+  monthlyInvestAmount: number,
+  salary: number,
+  accounts: Array<{ tag: string; amount: number; assetId?: string }>,
+): Promise<void> {
+  const tagToCategory = (tag: string): string => {
+    if (['생활비', '고정지출', '식비'].some(t => tag.includes(t))) return 'FIXED';
+    if (['비상금', '긴급'].some(t => tag.includes(t))) return 'EMERGENCY';
+    if (['주식', 'ETF'].some(t => tag.includes(t))) return 'STOCK';
+    if (['IRP', '연금'].some(t => tag.includes(t))) return 'IRP';
+    return 'CASH';
+  };
+  const portfolios = accounts.map(a => ({
+    assetType: tagToCategory(a.tag),
+    assetAmount: a.amount,
+    accountPurpose: a.tag,
+    ...(a.assetId ? { assetId: a.assetId } : {}),
+  }));
+  await api.patch<CommonResponse>('/portfolios', { monthlyInvestAmount, salary, portfolios });
+}
+
+/**
  * POST /agent/prescriptions — AI 투자 처방전 생성
  */
-export async function generatePrescriptions(): Promise<AgentPrescriptions> {
-  const res = await api.post<CommonResponse<AgentPrescriptions>>('/agent/prescriptions');
+export async function generatePrescriptions(monthlyInvestAmount?: number): Promise<void> {
+  const body = monthlyInvestAmount != null ? { monthlyInvestAmount } : undefined;
+  const res = await api.post<CommonResponse<void>>('/agent/prescriptions', body);
   if (!res.success) throw new Error(res.message || '포트폴리오 처방 생성 중 오류가 발생했습니다.');
-  return res.data;
 }
 
 /**

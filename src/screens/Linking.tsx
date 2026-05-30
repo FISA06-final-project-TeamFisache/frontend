@@ -7,10 +7,10 @@ import kakaoLogo   from '../assets/banks/kakao.png';
 import tossLogo    from '../assets/banks/toss.png';
 import shinhanLogo from '../assets/banks/shinhan.png';
 import hanaLogo    from '../assets/banks/hana.png';
-import { getMyDataPreview, syncAssets } from '../api/assetApi';
+import { getMyDataPreview, syncAssets, getAssetSummary, type Asset, type AssetSummary } from '../api/assetApi';
 import type { PreviewAccount } from '../api/assetApi';
 
-type Step = 'consent' | 'select' | 'linking' | 'account-pick';
+type Step = 'consent' | 'select' | 'linking' | 'account-pick' | 'complete';
 type LinkStatus = 'waiting' | 'linking' | 'done';
 
 const BANK_LIST = [
@@ -84,6 +84,8 @@ export default function Linking() {
   const [previewAccounts, setPreviewAccounts] = useState<PreviewAccount[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncedAssets, setSyncedAssets] = useState<Asset[]>([]);
+  const [summary, setSummary] = useState<AssetSummary | null>(null);
 
   const accountsByInstitution = previewAccounts.reduce((groups, acc) => {
     if (!groups[acc.institution]) groups[acc.institution] = [];
@@ -139,9 +141,13 @@ export default function Linking() {
     setSyncing(true);
     try {
       const assets = await syncAssets(pickedAccounts);
-      navigate('/salary-select', { state: { assets } });
+      setSyncedAssets(assets);
+      const s = await getAssetSummary().catch(() => null);
+      setSummary(s);
+      setStep('complete');
     } catch (err) {
       console.error('[Linking] syncAssets 실패:', err);
+      navigate('/salary-select');
     } finally {
       setSyncing(false);
     }
@@ -281,6 +287,47 @@ export default function Linking() {
           })}
         </div>
       </div>
+    </PhoneFrame>
+  );
+
+  // ── Step 5: 연동 완료 ───────────────────────────────────
+  if (step === 'complete') return (
+    <PhoneFrame bottomLabel="연동 완료">
+      <div className="flex flex-col items-center text-center mt-8 mb-6">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <Check className="w-8 h-8 text-green-500" strokeWidth={3} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 mb-1">연동 완료!</h2>
+        <p className="text-sm text-gray-400">{syncedAssets.length}개 자산이 연결되었어요</p>
+      </div>
+
+      <div className="space-y-3 mb-8">
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">총 자산</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.totalBalance.toLocaleString()}원` : '-'}
+          </span>
+        </div>
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">투자 자산</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.investBalance.toLocaleString()}원` : '-'}
+          </span>
+        </div>
+        <div className="bg-gray-50 rounded-2xl px-5 py-4 flex justify-between items-center">
+          <span className="text-sm text-gray-500">카드 개수</span>
+          <span className="text-base font-bold text-gray-800">
+            {summary ? `${summary.linkedCardCount}개 연결됨` : '-'}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={() => navigate('/salary-select')}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold transition active:scale-95"
+      >
+        급여통장 설정하기 →
+      </button>
     </PhoneFrame>
   );
 

@@ -9,7 +9,7 @@ import kbLogo from '../assets/banks/kb.png';
 import hanaLogo from '../assets/banks/hana.png';
 import miraeLogo from '../assets/banks/mirae.png';
 import { useAuth } from '../contexts/AuthContext';
-import { generateRecommend, type AgentRecommend } from '../api/agentApi';
+import { generateRecommend, savePortfolioAllocations, type AgentRecommend } from '../api/agentApi';
 import { getAssets, type Asset } from '../api/assetApi';
 
 const BANK_LOGOS: Record<string, string> = {
@@ -32,6 +32,7 @@ interface Account {
   percent: number;
   isPinned: boolean;
   color: string;
+  assetId?: string;  // DB 자산 UUID — 대시보드 월급 차트 purpose 저장용
 }
 
 const TAG_COLORS = [
@@ -84,6 +85,7 @@ function planToAccount(plan: AgentRecommend['rebalancingPlans'][0], assets: Asse
     percent: salary > 0 ? Math.round((plan.amount / salary) * 100) : 0,
     isPinned: false,
     color: TAG_COLORS[idx % TAG_COLORS.length],
+    assetId: plan.assetId ?? undefined,
   };
 }
 
@@ -245,7 +247,8 @@ export default function AssetPrescription() {
 
   const handleConfirm = () => {
     setShowModal(false);
-    navigate('/prescription-complete');
+    savePortfolioAllocations(investmentAmount, TOTAL_SALARY, accounts.map(a => ({ tag: a.tag, amount: a.amount, assetId: a.assetId }))).catch(() => {});
+    navigate('/prescription-complete', { state: { investAmount: investmentAmount } });
   };
 
   return (
