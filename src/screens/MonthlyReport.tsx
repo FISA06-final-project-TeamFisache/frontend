@@ -319,7 +319,7 @@ function BenchmarkChart({ data }: { data: typeof MOCK_TREND }) {
 
 // ─── 메인 ─────────────────────────────────────────────────────────────────────
 
-export default function MonthlyReport() {
+export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}) {
   const navigate  = useNavigate();
   const [year,  setYear]  = useState(TODAY.getFullYear());
   const [month, setMonth] = useState(TODAY.getMonth() + 1);
@@ -335,12 +335,12 @@ export default function MonthlyReport() {
   const outperform = lastTrend.portfolio >= lastTrend.sp500;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', justifyContent: 'center', fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
-      <div style={{ width: '100%', maxWidth: 375, minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: onClose ? 'auto' : '100vh', background: '#f8fafc', display: 'flex', justifyContent: 'center', fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif", width: '100%' }}>
+      <div style={{ width: '100%', maxWidth: 375, minHeight: onClose ? 'auto' : '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
 
         {/* 헤더 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 12px', background: '#fff', borderBottom: '0.5px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center' }}>
+          <button onClick={() => onClose ? onClose() : navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center' }}>
             <ChevronLeft size={22} color="#0f172a" />
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -355,7 +355,11 @@ export default function MonthlyReport() {
               <ChevronRight size={17} color="#64748b" />
             </button>
           </div>
-          <div style={{ width: 34 }} />
+          {onClose ? (
+            <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', fontSize: 16, display: 'flex', alignItems: 'center', padding: 6 }} aria-label="닫기">✕</button>
+          ) : (
+            <div style={{ width: 34 }} />
+          )}
         </div>
 
         {/* 본문 */}

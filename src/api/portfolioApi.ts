@@ -28,6 +28,32 @@ export async function getPortfolios(): Promise<PortfolioList> {
   return response.data;
 }
 
+export interface PortfolioItemDetail {
+  id: string;
+  productType: string;   // STOCK / BOND / DEPOSIT
+  productRatio: number | null;
+  isLinked: boolean | null;
+  institution: string | null;
+  assetNumber: string | null;
+  balance: number | null;
+}
+
+export interface PortfolioItemList {
+  items: PortfolioItemDetail[];
+  totalRatio: number;
+  eventId: string | null;
+}
+
+/**
+ * GET /portfolios-items
+ * 기본 포트폴리오 항목 조회 (자산 처방전 기반)
+ */
+export async function getPortfolioItems(): Promise<PortfolioItemList> {
+  const response = await api.get<CommonResponse<PortfolioItemList>>('/portfolios-items');
+  if (!response.success) throw new Error(response.message || '포트폴리오 항목 조회 중 오류가 발생했습니다.');
+  return response.data;
+}
+
 /**
  * PATCH /portfolios
  * 포트폴리오 수정 (리밸런싱 확정 저장)

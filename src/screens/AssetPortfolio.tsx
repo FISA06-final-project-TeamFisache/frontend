@@ -7,13 +7,13 @@ import {
 } from '../api/portfolioFlowApi';
 import { getProducts, type Product } from '../api/productApi';
 import pillImg from '../assets/pill.png';
-import kakaoImg  from '../assets/banks/kakao.png';
-import tossImg   from '../assets/banks/toss.png';
+import kakaoImg from '../assets/banks/kakao.png';
+import tossImg from '../assets/banks/toss.png';
 import shinhanImg from '../assets/banks/shinhan.png';
-import hanaImg   from '../assets/banks/hana.png';
-import wooriImg  from '../assets/banks/woori.png';
-import kbImg     from '../assets/banks/kb.png';
-import miraeImg  from '../assets/banks/mirae.png';
+import hanaImg from '../assets/banks/hana.png';
+import wooriImg from '../assets/banks/woori.png';
+import kbImg from '../assets/banks/kb.png';
+import miraeImg from '../assets/banks/mirae.png';
 
 
 const STEP_COLORS = [
@@ -24,19 +24,6 @@ const STEP_COLORS = [
 ];
 
 // ─── 카탈로그 ───────────────────────────────────────
-
-interface AccountItem {
-  id: string;
-  bank: string;        // 기관명 (예: 카카오뱅크)
-  name: string;        // 통장 이름 (예: 입출금통장)
-  number: string;      // 계좌번호 (마스킹된 형태)
-  logo: string;
-  bg: string;
-  color: string;
-  imgSrc?: string;
-}
-
-// SOURCE_CATALOG (mock) 는 GET /portfolio-flows/available-assets 응답으로 대체됨
 
 interface HubItem {
   id: string;
@@ -85,8 +72,7 @@ const PLACEHOLDER_PRODUCT: ProductItem = {
 
 // ─── Flow 타입 ───────────────────────────────────────
 
-interface FlowSource { logo: string; bg: string; color: string; bank: string; name: string; number: string; amt: number; imgSrc?: string; assetId?: string; }
-interface FlowProduct { productId: string; pct: number; barColor: string; productType: string; }   // productType = API 원본 (STOCK/BOND/DEPOSIT/SAVING/IRP)
+interface FlowProduct { productId: string; pct: number; barColor: string; productType: string; comment?: string; }   // productType = API 원본 (STOCK/BOND/DEPOSIT/SAVING/IRP)
 
 type FlowTerm = '단기' | '중기' | '장기';
 
@@ -94,7 +80,8 @@ interface Flow {
   id: string;                // API: portfolio_flows.id (UUID) — flow 식별자
   title: string;
   summary: string;
-  term: FlowTerm;
+  term: FlowTerm;            // 색상/그룹용 base 기간 (단기/중기/장기)
+  termRaw: string;           // 표시용 원본 (단기/중기/장기1/장기2 …)
   kind: '일반' | 'IRP' | 'ISA';
   hubId: string;
   rate: string;
@@ -102,7 +89,11 @@ interface Flow {
   projectedPeriod: string;   // '6개월' | '1년' | '4년'
   badgeBg: string;
   badgeColor: string;
-  sources: FlowSource[];
+  amount: number;            // 흐름별 월 납입 금액 (만원)
+  hubAssetType?: string;     // 모을 통장 원본 assetType (상품 매수 가능 여부 판단)
+  isRecommendation: boolean; // true = 계좌 추천 / false = 보유 계좌
+  accountComment?: string;   // 모을 통장(추천) 이유
+  rrComment?: string;        // 수익률 코멘트
   products: FlowProduct[];
 }
 
@@ -116,22 +107,22 @@ const TERM_STYLE: Record<FlowTerm, { bg: string; color: string }> = {
 // 'all' 또는 flow.id 직접 진입
 type TermTab = 'all' | string;
 
-// 시드 '단'/'중'/'장' → 화면용 FlowTerm
+// 색상/그룹용 base 기간 파생 — '장기1','장기2'는 '장기'로 묶음 (표시는 termRaw 원본 사용)
 const apiTermToFlowTerm = (t?: string | null): FlowTerm =>
-  t === '단' ? '단기' : t === '장' ? '장기' : '중기';
+  t?.startsWith('단') ? '단기' : t?.startsWith('장') ? '장기' : '중기';
 
 // 기관명 → Logo 표시 메타
 interface BankMeta { logo: string; bg: string; color: string; imgSrc?: string }
 const BANK_META: Record<string, BankMeta> = {
-  '카카오뱅크': { logo: 'K',    bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg   },
-  '토스뱅크':   { logo: 'T',    bg: '#3182F6', color: '#fff',    imgSrc: tossImg    },
-  '토스증권':   { logo: 'T',    bg: '#3182F6', color: '#fff',    imgSrc: tossImg    },
-  '신한은행':   { logo: 'S',    bg: '#0046FF', color: '#fff',    imgSrc: shinhanImg },
-  '하나은행':   { logo: 'H',    bg: '#009F6B', color: '#fff',    imgSrc: hanaImg    },
-  '우리은행':   { logo: 'W',    bg: '#0067AC', color: '#fff',    imgSrc: wooriImg   },
-  '국민은행':   { logo: 'K',    bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg      },
-  'KB증권':     { logo: 'K',    bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg      },
-  '미래에셋':   { logo: '미래', bg: '#FF8200', color: '#fff',    imgSrc: miraeImg   },
+  '카카오뱅크': { logo: 'K', bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg },
+  '토스뱅크': { logo: 'T', bg: '#3182F6', color: '#fff', imgSrc: tossImg },
+  '토스증권': { logo: 'T', bg: '#3182F6', color: '#fff', imgSrc: tossImg },
+  '신한은행': { logo: 'S', bg: '#0046FF', color: '#fff', imgSrc: shinhanImg },
+  '하나은행': { logo: 'H', bg: '#009F6B', color: '#fff', imgSrc: hanaImg },
+  '우리은행': { logo: 'W', bg: '#0067AC', color: '#fff', imgSrc: wooriImg },
+  '국민은행': { logo: 'K', bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg },
+  'KB증권': { logo: 'K', bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg },
+  '미래에셋': { logo: '미래', bg: '#FF8200', color: '#fff', imgSrc: miraeImg },
 };
 const bankMeta = (inst: string): BankMeta =>
   BANK_META[inst] ?? { logo: (inst || '?')[0], bg: '#94a3b8', color: '#fff' };
@@ -146,11 +137,11 @@ interface ProductTypeMeta {
   barColor: string;
 }
 const PRODUCT_TYPE_META: Record<string, ProductTypeMeta> = {
-  STOCK:   { type: 'ETF',  icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D', barColor: '#E24B4A' },
-  BOND:    { type: '채권', icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
-  SAVING:  { type: '적금', icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
-  DEPOSIT: { type: '적금', icon: 'piggy-bank',  iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
-  IRP:     { type: 'TDF',  icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7', barColor: '#534AB7' },
+  STOCK: { type: 'ETF', icon: 'trending-up', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D', barColor: '#E24B4A' },
+  BOND: { type: '채권', icon: 'piggy-bank', iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
+  SAVING: { type: '적금', icon: 'piggy-bank', iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
+  DEPOSIT: { type: '적금', icon: 'piggy-bank', iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' },
+  IRP: { type: 'TDF', icon: 'trending-up', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7', barColor: '#534AB7' },
 };
 const productTypeMeta = (t: string | null | undefined): ProductTypeMeta =>
   PRODUCT_TYPE_META[t ?? ''] ?? PRODUCT_TYPE_META.STOCK;
@@ -159,11 +150,12 @@ const productTypeMeta = (t: string | null | undefined): ProductTypeMeta =>
 const assetTypeToKind = (t: string | null | undefined): '일반' | 'IRP' | 'ISA' =>
   t === 'IRP' ? 'IRP' : t === 'ISA' ? 'ISA' : '일반';
 
-// 끌어오기 후보 — 현금성 통장만
-const SOURCE_ASSET_TYPES = new Set(['CHECKING', 'PARKING', 'SAVINGS', 'DEPOSIT', 'CMA']);
+// 모으기 후보 — 현금성 + 절세/투자 계좌
+const HUB_ASSET_TYPES = new Set(['CHECKING', 'PARKING', 'SAVINGS', 'DEPOSIT', 'CMA', 'IRP', 'ISA', 'PENSION_SAVINGS', 'STOCK']);
 
-// 모으기 후보 — 현금성 + 절세 계좌
-const HUB_ASSET_TYPES = new Set(['CHECKING', 'PARKING', 'SAVINGS', 'DEPOSIT', 'CMA', 'IRP', 'ISA']);
+// 상품 매수가 가능한 모을 통장 — 증권/ISA/IRP/연금저축. 그 외(예적금·파킹 등)는 '넣기'를 비움
+const INVESTABLE_HUB_TYPES = new Set(['STOCK', 'ISA', 'IRP', 'PENSION_SAVINGS']);
+const isInvestableHub = (t?: string | null): boolean => INVESTABLE_HUB_TYPES.has(t ?? '');
 
 // 편집 모달의 lookup*과 호환되도록 API 응답을 catalog 형태로 동적 등록
 const dynamicHubs = new Map<string, HubItem>();
@@ -171,7 +163,6 @@ const dynamicProducts = new Map<string, ProductItem>();
 // 화면 매핑 시 손실되는 원본 API productType 보존 (handleProductPick에서 사용)
 const productApiTypeById = new Map<string, string>();
 
-const sourceTotal = (flow: Flow) => flow.sources.reduce((s, x) => s + x.amt, 0);
 const lookupHub = (id: string): HubItem =>
   dynamicHubs.get(id) ?? PLACEHOLDER_HUB;
 const lookupProduct = (id: string): ProductItem =>
@@ -180,45 +171,39 @@ const lookupProduct = (id: string): ProductItem =>
 // API DTO → Flow (편집 모달에서 lookup 가능하도록 dynamic catalog도 채움)
 function apiToFlow(dto: PortfolioFlow): Flow {
   const term = apiTermToFlowTerm(dto.term);
+  const termRaw = dto.term ?? term;   // 표시용 원본 (장기1/장기2 등 그대로)
   const kind = assetTypeToKind(dto.gatheringAsset?.assetType);
 
-  // hub 동적 등록
+  // hub 동적 등록 (보유 계좌면 asset_id, 계좌 추천이면 dyn id)
   const hubId = dto.gatheringAsset?.id ?? `dyn-hub-${dto.id}`;
   if (dto.gatheringAsset && !dynamicHubs.has(hubId)) {
-    const m = bankMeta(dto.gatheringAsset.institution ?? '');
+    const ga = dto.gatheringAsset;
+    const m = bankMeta(ga.institution ?? '');
+    const rateText = ga.interestRate != null ? `연 ${ga.interestRate}%` : '';
     dynamicHubs.set(hubId, {
       id: hubId,
       logo: m.logo, logoBg: m.bg, logoColor: m.color, imgSrc: m.imgSrc,
-      name: dto.gatheringAsset.accountName ?? '모으기 통장',
-      number: dto.gatheringAsset.assetNumber ?? '',
-      sub: dto.gatheringAsset.assetType ?? '',
-      cardBg: kind === 'IRP' ? '#FFF4E6' : kind === 'ISA' ? '#FEF3C7' : '#EEEDFE',
-      border: kind === 'IRP' ? '#FFB873' : kind === 'ISA' ? '#F59E0B' : '#AFA9EC',
-      nameColor: kind === 'IRP' ? '#9A4D00' : kind === 'ISA' ? '#92400E' : '#3C3489',
-      subColor:  kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
+      name: ga.accountName ?? '모으기 통장',
+      number: ga.assetNumber ?? '',
+      // 추천이면 잔액 대신 금리 위주로 표시
+      sub: dto.isRecommendation
+        ? [ga.assetType, rateText].filter(Boolean).join(' · ') || '추천 계좌'
+        : (ga.assetType ?? ''),
+      cardBg: kind === 'IRP' ? '#F1F5F9' : kind === 'ISA' ? '#F8FAFC' : '#EEEDFE',
+      border: kind === 'IRP' ? '#94A3B8' : kind === 'ISA' ? '#CBD5E1' : '#AFA9EC',
+      nameColor: kind === 'IRP' ? '#1E293B' : kind === 'ISA' ? '#334155' : '#3C3489',
+      subColor: kind === 'IRP' ? '#475569' : kind === 'ISA' ? '#64748B' : '#534AB7',
       kind,
-      hubLabel: dto.gatheringAsset.institution ?? '',
+      hubLabel: ga.institution ?? '',
     });
   }
-
-  const sources: FlowSource[] = dto.sources.map(s => {
-    const m = bankMeta(s.institution ?? '');
-    return {
-      logo: m.logo, bg: m.bg, color: m.color, imgSrc: m.imgSrc,
-      bank: s.institution ?? '',
-      name: s.accountName ?? '',
-      number: s.assetNumber ?? '',
-      amt: Math.round((s.amount ?? 0) / 10000), // 원 → 만원
-      assetId: s.assetId ?? undefined,
-    };
-  });
 
   const products: FlowProduct[] = dto.products.map((p, i) => {
     const meta = productTypeMeta(p.productType);
     const productId = p.productId ?? `dyn-prod-${dto.id}-${i}`;
-    if (p.productId && !dynamicProducts.has(p.productId)) {
-      dynamicProducts.set(p.productId, {
-        id: p.productId,
+    if (!dynamicProducts.has(productId)) {
+      dynamicProducts.set(productId, {
+        id: productId,
         type: meta.type,
         name: p.productName ?? '',
         description: p.interestRate != null ? `연 ${p.interestRate}%` : '',
@@ -229,37 +214,40 @@ function apiToFlow(dto: PortfolioFlow): Flow {
         badgeColor: meta.badgeColor,
       });
     }
-    if (p.productId && p.productType) productApiTypeById.set(p.productId, p.productType);
+    if (p.productType) productApiTypeById.set(productId, p.productType);
     return {
       productId,
       pct: p.productRatio ?? 0,
       barColor: meta.barColor,
       productType: p.productType ?? 'STOCK',
+      comment: p.comment ?? undefined,
     };
   });
 
-  // 부족 메타는 기본값 (rate/projected는 추후 별도 데이터 소스로 대체)
+  // 수익률/예상값 — API 신규 필드에서 (만원 단위로 변환)
+  const rate = dto.expectedRrPct != null
+    ? `${dto.expectedRrPct >= 0 ? '+' : ''}${dto.expectedRrPct}%`
+    : '+0.0%';
+  const projectedPeriod = dto.investmentMonths != null ? `${dto.investmentMonths}개월` : '1년';
+  const projected = dto.expectedAmount != null
+    ? `${Math.round(dto.expectedAmount / 10000)}만 원`
+    : '-';
+
   return {
     id: dto.id,
     title: dto.title ?? '',
     summary: dto.summary ?? '',
-    term, kind, hubId,
-    rate: '+0.0%', projected: '-', projectedPeriod: '6개월',
-    badgeBg: kind === 'IRP' ? '#FFF4E6' : kind === 'ISA' ? '#FEF3C7' : '#EEEDFE',
-    badgeColor: kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
-    sources, products,
-  };
-}
-
-// available-assets DTO → SourcePickerModal 의 AccountItem
-function assetToAccountItem(a: AvailableAsset): AccountItem {
-  const m = bankMeta(a.institution ?? '');
-  return {
-    id: a.id,
-    bank: a.institution ?? '',
-    name: a.accountName ?? '',
-    number: a.assetNumber ?? '',
-    logo: m.logo, bg: m.bg, color: m.color, imgSrc: m.imgSrc,
+    term, termRaw, kind, hubId,
+    rate, projected, projectedPeriod,
+    badgeBg: kind === 'IRP' ? '#F1F5F9' : kind === 'ISA' ? '#F8FAFC' : '#EEEDFE',
+    badgeColor: kind === 'IRP' ? '#475569' : kind === 'ISA' ? '#64748B' : '#534AB7',
+    amount: Math.round((dto.amount ?? 0) / 10000), // 원 → 만원
+    hubAssetType: dto.gatheringAsset?.assetType ?? undefined,
+    isRecommendation: dto.isRecommendation,
+    accountComment: dto.accountComment ?? undefined,
+    rrComment: dto.rrComment ?? undefined,
+    // 증권/ISA/IRP/연금저축이 아니면 상품(넣기)은 비움
+    products: isInvestableHub(dto.gatheringAsset?.assetType) ? products : [],
   };
 }
 
@@ -277,7 +265,7 @@ function assetToHubItem(a: AvailableAsset): HubItem {
     cardBg: kind === 'IRP' ? '#FFF4E6' : kind === 'ISA' ? '#FEF3C7' : '#EEEDFE',
     border: kind === 'IRP' ? '#FFB873' : kind === 'ISA' ? '#F59E0B' : '#AFA9EC',
     nameColor: kind === 'IRP' ? '#9A4D00' : kind === 'ISA' ? '#92400E' : '#3C3489',
-    subColor:  kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
+    subColor: kind === 'IRP' ? '#C45500' : kind === 'ISA' ? '#B45309' : '#534AB7',
     kind,
     hubLabel: a.institution ?? '',
   };
@@ -305,15 +293,16 @@ function productToCatalogItem(p: Product): ProductItem {
   return item;
 }
 
-// flow.id → '단기' / '단기1' / '단기2' 같이 중복 시 번호 부여
+// flow.id → 표시 라벨. termRaw(에이전트 원본)를 그대로 쓰되, 같은 라벨이 중복되면 번호 부여
+//   예) 에이전트가 '장기1','장기2'를 주면 그대로 / 그냥 '장기'를 둘 주면 '장기1','장기2'로 자동 부여
 function buildFlowTabLabels(flows: Flow[]): Record<string, string> {
-  const total: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
-  flows.forEach(f => { total[f.term]++; });
-  const seen: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
+  const total: Record<string, number> = {};
+  flows.forEach(f => { total[f.termRaw] = (total[f.termRaw] ?? 0) + 1; });
+  const seen: Record<string, number> = {};
   const labels: Record<string, string> = {};
   flows.forEach(f => {
-    seen[f.term]++;
-    labels[f.id] = total[f.term] > 1 ? `${f.term}${seen[f.term]}` : f.term;
+    seen[f.termRaw] = (seen[f.termRaw] ?? 0) + 1;
+    labels[f.id] = total[f.termRaw] > 1 ? `${f.termRaw}${seen[f.termRaw]}` : f.termRaw;
   });
   return labels;
 }
@@ -336,14 +325,6 @@ function Logo({ letter, bg, color, size = 20, imgSrc }: { letter: string; bg: st
   );
 }
 
-function MiniCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 12px', marginTop: 9, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ fontSize: 12, color: '#64748b' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{value}</span>
-    </div>
-  );
-}
 
 function Connector() {
   return (
@@ -366,7 +347,7 @@ function StepCard({ num, title, sub, children, action }: { num: number; title: s
         <span style={{ marginLeft: 'auto' }}>{action}</span>
       </div>
       <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px', paddingLeft: 28 }}>{sub}</p>
-      <div style={{ paddingLeft: 28 }}>{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
@@ -390,8 +371,7 @@ function ProductIcon({ icon, color, size = 18 }: { icon: 'trending-up' | 'piggy-
 
 type EditorMode =
   | null
-  | { type: 'source-pick';  flowId: string; sourceIdx: number | 'new' }
-  | { type: 'hub-pick';     flowId: string }
+  | { type: 'hub-pick'; flowId: string }
   | { type: 'product-pick'; flowId: string; productIdx: number | 'new' };
 
 const BAR_COLORS = ['#E24B4A', '#378ADD', '#534AB7', '#3B6D11', '#C45500', '#639922', '#0F6E56'];
@@ -402,15 +382,15 @@ interface FlowDetailProps {
   flow: Flow;
   termLabel: string;
   onEdit: (mode: EditorMode) => void;
-  onAmount: (sourceIdx: number, amt: number) => void;
-  onRemoveSource: (sourceIdx: number) => void;
   onPct: (productIdx: number, pct: number) => void;
+  onFlowAmount: (amount: number) => void;
   onRemoveProduct: (productIdx: number) => void;
 }
 
-function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, onRemoveProduct }: FlowDetailProps) {
+function FlowDetail({ flow, termLabel, onEdit, onPct, onFlowAmount, onRemoveProduct }: FlowDetailProps) {
   const hub = lookupHub(flow.hubId);
-  const total = sourceTotal(flow);
+  const total = flow.amount;   // 상품 비율 기준 = 모을 통장 월 납입 금액(만원)
+  const investable = isInvestableHub(flow.hubAssetType);  // 증권/ISA/IRP/연금저축만 상품 매수 가능
 
   return (
     <div>
@@ -426,62 +406,9 @@ function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, 
         <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>{flow.summary}</p>
       </div>
 
-      {/* 1. 끌어오기 */}
+      {/* 1. 모으기 */}
       <StepCard
         num={1}
-        title="끌어오기"
-        sub="이 통장들에서 가져와요 (금액 직접 수정 가능)"
-        action={
-          <button
-            onClick={() => onEdit({ type: 'source-pick', flowId: flow.id, sourceIdx: 'new' })}
-            style={{ fontSize: 11, fontWeight: 600, color: '#3182F6', background: '#EFF6FF', border: 'none', borderRadius: 99, padding: '4px 10px', cursor: 'pointer' }}
-          >
-            + 통장 추가
-          </button>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {flow.sources.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: 10 }}>
-              <button
-                onClick={() => onEdit({ type: 'source-pick', flowId: flow.id, sourceIdx: i })}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', minWidth: 0, flex: 1 }}
-              >
-                <Logo letter={s.logo} bg={s.bg} color={s.color} size={26} imgSrc={s.imgSrc} />
-                <div style={{ minWidth: 0, textAlign: 'left' }}>
-                  <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500, lineHeight: 1.2 }}>{s.bank}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', borderBottom: '1px dashed #cbd5e1', display: 'inline-block', lineHeight: 1.3, marginTop: 1 }}>
-                    {s.name}
-                  </div>
-                  <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', marginTop: 1 }}>{s.number}</div>
-                </div>
-              </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                <input
-                  type="number"
-                  value={s.amt}
-                  onChange={(e) => onAmount(i, Math.max(0, parseInt(e.target.value || '0', 10)))}
-                  style={{ width: 56, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 6px', outline: 'none' }}
-                />
-                <span style={{ fontSize: 11, color: '#64748b' }}>만</span>
-                <button
-                  onClick={() => onRemoveSource(i)}
-                  aria-label="통장 제거"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2, marginLeft: 2 }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" /></svg>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <MiniCard label="소계" value={`${total}만 원`} />
-      </StepCard>
-      <Connector />
-
-      {/* 2. 모으기 */}
-      <StepCard
-        num={2}
         title="모으기"
         sub={flow.kind === '일반' ? '여기에 한 번 모아둬요' : `${flow.kind} 계좌로 모아둬요`}
         action={
@@ -493,41 +420,65 @@ function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, 
           </button>
         }
       >
+        {flow.isRecommendation && (
+          <div style={{ marginBottom: 8, textAlign: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, background: '#EFF6FF', color: '#3182F6', padding: '3px 8px', borderRadius: 99 }}>✨ 추천 계좌 (아직 미보유)</span>
+          </div>
+        )}
         <button
           onClick={() => onEdit({ type: 'hub-pick', flowId: flow.id })}
-          style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: hub.cardBg, border: `1px solid ${hub.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}
+          style={{ width: '100%', cursor: 'pointer', background: hub.cardBg, border: `1px solid ${hub.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left', gap: 12 }}
         >
-          <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={30} imgSrc={hub.imgSrc} />
-          <div style={{ minWidth: 0 }}>
+          <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={36} imgSrc={hub.imgSrc} />
+          <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: hub.nameColor }}>{hub.name}</div>
             <div style={{ fontSize: 10, color: hub.subColor, fontFamily: 'monospace', marginTop: 1 }}>{hub.number}</div>
             <div style={{ fontSize: 11, color: hub.subColor, marginTop: 2 }}>{hub.sub}</div>
           </div>
         </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+          <span style={{ fontSize: 12, color: '#64748b' }}>월 납입 금액</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="number"
+              value={flow.amount}
+              onChange={(e) => onFlowAmount(Math.max(0, parseInt(e.target.value || '0', 10)))}
+              style={{ width: 76, textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 8px', outline: 'none' }}
+            />
+            <span style={{ fontSize: 12, color: '#64748b' }}>만 원</span>
+          </div>
+        </div>
+        {flow.accountComment && (
+          <p style={{ fontSize: 11, color: '#64748b', margin: '8px 2px 0', lineHeight: 1.5, textAlign: 'center' }}>💬 {flow.accountComment}</p>
+        )}
       </StepCard>
       <Connector />
 
-      {/* 3. 넣기 */}
+      {/* 2. 넣기 */}
       <StepCard
-        num={3}
+        num={2}
         title="넣기"
-        sub="상품을 탭하면 변경할 수 있어요"
-        action={
+        sub={investable ? '상품을 탭하면 변경할 수 있어요' : '예·적금/파킹 통장은 상품 없이 그대로 모아요'}
+        action={investable ? (
           <button
             onClick={() => onEdit({ type: 'product-pick', flowId: flow.id, productIdx: 'new' })}
             style={{ fontSize: 11, fontWeight: 600, color: '#3182F6', background: '#EFF6FF', border: 'none', borderRadius: 99, padding: '4px 10px', cursor: 'pointer' }}
           >
             + 상품 추가
           </button>
-        }
+        ) : undefined}
       >
         {flow.products.length > 0 ? (
           <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
             {flow.products.map((p, i) => <div key={i} style={{ width: `${p.pct}%`, background: p.barColor }} />)}
           </div>
-        ) : (
+        ) : investable ? (
           <div style={{ padding: '10px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
             아직 담은 상품이 없어요. <span style={{ color: '#3182F6', fontWeight: 600 }}>+ 상품 추가</span>로 시작해보세요.
+          </div>
+        ) : (
+          <div style={{ padding: '12px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
+            예·적금/파킹 통장은 상품 없이 그대로 모아요.<br />증권·ISA·IRP·연금저축 계좌일 때만 상품을 넣을 수 있어요.
           </div>
         )}
         {flow.products.map((p, i, arr) => {
@@ -545,6 +496,7 @@ function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, 
                     <span style={{ fontSize: 10, fontWeight: 700, background: prod.badgeBg, color: prod.badgeColor, padding: '1px 6px', borderRadius: 99 }}>{prod.type}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', borderBottom: '1px dashed #cbd5e1' }}>{prod.name}</span>
                   </div>
+                  {p.comment && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3, lineHeight: 1.4, whiteSpace: 'normal' }}>{p.comment}</div>}
                 </div>
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -555,7 +507,13 @@ function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, 
                   style={{ width: 44, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 6px', outline: 'none' }}
                 />
                 <span style={{ fontSize: 11, color: '#64748b' }}>%</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginLeft: 6, minWidth: 40, textAlign: 'right' }}>{amt}만</span>
+                <input
+                  type="number"
+                  value={amt}
+                  onChange={(e) => onPct(i, total > 0 ? Math.round(Math.max(0, parseInt(e.target.value || '0', 10)) / total * 100) : 0)}
+                  style={{ width: 52, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 6px', outline: 'none', marginLeft: 6 }}
+                />
+                <span style={{ fontSize: 11, color: '#64748b' }}>만</span>
                 <button
                   onClick={() => onRemoveProduct(i)}
                   aria-label="상품 제거"
@@ -570,8 +528,8 @@ function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, 
       </StepCard>
       <Connector />
 
-      {/* 4. 불리기 */}
-      <StepCard num={4} title="불리기" sub="이렇게 불어나요">
+      {/* 3. 불리기 */}
+      <StepCard num={3} title="불리기" sub="이렇게 불어나요">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 7 }}>
           <div style={{ background: '#f8fafc', borderRadius: 8, padding: 11, textAlign: 'center' }}>
             <div style={{ fontSize: 10, color: '#64748b', marginBottom: 3 }}>예상 수익률</div>
@@ -582,6 +540,9 @@ function FlowDetail({ flow, termLabel, onEdit, onAmount, onRemoveSource, onPct, 
             <div style={{ fontSize: 20, fontWeight: 600, color: '#0f172a' }}>{flow.projected}</div>
           </div>
         </div>
+        {flow.rrComment && (
+          <p style={{ fontSize: 11, color: '#64748b', margin: '10px 2px 0', lineHeight: 1.5, textAlign: 'center' }}>💬 {flow.rrComment}</p>
+        )}
       </StepCard>
     </div>
   );
@@ -596,14 +557,14 @@ const PIE_TERM_COLORS: Record<FlowTerm, string> = { 단기: '#FECACA', 중기: '
 
 // 탭·배지 색상 (FlowTerm 기준 — 라벨에 숫자 붙어도 prefix로 매칭)
 const TERM_COLORS: Record<string, { bg: string; text: string }> = {
-  all:  { bg: '#ffffff', text: '#0f172a' },
+  all: { bg: '#ffffff', text: '#0f172a' },
   단기: { bg: '#FECACA', text: '#991B1B' },
   중기: { bg: '#FDE68A', text: '#92400E' },
   장기: { bg: '#BBF7D0', text: '#166534' },
 };
 
 function PieChart({ data }: { data: { pct: number; color: string; label: string; amt: number }[] }) {
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const cx = 50, cy = 50, R = 44, r = 21;
 
   const toXY = (pct: number, radius: number) => {
@@ -612,10 +573,10 @@ function PieChart({ data }: { data: { pct: number; color: string; label: string;
   };
 
   let cum = 0;
-  const selected = selectedIdx !== null ? data[selectedIdx] : null;
+  const hovered = hoveredIdx !== null ? data[hoveredIdx] : null;
 
   return (
-    <svg width="72" height="72" viewBox="0 0 100 100" style={{ flexShrink: 0, cursor: 'pointer' }}>
+    <svg width="72" height="72" viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
       {data.map((d, i) => {
         const start = cum;
         cum += d.pct;
@@ -630,19 +591,20 @@ function PieChart({ data }: { data: { pct: number; color: string; label: string;
             key={i}
             d={path}
             fill={d.color}
-            opacity={selectedIdx === null || selectedIdx === i ? 1 : 0.3}
-            onClick={() => setSelectedIdx(prev => prev === i ? null : i)}
+            opacity={hoveredIdx === null || hoveredIdx === i ? 1 : 0.3}
+            onMouseEnter={() => setHoveredIdx(i)}
+            onMouseLeave={() => setHoveredIdx(null)}
+            style={{ cursor: 'default', transition: 'opacity 0.15s' }}
           />
         );
       })}
       {/* 도넛 중앙 원 */}
-      <circle cx={cx} cy={cy} r={r} fill="white" onClick={() => setSelectedIdx(null)} />
-      {/* 중앙 텍스트 */}
-      {selected ? (
+      <circle cx={cx} cy={cy} r={r} fill="white" />
+      {/* 중앙 텍스트 — 호버 시 기간명 + % */}
+      {hovered ? (
         <>
-          <text x={cx} y={cy - 7} textAnchor="middle" fontSize="9" fontWeight="700" fill="#0f172a">{selected.label}</text>
-          <text x={cx} y={cy + 3} textAnchor="middle" fontSize="8" fill="#64748b">{selected.pct.toFixed(0)}%</text>
-          <text x={cx} y={cy + 13} textAnchor="middle" fontSize="8" fontWeight="600" fill="#0f172a">{selected.amt}만</text>
+          <text x={cx} y={cy - 4} textAnchor="middle" fontSize="9" fontWeight="700" fill="#0f172a">{hovered.label}</text>
+          <text x={cx} y={cy + 8} textAnchor="middle" fontSize="9" fontWeight="600" fill="#64748b">{hovered.pct.toFixed(0)}%</text>
         </>
       ) : null}
     </svg>
@@ -675,20 +637,20 @@ function ProductBar({ products }: { products: FlowProduct[] }) {
   );
 }
 
-function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowLabels: Record<string, string>; onSelectFlow: (id: string) => void }) {
-  // 항상 전체 기준으로 요약 계산
-  const totalMonthly = flows.reduce((sum, f) => sum + sourceTotal(f), 0);
-  // 투자액 가중 평균 수익률 — 각 플로우의 연 수익률을 투자 비중으로 가중
-  const weightedRate = totalMonthly > 0
-    ? flows.reduce((sum, f) => sum + parseRatePct(f.rate) * sourceTotal(f), 0) / totalMonthly
+function AllOverview({ flows, flowLabels, monthlyInvestAmount, onSelectFlow }: { flows: Flow[]; flowLabels: Record<string, string>; monthlyInvestAmount: number; onSelectFlow: (id: string) => void }) {
+  // 흐름 amount 합계 (수익률 가중평균/파이 계산용)
+  const totalFlowAmount = flows.reduce((sum, f) => sum + f.amount, 0);
+  // 투자액 가중 평균 수익률 — 각 플로우의 연 수익률을 흐름 비중으로 가중
+  const weightedRate = totalFlowAmount > 0
+    ? flows.reduce((sum, f) => sum + parseRatePct(f.rate) * f.amount, 0) / totalFlowAmount
     : 0;
 
-  // 파이 차트 — 기간별 비중
+  // 파이 차트 — 기간별 비중 (흐름 amount 기준)
   const termAmounts: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
-  flows.forEach(f => { termAmounts[f.term] += sourceTotal(f); });
+  flows.forEach(f => { termAmounts[f.term] += f.amount; });
   const pieData = (['단기', '중기', '장기'] as FlowTerm[])
     .filter(t => termAmounts[t] > 0)
-    .map(t => ({ pct: (termAmounts[t] / totalMonthly) * 100, color: PIE_TERM_COLORS[t], label: t, amt: termAmounts[t] }));
+    .map(t => ({ pct: totalFlowAmount > 0 ? (termAmounts[t] / totalFlowAmount) * 100 : 0, color: PIE_TERM_COLORS[t], label: t, amt: termAmounts[t] }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -702,12 +664,12 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
               <div>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>월 총 투자액</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{totalMonthly}만 원</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{monthlyInvestAmount}만 원</div>
               </div>
               <div>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>예상 1년 수익</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', lineHeight: 1.2 }}>+{weightedRate.toFixed(1)}%</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {Math.round(totalMonthly * weightedRate / 100)}만 원</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {Math.round(monthlyInvestAmount * weightedRate / 100)}만 원</div>
               </div>
             </div>
             {/* 범례 */}
@@ -726,7 +688,6 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
       {/* 흐름 카드 목록 */}
       {flows.map(f => {
         const hub = lookupHub(f.hubId);
-        const total = sourceTotal(f);
         const termLabel = flowLabels[f.id] ?? f.term;
         const tc = TERM_COLORS[f.term] ?? TERM_COLORS.all;
         return (
@@ -752,15 +713,14 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
 
             {/* Row 2: 소스 → 허브 | 월 금액 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                {f.sources.map((s, i) => <Logo key={i} letter={s.logo} bg={s.bg} color={s.color} size={20} imgSrc={s.imgSrc} />)}
-                <svg width="12" height="9" viewBox="0 0 14 10" fill="none" style={{ margin: '0 2px', flexShrink: 0 }}>
-                  <path d="M1 5h10M8 2l3 3-3 3" stroke="#94a3b8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={20} imgSrc={hub.imgSrc} />
-                <span style={{ fontSize: 11, color: '#64748b', marginLeft: 3 }}>{hub.hubLabel}</span>
+                <span style={{ fontSize: 11, color: '#64748b' }}>{hub.hubLabel}</span>
+                {f.isRecommendation && (
+                  <span style={{ fontSize: 9, fontWeight: 700, background: '#EFF6FF', color: '#3182F6', padding: '1px 6px', borderRadius: 99 }}>추천</span>
+                )}
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {total}만 원</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {f.amount}만 원</span>
             </div>
 
             {/* Row 3: 상품 바 */}
@@ -796,45 +756,6 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
         {children}
       </div>
     </div>
-  );
-}
-
-function SourcePickerModal({ catalog, currentName, onClose, onPick }: { catalog: AccountItem[]; currentName?: string; onClose: () => void; onPick: (a: AccountItem) => void }) {
-  return (
-    <ModalShell title="통장 선택" onClose={onClose}>
-      <div style={{ padding: 14, overflowY: 'auto' }}>
-        {catalog.length === 0 && (
-          <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>
-            추가 가능한 통장이 없어요.
-          </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {catalog.map(a => {
-            const isCurrent = currentName === a.name;
-            return (
-              <button
-                key={a.id}
-                onClick={() => onPick(a)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                  background: isCurrent ? '#EFF6FF' : '#fff',
-                  border: `1.5px solid ${isCurrent ? '#3182F6' : '#e2e8f0'}`,
-                  borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                <Logo letter={a.logo} bg={a.bg} color={a.color} size={32} imgSrc={a.imgSrc} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>{a.bank}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 1 }}>{a.name}</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'monospace', marginTop: 1 }}>{a.number}</div>
-                </div>
-                {isCurrent && <span style={{ fontSize: 11, color: '#3182F6', fontWeight: 700 }}>현재</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </ModalShell>
   );
 }
 
@@ -957,7 +878,7 @@ function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }: { cat
           />
         </div>
         <div style={{ display: 'flex', gap: 5, marginBottom: 10, flexWrap: 'wrap' }}>
-          {(['전체', 'ETF', '적금', 'TDF', '채권', '리츠', '주식'] as const).map(t => (
+          {(['전체', 'ETF', 'TDF', '채권', '리츠', '주식'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
@@ -1037,6 +958,7 @@ export default function AssetPortfolio() {
   const [termTab, setTermTab] = useState<TermTab>('all');        // 'all' 또는 flow.id
   const [detailFlowId, setDetailFlowId] = useState<string | null>(null);
   const [flows, setFlows] = useState<Flow[]>([]);
+  const [monthlyInvestAmount, setMonthlyInvestAmount] = useState<number>(0);   // 만원 단위
   const [availableAssets, setAvailableAssets] = useState<AvailableAsset[]>([]);
   const [productCatalog, setProductCatalog] = useState<ProductItem[]>([]);
   const [editor, setEditor] = useState<EditorMode>(null);
@@ -1047,10 +969,12 @@ export default function AssetPortfolio() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+
     Promise.all([getPortfolioFlows(), getAvailableAssets(), getProducts()])
       .then(([flowsRes, assetsRes, productsRes]) => {
         if (cancelled) return;
         setFlows(flowsRes.flows.map(apiToFlow));
+        setMonthlyInvestAmount(Math.round((flowsRes.monthlyInvestAmount ?? 0) / 10000));
         setAvailableAssets(assetsRes.assets);
         // dynamicHubs/Products 캐시 미리 채워두기 (lookup 호환)
         assetsRes.assets.forEach(assetToHubItem);
@@ -1077,36 +1001,24 @@ export default function AssetPortfolio() {
     setFlows(prev => prev.map(f => f.id === id ? patch(f) : f));
   };
 
-  const handleAmount = (id: string, sourceIdx: number, amt: number) => {
-    updateFlow(id, f => ({ ...f, sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, amt } : s) }));
-  };
-
-  const handleRemoveSource = (id: string, sourceIdx: number) => {
-    updateFlow(id, f => ({ ...f, sources: f.sources.filter((_, i) => i !== sourceIdx) }));
-  };
-
   const handlePct = (id: string, productIdx: number, pct: number) => {
     updateFlow(id, f => ({ ...f, products: f.products.map((p, i) => i === productIdx ? { ...p, pct } : p) }));
   };
 
-  const handleSourcePick = (a: AccountItem) => {
-    if (!editor || editor.type !== 'source-pick') return;
-    const { flowId, sourceIdx } = editor;
-    updateFlow(flowId, f => {
-      if (sourceIdx === 'new') {
-        return { ...f, sources: [...f.sources, { logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, amt: 0, imgSrc: a.imgSrc, assetId: a.id }] };
-      }
-      return {
-        ...f,
-        sources: f.sources.map((s, i) => i === sourceIdx ? { ...s, logo: a.logo, bg: a.bg, color: a.color, bank: a.bank, name: a.name, number: a.number, imgSrc: a.imgSrc, assetId: a.id } : s),
-      };
-    });
-    setEditor(null);
+  const handleFlowAmount = (id: string, amount: number) => {
+    updateFlow(id, f => ({ ...f, amount }));
   };
 
   const handleHubPick = (h: HubItem) => {
     if (!editor || editor.type !== 'hub-pick') return;
-    updateFlow(editor.flowId, f => ({ ...f, hubId: h.id, kind: h.kind }));
+    const investable = isInvestableHub(h.sub);  // 모으기 후보의 sub = 원본 assetType
+    updateFlow(editor.flowId, f => ({
+      ...f,
+      hubId: h.id,
+      kind: h.kind,
+      hubAssetType: h.sub,
+      products: investable ? f.products : [],  // 비투자 계좌면 상품 비움
+    }));
     setEditor(null);
   };
 
@@ -1133,10 +1045,9 @@ export default function AssetPortfolio() {
 
   // "관리 시작하기" — 모든 흐름 일괄 PATCH 후 대시보드로
   const buildRequest = (f: Flow): PortfolioFlowUpdateRequest => ({
-    gatheringAssetId: f.hubId || null,
-    sources: f.sources
-      .filter(s => s.assetId)
-      .map(s => ({ assetId: s.assetId!, amount: s.amt * 10000 })),  // 만원 → 원
+    amount: f.amount * 10000,  // 만원 → 원
+    // 추천(dyn) 허브는 실제 계좌가 아니므로 null → 백엔드가 기존 추천 통장 정보 유지
+    gatheringAssetId: f.hubId && !f.hubId.startsWith('dyn-') ? f.hubId : null,
     products: f.products.map(p => ({
       productId: p.productId.startsWith('dyn-') ? null : p.productId,
       productType: p.productType,
@@ -1167,12 +1078,11 @@ export default function AssetPortfolio() {
   // 편집 모달에서 참조할 flow
   const editorFlow = editor && 'flowId' in editor ? flows.find(f => f.id === editor.flowId) ?? null : null;
 
-  // 현재 모든 흐름에서 사용 중인 통장 id 집합 (끌어오기 + 모으기)
+  // 현재 모든 흐름에서 사용 중인 모으기 통장 id 집합
   const usedAssetIds = useMemo(() => {
     const s = new Set<string>();
     flows.forEach(f => {
       if (f.hubId) s.add(f.hubId);
-      f.sources.forEach(src => { if (src.assetId) s.add(src.assetId); });
     });
     return s;
   }, [flows]);
@@ -1180,26 +1090,14 @@ export default function AssetPortfolio() {
   // 변경 중인 자기 자신은 후보에서 빼지 말고 그대로 보여주기 위한 예외 id
   const exceptionAssetId: string | null = useMemo(() => {
     if (!editor || !editorFlow) return null;
-    if (editor.type === 'source-pick' && editor.sourceIdx !== 'new') {
-      return editorFlow.sources[editor.sourceIdx]?.assetId ?? null;
-    }
     if (editor.type === 'hub-pick') {
       return editorFlow.hubId || null;
     }
     return null;
   }, [editor, editorFlow]);
 
-  // 모달용 동적 카탈로그
-  //   sourceCatalog (끌어오기) — 통장 카테고리만 (STOCK/IRP/ISA 제외)
-  //   hubCatalog    (모으기)   — 통장 + 절세 계좌 (STOCK 제외)
-  //   공통: 이미 다른 곳에서 쓰이는 통장은 제외, 단 변경 중인 자기 자신은 예외로 포함
-  const sourceCatalog = useMemo(() =>
-    availableAssets
-      .filter(a => SOURCE_ASSET_TYPES.has(a.assetType ?? ''))
-      .filter(a => !usedAssetIds.has(a.id) || a.id === exceptionAssetId)
-      .map(assetToAccountItem),
-    [availableAssets, usedAssetIds, exceptionAssetId]);
-
+  // 모달용 동적 카탈로그 — hubCatalog(모으기): 통장 + 절세 계좌 (STOCK 제외)
+  //   이미 다른 곳에서 쓰이는 통장은 제외, 단 변경 중인 자기 자신은 예외로 포함
   const hubCatalog = useMemo(() =>
     availableAssets
       .filter(a => HUB_ASSET_TYPES.has(a.assetType ?? ''))
@@ -1247,7 +1145,7 @@ export default function AssetPortfolio() {
             </svg>
           </button>
           <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-            {isEditMode ? '포트폴리오 재설정' : '자산 처방전'}
+            {isEditMode ? '포트폴리오 재설정' : '투자 가이드'}
           </h1>
         </div>
 
@@ -1257,7 +1155,7 @@ export default function AssetPortfolio() {
               <p style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, margin: 0 }}>
                 {isEditMode
                   ? <>흐름과 상품 구성을<br />원하는 대로 수정해보세요</>
-                  : <>{USER_NAME}님의 자산<br />이렇게 불려드릴게요</>}
+                  : <>{USER_NAME}님의 자산<br />이렇게 설계되었어요</>}
               </p>
               <img src={pillImg} alt={isEditMode ? '재설정' : '처방전'} style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
             </div>
@@ -1295,7 +1193,7 @@ export default function AssetPortfolio() {
 
           {/* 개요 — 전체 탭에서 상세 미선택 */}
           {!showDetail && (
-            <AllOverview flows={flows} flowLabels={flowLabels} onSelectFlow={setDetailFlowId} />
+            <AllOverview flows={flows} flowLabels={flowLabels} monthlyInvestAmount={monthlyInvestAmount} onSelectFlow={setDetailFlowId} />
           )}
 
           {/* 상세 — 탭 직접 진입 or 카드 클릭 진입 */}
@@ -1304,9 +1202,8 @@ export default function AssetPortfolio() {
               flow={activeFlow}
               termLabel={flowLabels[activeFlow.id] ?? activeFlow.term}
               onEdit={setEditor}
-              onAmount={(idx, amt) => handleAmount(activeFlow.id, idx, amt)}
-              onRemoveSource={(idx) => handleRemoveSource(activeFlow.id, idx)}
               onPct={(idx, pct) => handlePct(activeFlow.id, idx, pct)}
+              onFlowAmount={(amt) => handleFlowAmount(activeFlow.id, amt)}
               onRemoveProduct={(idx) => handleRemoveProduct(activeFlow.id, idx)}
             />
           )}
@@ -1333,14 +1230,6 @@ export default function AssetPortfolio() {
       </div>
 
       {/* 편집 모달들 */}
-      {editor?.type === 'source-pick' && (
-        <SourcePickerModal
-          catalog={sourceCatalog}
-          currentName={editor.sourceIdx !== 'new' ? editorFlow?.sources[editor.sourceIdx]?.name : undefined}
-          onClose={() => setEditor(null)}
-          onPick={handleSourcePick}
-        />
-      )}
       {editor?.type === 'hub-pick' && editorFlow && (
         <HubPickerModal
           catalog={hubCatalog}
@@ -1351,7 +1240,7 @@ export default function AssetPortfolio() {
       )}
       {editor?.type === 'product-pick' && (
         <ProductPickerModal
-          catalog={productCatalog}
+          catalog={productCatalog.filter(p => p.type !== '적금')}
           mode={editor.productIdx === 'new' ? 'add' : 'replace'}
           currentId={editor.productIdx === 'new' ? undefined : editorFlow?.products[editor.productIdx]?.productId}
           onClose={() => setEditor(null)}
