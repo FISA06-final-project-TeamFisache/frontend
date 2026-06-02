@@ -2,22 +2,13 @@ import { api } from './client';
 import type { CommonResponse } from './userApi';
 
 export interface PortfolioFlowGatheringAsset {
-  id: string;
+  id: string | null;            // 보유 계좌면 asset_id, 추천이면 null
   institution: string | null;
   accountName: string | null;
-  assetNumber: string | null;
-  assetType: string | null;   // CHECKING / PARKING / IRP / ISA / STOCK ...
-  balance: number | null;
-}
-
-export interface PortfolioFlowSourceItem {
-  id: string;
-  amount: number | null;       // 원 단위
-  assetId: string | null;
-  institution: string | null;
-  accountName: string | null;
-  assetNumber: string | null;
-  assetType: string | null;
+  assetNumber: string | null;   // 추천이면 null
+  assetType: string | null;     // CHECKING / PARKING / IRP / ISA / STOCK ...
+  balance: number | null;       // 추천이면 null
+  interestRate: number | null;  // 추천 통장 금리(예/적금일 때)
 }
 
 export interface PortfolioFlowProductItem {
@@ -28,6 +19,7 @@ export interface PortfolioFlowProductItem {
   productName: string | null;
   productInstitution: string | null;
   interestRate: number | null;
+  comment: string | null;       // 상품 추천 이유 (AI)
 }
 
 export interface PortfolioFlow {
@@ -35,11 +27,16 @@ export interface PortfolioFlow {
   eventId: string | null;       // null = 기본 흐름
   title: string;
   summary: string | null;
-  term: string | null;          // '단' / '중' / '장'
+  term: string | null;          // '단기' / '중기' / '장기' (AI 원본)
   amount: number | null;        // 모을 통장 월 납입 금액 (원)
   isActive: boolean;
+  isRecommendation: boolean;    // true = 계좌 추천(gatheringAsset.id=null) / false = 보유 계좌
+  accountComment: string | null;   // 모을 통장(추천) 이유
+  expectedRrPct: number | null;    // 1년 예상 수익률(%)
+  investmentMonths: number | null; // 예상 기간(개월)
+  expectedAmount: number | null;   // 복리 고려 N개월 후 예상 수익 (원)
+  rrComment: string | null;        // 수익률 코멘트
   gatheringAsset: PortfolioFlowGatheringAsset | null;
-  sources: PortfolioFlowSourceItem[];
   products: PortfolioFlowProductItem[];
 }
 
@@ -86,7 +83,6 @@ export async function getAvailableAssets(): Promise<AvailableAssetListResponse> 
 
 export interface PortfolioFlowUpdateRequest {
   gatheringAssetId?: string | null;
-  sources: Array<{ assetId: string; amount: number }>;          // amount = 원 단위
   products: Array<{
     productId?: string | null;
     productType: string;
