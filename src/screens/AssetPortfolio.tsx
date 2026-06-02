@@ -80,7 +80,8 @@ interface Flow {
   id: string;                // API: portfolio_flows.id (UUID) — flow 식별자
   title: string;
   summary: string;
-  term: FlowTerm;
+  term: FlowTerm;            // 색상/그룹용 base 기간 (단기/중기/장기)
+  termRaw: string;           // 표시용 원본 (단기/중기/장기1/장기2 …)
   kind: '일반' | 'IRP' | 'ISA';
   hubId: string;
   rate: string;
@@ -89,6 +90,7 @@ interface Flow {
   badgeBg: string;
   badgeColor: string;
   amount: number;            // 흐름별 월 납입 금액 (만원)
+  hubAssetType?: string;     // 모을 통장 원본 assetType (상품 매수 가능 여부 판단)
   isRecommendation: boolean; // true = 계좌 추천 / false = 보유 계좌
   accountComment?: string;   // 모을 통장(추천) 이유
   rrComment?: string;        // 수익률 코멘트
@@ -105,9 +107,9 @@ const TERM_STYLE: Record<FlowTerm, { bg: string; color: string }> = {
 // 'all' 또는 flow.id 직접 진입
 type TermTab = 'all' | string;
 
-// 시드 '단'/'중'/'장' → 화면용 FlowTerm
+// 색상/그룹용 base 기간 파생 — '장기1','장기2'는 '장기'로 묶음 (표시는 termRaw 원본 사용)
 const apiTermToFlowTerm = (t?: string | null): FlowTerm =>
-  t === '단' ? '단기' : t === '장' ? '장기' : '중기';
+  t?.startsWith('단') ? '단기' : t?.startsWith('장') ? '장기' : '중기';
 
 // 기관명 → Logo 표시 메타
 interface BankMeta { logo: string; bg: string; color: string; imgSrc?: string }
@@ -148,8 +150,12 @@ const productTypeMeta = (t: string | null | undefined): ProductTypeMeta =>
 const assetTypeToKind = (t: string | null | undefined): '일반' | 'IRP' | 'ISA' =>
   t === 'IRP' ? 'IRP' : t === 'ISA' ? 'ISA' : '일반';
 
-// 모으기 후보 — 현금성 + 절세 계좌
-const HUB_ASSET_TYPES = new Set(['CHECKING', 'PARKING', 'SAVINGS', 'DEPOSIT', 'CMA', 'IRP', 'ISA']);
+// 모으기 후보 — 현금성 + 절세/투자 계좌
+const HUB_ASSET_TYPES = new Set(['CHECKING', 'PARKING', 'SAVINGS', 'DEPOSIT', 'CMA', 'IRP', 'ISA', 'PENSION_SAVINGS', 'STOCK']);
+
+// 상품 매수가 가능한 모을 통장 — 증권/ISA/IRP/연금저축. 그 외(예적금·파킹 등)는 '넣기'를 비움
+const INVESTABLE_HUB_TYPES = new Set(['STOCK', 'ISA', 'IRP', 'PENSION_SAVINGS']);
+const isInvestableHub = (t?: string | null): boolean => INVESTABLE_HUB_TYPES.has(t ?? '');
 
 // 편집 모달의 lookup*과 호환되도록 API 응답을 catalog 형태로 동적 등록
 const dynamicHubs = new Map<string, HubItem>();
@@ -165,6 +171,7 @@ const lookupProduct = (id: string): ProductItem =>
 // API DTO → Flow (편집 모달에서 lookup 가능하도록 dynamic catalog도 채움)
 function apiToFlow(dto: PortfolioFlow): Flow {
   const term = apiTermToFlowTerm(dto.term);
+  const termRaw = dto.term ?? term;   // 표시용 원본 (장기1/장기2 등 그대로)
   const kind = assetTypeToKind(dto.gatheringAsset?.assetType);
 
   // hub 동적 등록 (보유 계좌면 asset_id, 계좌 추천이면 dyn id)
@@ -230,15 +237,17 @@ function apiToFlow(dto: PortfolioFlow): Flow {
     id: dto.id,
     title: dto.title ?? '',
     summary: dto.summary ?? '',
-    term, kind, hubId,
+    term, termRaw, kind, hubId,
     rate, projected, projectedPeriod,
     badgeBg: kind === 'IRP' ? '#F1F5F9' : kind === 'ISA' ? '#F8FAFC' : '#EEEDFE',
     badgeColor: kind === 'IRP' ? '#475569' : kind === 'ISA' ? '#64748B' : '#534AB7',
     amount: Math.round((dto.amount ?? 0) / 10000), // 원 → 만원
+    hubAssetType: dto.gatheringAsset?.assetType ?? undefined,
     isRecommendation: dto.isRecommendation,
     accountComment: dto.accountComment ?? undefined,
     rrComment: dto.rrComment ?? undefined,
-    products,
+    // 증권/ISA/IRP/연금저축이 아니면 상품(넣기)은 비움
+    products: isInvestableHub(dto.gatheringAsset?.assetType) ? products : [],
   };
 }
 
@@ -284,15 +293,16 @@ function productToCatalogItem(p: Product): ProductItem {
   return item;
 }
 
-// flow.id → '단기' / '단기1' / '단기2' 같이 중복 시 번호 부여
+// flow.id → 표시 라벨. termRaw(에이전트 원본)를 그대로 쓰되, 같은 라벨이 중복되면 번호 부여
+//   예) 에이전트가 '장기1','장기2'를 주면 그대로 / 그냥 '장기'를 둘 주면 '장기1','장기2'로 자동 부여
 function buildFlowTabLabels(flows: Flow[]): Record<string, string> {
-  const total: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
-  flows.forEach(f => { total[f.term]++; });
-  const seen: Record<FlowTerm, number> = { 단기: 0, 중기: 0, 장기: 0 };
+  const total: Record<string, number> = {};
+  flows.forEach(f => { total[f.termRaw] = (total[f.termRaw] ?? 0) + 1; });
+  const seen: Record<string, number> = {};
   const labels: Record<string, string> = {};
   flows.forEach(f => {
-    seen[f.term]++;
-    labels[f.id] = total[f.term] > 1 ? `${f.term}${seen[f.term]}` : f.term;
+    seen[f.termRaw] = (seen[f.termRaw] ?? 0) + 1;
+    labels[f.id] = total[f.termRaw] > 1 ? `${f.termRaw}${seen[f.termRaw]}` : f.termRaw;
   });
   return labels;
 }
@@ -379,6 +389,7 @@ interface FlowDetailProps {
 function FlowDetail({ flow, termLabel, onEdit, onPct, onRemoveProduct }: FlowDetailProps) {
   const hub = lookupHub(flow.hubId);
   const total = flow.amount;   // 상품 비율 기준 = 모을 통장 월 납입 금액(만원)
+  const investable = isInvestableHub(flow.hubAssetType);  // 증권/ISA/IRP/연금저축만 상품 매수 가능
 
   return (
     <div>
@@ -415,10 +426,10 @@ function FlowDetail({ flow, termLabel, onEdit, onPct, onRemoveProduct }: FlowDet
         )}
         <button
           onClick={() => onEdit({ type: 'hub-pick', flowId: flow.id })}
-          style={{ width: '100%', cursor: 'pointer', background: hub.cardBg, border: `1px solid ${hub.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+          style={{ width: '100%', cursor: 'pointer', background: hub.cardBg, border: `1px solid ${hub.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left', gap: 12 }}
         >
-          <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={30} imgSrc={hub.imgSrc} />
-          <div style={{ minWidth: 0, textAlign: 'center' }}>
+          <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={36} imgSrc={hub.imgSrc} />
+          <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: hub.nameColor }}>{hub.name}</div>
             <div style={{ fontSize: 10, color: hub.subColor, fontFamily: 'monospace', marginTop: 1 }}>{hub.number}</div>
             <div style={{ fontSize: 11, color: hub.subColor, marginTop: 2 }}>{hub.sub}</div>
@@ -434,23 +445,27 @@ function FlowDetail({ flow, termLabel, onEdit, onPct, onRemoveProduct }: FlowDet
       <StepCard
         num={2}
         title="넣기"
-        sub="상품을 탭하면 변경할 수 있어요"
-        action={
+        sub={investable ? '상품을 탭하면 변경할 수 있어요' : '예·적금/파킹 통장은 상품 없이 그대로 모아요'}
+        action={investable ? (
           <button
             onClick={() => onEdit({ type: 'product-pick', flowId: flow.id, productIdx: 'new' })}
             style={{ fontSize: 11, fontWeight: 600, color: '#3182F6', background: '#EFF6FF', border: 'none', borderRadius: 99, padding: '4px 10px', cursor: 'pointer' }}
           >
             + 상품 추가
           </button>
-        }
+        ) : undefined}
       >
         {flow.products.length > 0 ? (
           <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
             {flow.products.map((p, i) => <div key={i} style={{ width: `${p.pct}%`, background: p.barColor }} />)}
           </div>
-        ) : (
+        ) : investable ? (
           <div style={{ padding: '10px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
             아직 담은 상품이 없어요. <span style={{ color: '#3182F6', fontWeight: 600 }}>+ 상품 추가</span>로 시작해보세요.
+          </div>
+        ) : (
+          <div style={{ padding: '12px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
+            예·적금/파킹 통장은 상품 없이 그대로 모아요.<br />증권·ISA·IRP·연금저축 계좌일 때만 상품을 넣을 수 있어요.
           </div>
         )}
         {flow.products.map((p, i, arr) => {
@@ -913,73 +928,6 @@ function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }: { cat
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// 임시 목업 데이터 (프론트 단독 테스트용)
-//   백엔드/FastAPI 연결되면 USE_MOCK = false 로 바꾸거나 이 블록 삭제
-// ─────────────────────────────────────────────────────────
-const USE_MOCK = true;
-
-const MOCK_MONTHLY = 1540000; // 원
-
-const MOCK_FLOWS: PortfolioFlow[] = [
-  {
-    id: 'mock-1', eventId: null,
-    title: '비상금·생활비 베이스',
-    summary: '예상 못한 지출에 흔들리지 않게 든든히 준비해요',
-    term: '단기',
-    amount: 660000,
-    isActive: false,
-    isRecommendation: false,                 // 보유 계좌 모으기
-    accountComment: '자동이체가 쉬운 토스 파킹통장이라 모으기에 딱 맞아요',
-    expectedRrPct: 3.2,
-    investmentMonths: 12,
-    expectedAmount: 250000,
-    rrComment: '안정적으로 굴러가는 단기 자산이에요',
-    gatheringAsset: {
-      id: 'a1', institution: '토스뱅크', accountName: '토스 파킹통장',
-      assetNumber: '4444-22-222222', assetType: 'PARKING', balance: 2000000, interestRate: null,
-    },
-    products: [
-      { id: 'p1', productRatio: 60, productType: 'SAVING', productId: 'prod-saving', productName: '토스 자유적금', productInstitution: '토스뱅크', interestRate: 4.5, comment: '자유롭게 납입 가능한 단기 적금이에요' },
-      { id: 'p2', productRatio: 40, productType: 'DEPOSIT', productId: 'prod-dep', productName: 'WON 정기예금', productInstitution: '우리은행', interestRate: 3.5, comment: '원금 보장형 안전 자산' },
-    ],
-  },
-  {
-    id: 'mock-2', eventId: null,
-    title: '은퇴·연금 장기 자산',
-    summary: '세제혜택을 살려 길게 굴려요',
-    term: '장기',
-    amount: 880000,
-    isActive: false,
-    isRecommendation: true,                  // 계좌 추천 (미보유)
-    accountComment: '연금저축펀드 계좌를 새로 여는 걸 추천해요',
-    expectedRrPct: 8.4,
-    investmentMonths: 24,
-    expectedAmount: 1530000,
-    rrComment: '장기 우상향과 세액공제를 함께 노려요',
-    gatheringAsset: {
-      id: null, institution: '미래에셋', accountName: '미래에셋 연금저축펀드',
-      assetNumber: null, assetType: 'ISA', balance: null, interestRate: 3.4,
-    },
-    products: [
-      { id: 'p3', productRatio: 70, productType: 'STOCK', productId: 'prod-nasdaq', productName: 'KODEX 나스닥100', productInstitution: '미래에셋', interestRate: 12.8, comment: '성장성 높은 미국 기술주 중심이에요' },
-      { id: 'p4', productRatio: 30, productType: 'IRP', productId: 'prod-tdf', productName: '미래에셋 TDF2045', productInstitution: '미래에셋', interestRate: 6.2, comment: '은퇴 시점에 맞춰 자동 배분돼요' },
-    ],
-  },
-];
-
-const MOCK_AVAILABLE: AvailableAsset[] = [
-  { id: 'a1', institution: '토스뱅크', accountName: '토스 파킹통장', assetNumber: '4444-22-222222', assetType: 'PARKING', balance: 2000000 },
-  { id: 'a2', institution: '우리은행', accountName: '우리 WON 통장', assetNumber: '1002-111-111111', assetType: 'CHECKING', balance: 6800000 },
-  { id: 'a3', institution: '미래에셋', accountName: '미래에셋 IRP', assetNumber: '6666-55-555555', assetType: 'IRP', balance: 1000000 },
-];
-
-const MOCK_PRODUCTS: Product[] = [
-  { id: 'prod-nasdaq', productType: 'STOCK', institution: '미래에셋', name: 'KODEX 나스닥100', interestRate: 12.8, description: '미국 나스닥100 추종 ETF' },
-  { id: 'prod-tdf', productType: 'IRP', institution: '미래에셋', name: '미래에셋 TDF2045', interestRate: 6.2, description: '은퇴시점 자동배분 IRP 상품' },
-  { id: 'prod-sp500', productType: 'STOCK', institution: '미래에셋', name: 'TIGER 미국S&P500', interestRate: 10.5, description: '미국 S&P500 추종 ETF' },
-];
-
 // ─── 메인 컴포넌트 ─────────────────────────────────
 
 export default function AssetPortfolio() {
@@ -1002,17 +950,6 @@ export default function AssetPortfolio() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-
-    // 프론트 단독 테스트용 목업 — 백엔드 연결 시 USE_MOCK=false
-    if (USE_MOCK) {
-      setFlows(MOCK_FLOWS.map(apiToFlow));
-      setMonthlyInvestAmount(Math.round(MOCK_MONTHLY / 10000));
-      setAvailableAssets(MOCK_AVAILABLE);
-      MOCK_AVAILABLE.forEach(assetToHubItem);
-      setProductCatalog(MOCK_PRODUCTS.map(productToCatalogItem));
-      setLoading(false);
-      return;
-    }
 
     Promise.all([getPortfolioFlows(), getAvailableAssets(), getProducts()])
       .then(([flowsRes, assetsRes, productsRes]) => {
@@ -1051,7 +988,14 @@ export default function AssetPortfolio() {
 
   const handleHubPick = (h: HubItem) => {
     if (!editor || editor.type !== 'hub-pick') return;
-    updateFlow(editor.flowId, f => ({ ...f, hubId: h.id, kind: h.kind }));
+    const investable = isInvestableHub(h.sub);  // 모으기 후보의 sub = 원본 assetType
+    updateFlow(editor.flowId, f => ({
+      ...f,
+      hubId: h.id,
+      kind: h.kind,
+      hubAssetType: h.sub,
+      products: investable ? f.products : [],  // 비투자 계좌면 상품 비움
+    }));
     setEditor(null);
   };
 
