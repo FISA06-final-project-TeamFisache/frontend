@@ -1,7 +1,4 @@
 import { api } from './client';
-import { fetchEventSource, EventStreamContentType } from '@microsoft/fetch-event-source';
-
-const BASE_URL = 'http://localhost:8080/api/v1';
 
 interface CommonResponse<T = null> {
   success: boolean;
@@ -9,65 +6,51 @@ interface CommonResponse<T = null> {
   data: T;
 }
 
-export type NotificationType = 'REPORT_READY' | 'SPENDING_TREND' | 'SALARY_REBALANCING';
-
 export interface Notification {
   id: string;
-  type: NotificationType;
+  type: string;
   title: string;
   content: string;
   isRead: boolean;
   sentAt: string;
 }
 
+export interface SpendingTrendDetail {
+  aiComment: string;
+  weeklyGraph: { week: number; lastMonth: number; thisMonth: number }[];
+  categorySpending: { category: string; amount: number }[];
+}
+
+/**
+ * GET /notifications — 알림 목록 조회
+ */
 export async function getNotifications(): Promise<Notification[]> {
-  const response = await api.get<CommonResponse<Notification[]>>('/notifications');
-  if (!response.success) throw new Error(response.message || '알림 조회 실패');
-  return response.data;
+  const res = await api.get<CommonResponse<Notification[]>>('/notifications');
+  if (!res.success) throw new Error(res.message || '알림 조회 중 오류가 발생했습니다.');
+  return res.data;
 }
 
-export async function readNotification(id: string): Promise<void> {
-  const response = await api.patch<CommonResponse<null>>(`/notifications/${id}/read`);
-  if (!response.success) throw new Error(response.message || '알림 읽음 처리 실패');
+/**
+ * PATCH /notifications/{id}/read — 단건 읽음 처리
+ */
+export async function markNotificationRead(id: string): Promise<void> {
+  const res = await api.patch<CommonResponse>(`/notifications/${id}/read`);
+  if (!res.success) throw new Error(res.message || '알림 읽음 처리 중 오류가 발생했습니다.');
 }
 
-export async function readAllNotifications(): Promise<void> {
-  const response = await api.patch<CommonResponse<null>>('/notifications/read-all');
-  if (!response.success) throw new Error(response.message || '전체 읽음 처리 실패');
+/**
+ * PATCH /notifications/read-all — 전체 읽음 처리
+ */
+export async function markAllNotificationsRead(): Promise<void> {
+  const res = await api.patch<CommonResponse>('/notifications/read-all');
+  if (!res.success) throw new Error(res.message || '알림 전체 읽음 처리 중 오류가 발생했습니다.');
 }
 
-export function subscribeToNotifications(callbacks: {
-  onNotification: (n: Notification) => void;
-  onSalaryArrived: () => void;
-}): AbortController {
-  const ctrl = new AbortController();
-  const token = localStorage.getItem('token');
-
-  fetchEventSource(`${BASE_URL}/notifications/subscribe`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${token ?? ''}` },
-    signal: ctrl.signal,
-    async onopen(response) {
-      if (response.ok && response.headers.get('content-type')?.startsWith(EventStreamContentType)) return;
-      throw new Error(`SSE 연결 실패 (${response.status})`);
-    },
-    onmessage(event) {
-      if (!event.data) return;
-      try {
-        const notification = JSON.parse(event.data) as Notification;
-        callbacks.onNotification(notification);
-        if (notification.type === 'SALARY_REBALANCING') {
-          callbacks.onSalaryArrived();
-        }
-      } catch {
-        // heartbeat 등 JSON이 아닌 메시지 무시
-      }
-    },
-    onerror(err) {
-      console.error('[SSE] 알림 구독 오류:', err);
-      throw err;
-    },
-  });
-
-  return ctrl;
+/**
+ * GET /notifications/{id}/spending-trend — 소비 추세 알림 상세 조회
+ */
+export async function getSpendingTrend(id: string): Promise<SpendingTrendDetail> {
+  const res = await api.get<CommonResponse<SpendingTrendDetail>>(`/notifications/${id}/spending-trend`);
+  if (!res.success) throw new Error(res.message || '소비 추세 조회 중 오류가 발생했습니다.');
+  return res.data;
 }
