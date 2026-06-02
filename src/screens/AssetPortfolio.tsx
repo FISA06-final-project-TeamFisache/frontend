@@ -383,10 +383,11 @@ interface FlowDetailProps {
   termLabel: string;
   onEdit: (mode: EditorMode) => void;
   onPct: (productIdx: number, pct: number) => void;
+  onFlowAmount: (amount: number) => void;
   onRemoveProduct: (productIdx: number) => void;
 }
 
-function FlowDetail({ flow, termLabel, onEdit, onPct, onRemoveProduct }: FlowDetailProps) {
+function FlowDetail({ flow, termLabel, onEdit, onPct, onFlowAmount, onRemoveProduct }: FlowDetailProps) {
   const hub = lookupHub(flow.hubId);
   const total = flow.amount;   // 상품 비율 기준 = 모을 통장 월 납입 금액(만원)
   const investable = isInvestableHub(flow.hubAssetType);  // 증권/ISA/IRP/연금저축만 상품 매수 가능
@@ -435,6 +436,18 @@ function FlowDetail({ flow, termLabel, onEdit, onPct, onRemoveProduct }: FlowDet
             <div style={{ fontSize: 11, color: hub.subColor, marginTop: 2 }}>{hub.sub}</div>
           </div>
         </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+          <span style={{ fontSize: 12, color: '#64748b' }}>월 납입 금액</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="number"
+              value={flow.amount}
+              onChange={(e) => onFlowAmount(Math.max(0, parseInt(e.target.value || '0', 10)))}
+              style={{ width: 76, textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 8px', outline: 'none' }}
+            />
+            <span style={{ fontSize: 12, color: '#64748b' }}>만 원</span>
+          </div>
+        </div>
         {flow.accountComment && (
           <p style={{ fontSize: 11, color: '#64748b', margin: '8px 2px 0', lineHeight: 1.5, textAlign: 'center' }}>💬 {flow.accountComment}</p>
         )}
@@ -494,7 +507,13 @@ function FlowDetail({ flow, termLabel, onEdit, onPct, onRemoveProduct }: FlowDet
                   style={{ width: 44, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 6px', outline: 'none' }}
                 />
                 <span style={{ fontSize: 11, color: '#64748b' }}>%</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginLeft: 6, minWidth: 40, textAlign: 'right' }}>{amt}만</span>
+                <input
+                  type="number"
+                  value={amt}
+                  onChange={(e) => onPct(i, total > 0 ? Math.round(Math.max(0, parseInt(e.target.value || '0', 10)) / total * 100) : 0)}
+                  style={{ width: 52, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 6px', outline: 'none', marginLeft: 6 }}
+                />
+                <span style={{ fontSize: 11, color: '#64748b' }}>만</span>
                 <button
                   onClick={() => onRemoveProduct(i)}
                   aria-label="상품 제거"
@@ -986,6 +1005,10 @@ export default function AssetPortfolio() {
     updateFlow(id, f => ({ ...f, products: f.products.map((p, i) => i === productIdx ? { ...p, pct } : p) }));
   };
 
+  const handleFlowAmount = (id: string, amount: number) => {
+    updateFlow(id, f => ({ ...f, amount }));
+  };
+
   const handleHubPick = (h: HubItem) => {
     if (!editor || editor.type !== 'hub-pick') return;
     const investable = isInvestableHub(h.sub);  // 모으기 후보의 sub = 원본 assetType
@@ -1022,7 +1045,9 @@ export default function AssetPortfolio() {
 
   // "관리 시작하기" — 모든 흐름 일괄 PATCH 후 대시보드로
   const buildRequest = (f: Flow): PortfolioFlowUpdateRequest => ({
-    gatheringAssetId: f.hubId || null,
+    amount: f.amount * 10000,  // 만원 → 원
+    // 추천(dyn) 허브는 실제 계좌가 아니므로 null → 백엔드가 기존 추천 통장 정보 유지
+    gatheringAssetId: f.hubId && !f.hubId.startsWith('dyn-') ? f.hubId : null,
     products: f.products.map(p => ({
       productId: p.productId.startsWith('dyn-') ? null : p.productId,
       productType: p.productType,
@@ -1178,6 +1203,7 @@ export default function AssetPortfolio() {
               termLabel={flowLabels[activeFlow.id] ?? activeFlow.term}
               onEdit={setEditor}
               onPct={(idx, pct) => handlePct(activeFlow.id, idx, pct)}
+              onFlowAmount={(amt) => handleFlowAmount(activeFlow.id, amt)}
               onRemoveProduct={(idx) => handleRemoveProduct(activeFlow.id, idx)}
             />
           )}

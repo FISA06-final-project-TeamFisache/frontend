@@ -82,6 +82,7 @@ export async function getAvailableAssets(): Promise<AvailableAssetListResponse> 
 }
 
 export interface PortfolioFlowUpdateRequest {
+  amount?: number | null;        // 흐름 월 납입 금액 (원). null 이면 백엔드가 기존 값 유지
   gatheringAssetId?: string | null;
   products: Array<{
     productId?: string | null;
