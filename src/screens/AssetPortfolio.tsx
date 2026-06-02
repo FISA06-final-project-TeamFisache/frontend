@@ -66,7 +66,7 @@ const PLACEHOLDER_HUB: HubItem = {
 
 interface ProductItem {
   id: string;
-  type: 'ETF' | '적금' | 'TDF' | '채권' | '리츠' | '주식';
+  type: 'ETF' | '채권' | '주식';
   name: string;
   description: string;
   recommended?: boolean;
