@@ -12,6 +12,8 @@ import PrescriptionComplete from './screens/PrescriptionComplete';
 import AssetPortfolio from './screens/AssetPortfolio';
 import Dashboard from './screens/Dashboard';
 import MonthlyReport from './screens/MonthlyReport';
+import SalaryManagement from './screens/SalaryManagement';
+import TaxCalculator from './screens/TaxCalculator';
 
 export default function App() {
   return (
@@ -29,6 +31,8 @@ export default function App() {
       <Route path="/asset-portfolio" element={<AssetPortfolio />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/monthly-report" element={<MonthlyReport />} />
+      <Route path="/salary-management" element={<SalaryManagement />} />
+      <Route path="/tax-calculator" element={<TaxCalculator />} />
     </Routes>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, useRef, type CSSProperties, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
@@ -6,6 +6,8 @@ import { getDashboard, type DashboardData } from '../api/dashboardApi';
 import SalaryManagement from './SalaryManagement';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notificationApi';
 import { getAssets, type Asset } from '../api/assetApi';
+import { fetchProposal, applyProposal, type Proposal } from '../api/poriApi';
+import portiImg from '../assets/porti.png';
 
 
 interface Goal {
@@ -133,7 +135,7 @@ function SalaryDonutChart({ data, total, totalAmt }: {
           </>
         ) : (
           <>
-            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>이 급여</div>
+            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>급여</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{total}</div>
           </>
         )}
@@ -360,7 +362,7 @@ interface SettingsItem {
 }
 
 const SETTINGS_ITEMS: SettingsItem[] = [
-  { id: 'salary-split', icon: '💰', title: '월급 나눈 비율 재설정', desc: '각 계좌별 분배 비율을 다시 정해요',         to: '/asset-prescription' },
+  { id: 'salary-split', icon: '💰', title: '월급 나눈 비율 재설정', desc: '각 계좌별 분배 비율을 다시 정해요',         to: '/prescription-loading' },
   { id: 'portfolio',    icon: '📊', title: '포트폴리오 재설정',     desc: '흐름·상품 구성을 처음부터 다시 짜요',     to: '/asset-portfolio' },
 ];
 
@@ -559,6 +561,19 @@ export default function Dashboard() {
   });
   const [goalModalOpen,       setGoalModalOpen]       = useState(false);
   const [goalText,            setGoalText]            = useState('');
+  const [challengeProgress,   setChallengeProgress]   = useState<number>(() => {
+    try { return parseInt(sessionStorage.getItem(`challenge:progress:${new Date().getMonth()}`) ?? '0', 10); }
+    catch { return 0; }
+  });
+
+  // ── Pori ─────────────────────────────────────────────────
+  type PoriStep = 'input' | 'loading' | 'preview' | 'applying' | 'done';
+  const [poriOpen,     setPoriOpen]     = useState(false);
+  const [poriStep,     setPoriStep]     = useState<PoriStep>('input');
+  const [poriMessage,  setPoriMessage]  = useState('');
+  const [poriProposal, setPoriProposal] = useState<Proposal | null>(null);
+  const [poriError,    setPoriError]    = useState<string | null>(null);
+  const poriInputRef = useRef<HTMLTextAreaElement>(null);
 
   // 대시보드 fetch 결과로 목표 카드 채우기 (events[0] 우선)
   useEffect(() => {
@@ -613,6 +628,19 @@ export default function Dashboard() {
     '교통':       '#D85A30',
     '기타':       '#D85A30',
   };
+  const generateChallenge = (cats: typeof dashboard extends null ? never : (typeof dashboard)['consumption']['categories']) => {
+    const top = [...(cats ?? [])].sort((a, b) => b.percentage - a.percentage)[0];
+    const name = top?.categoryName ?? '';
+    if (/카페|커피/.test(name)) return { icon: '☕', title: '이번달 카페 5번 줄이기',        step: 20 };
+    if (/배달/.test(name))      return { icon: '🍕', title: '이번달 배달음식 5번만 시키기',  step: 20 };
+    if (/외식|식비/.test(name)) return { icon: '🍽', title: '이번달 외식 3번 줄이기',        step: 33 };
+    if (/쇼핑|온라인/.test(name)) return { icon: '🛍', title: '이번달 충동구매 0번 도전',    step: 25 };
+    if (/편의점/.test(name))    return { icon: '🏪', title: '편의점 지출 20% 줄이기',         step: 20 };
+    if (/구독/.test(name))      return { icon: '📱', title: '불필요한 구독 1개 해지하기',     step: 100 };
+    if (/교통/.test(name))      return { icon: '🚌', title: '이번달 택시 10번 줄이기',        step: 10 };
+    return { icon: '💡', title: `이번달 ${name || '지출'} 10% 줄이기`,                        step: 10 };
+  };
+
   const spendingItems: SpendingItem[] = dashboard
     ? dashboard.consumption.categories.map(c => ({
         label: c.categoryName,
@@ -776,83 +804,92 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div style={{ background: '#f1f5f9', borderRadius: 14, padding: '14px 16px' }}>
-            <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 4px' }}>총 자산</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 26, fontWeight: 500, color: '#0f172a' }}>{fmtManwon(dashboard.assetsSummary.totalBalance)}</span>
+          <div style={{ background: '#f1f5f9', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* 왼쪽: 총 자산 요약 */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 4px' }}>총 자산</p>
+              <span style={{ fontSize: 26, fontWeight: 500, color: '#0f172a', display: 'block', marginBottom: 10 }}>
+                {fmtManwon(dashboard.assetsSummary.totalBalance)}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[
+                  { label: '투자 자산',   value: fmtManwon(dashboard.assetsSummary.investmentBalance) },
+                  { label: '현금성 자산', value: fmtManwon(dashboard.assetsSummary.cashBalance) },
+                ].map(item => (
+                  <div key={item.label} style={{ background: '#fff', borderRadius: 8, padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: 10, color: '#64748b', margin: 0 }}>{item.label}</p>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 7 }}>
-              {[
-                { label: '투자 자산',   value: fmtManwon(dashboard.assetsSummary.investmentBalance) },
-                { label: '현금성 자산', value: fmtManwon(dashboard.assetsSummary.cashBalance) },
-              ].map(item => (
-                <div key={item.label} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px' }}>
-                  <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 2px' }}>{item.label}</p>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 1. 월급 + 목표 (2-column) */}
-        <div style={{ padding: '0 16px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
-          {/* 월급 */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <SectionHeader icon="💸" title="월급" />
-            <Card style={{ flex: 1, padding: '12px 10px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* 오른쪽: 월급 도넛 차트 */}
+            <div style={{ flexShrink: 0 }}>
               <SalaryDonutChart
                 data={salarySlices}
                 total={fmtManwon(dashboard.salaryPlan.monthlyIncome)}
                 totalAmt={dashboard.salaryPlan.monthlyIncome}
               />
-            </Card>
-          </div>
-
-          {/* 목표 */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <SectionHeader
-              icon="🎯" title="목표"
-              right={!goals[0] ? <SmallBtn onClick={() => { setGoalText(''); setGoalModalOpen(true); }}>+ 추가</SmallBtn> : undefined}
-            />
-            {goals[0] ? (
-              <Card style={{ flex: 1, padding: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 18 }}>{goals[0].icon}</span>
-                  <Pill bg={goals[0].color.badge} color={goals[0].color.badgeText}>D-{goals[0].dday}</Pill>
-                </div>
-                <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: '0 0 2px' }}>{goals[0].label}</p>
-                <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 7px' }}>{goals[0].target}</p>
-                <div style={{ height: 4, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ width: `${goals[0].progress}%`, height: '100%', background: goals[0].color.bar, borderRadius: 99 }} />
-                </div>
-                <p style={{ fontSize: 10, color: goals[0].color.text, margin: '3px 0 0', fontWeight: 500 }}>{goals[0].progress}% 달성</p>
-              </Card>
-            ) : (
-              <Card style={{ flex: 1, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, textAlign: 'center', lineHeight: 1.6 }}>아직 목표가<br />없어요</p>
-              </Card>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* 2. 소비 */}
-        <div style={{ padding: '0 16px', marginBottom: recapOpen ? 0 : 16 }}>
-          <SectionHeader
-            icon="🧾" title="소비"
-            right={dashboard.consumption.isBudgetExceeded
-              ? <Pill bg="#FCEBEB" color="#A32D2D">예산 초과 +{dashboard.consumption.budgetExceedRate}%</Pill>
-              : undefined}
-          />
-          <div
-            onClick={() => setRecapOpen(v => !v)}
-            style={{ background: '#fff', border: `0.5px solid ${recapOpen ? '#378ADD' : '#e2e8f0'}`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <p style={{ fontSize: 9, color: '#64748b', margin: 0 }}>{dashboard.consumption.referenceMonth}월 총 지출</p>
-              <span style={{ fontSize: 10, color: '#94a3b8' }}>{recapOpen ? '↑' : '↓'}</span>
+        {/* 1. 소비 + 목표 (2-column) */}
+        <div style={{ padding: '0 16px', marginBottom: recapOpen ? 0 : 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
+          {/* 소비 */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <SectionHeader
+              icon="🧾" title="소비"
+              right={dashboard.consumption.isBudgetExceeded
+                ? <Pill bg="#FCEBEB" color="#A32D2D">초과</Pill>
+                : undefined}
+            />
+            <div
+              onClick={() => setRecapOpen(v => !v)}
+              style={{ flex: 1, background: '#fff', border: `0.5px solid ${recapOpen ? '#378ADD' : '#e2e8f0'}`, borderRadius: 14, padding: '12px 12px', cursor: 'pointer' }}
+            >
+              <p style={{ fontSize: 9, color: '#64748b', margin: '0 0 4px' }}>{dashboard.consumption.referenceMonth}월 총 지출 {recapOpen ? '↑' : '↓'}</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>{fmtManwon(dashboard.consumption.totalExpense)}</p>
             </div>
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>{fmtManwon(dashboard.consumption.totalExpense)}</p>
+          </div>
+
+          {/* 미니 챌린지 */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <SectionHeader icon="💪" title="미니 챌린지" />
+            {dashboard ? (() => {
+              const ch = generateChallenge(dashboard.consumption.categories);
+              const handleAchieve = () => {
+                const next = Math.min(100, challengeProgress + ch.step);
+                setChallengeProgress(next);
+                sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(next));
+              };
+              return (
+                <Card style={{ flex: 1, padding: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    <span style={{ fontSize: 20 }}>{ch.icon}</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: '#0f172a', lineHeight: 1.4 }}>{ch.title}</span>
+                  </div>
+                  <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
+                    <div style={{ width: `${challengeProgress}%`, height: '100%', background: '#1D9E75', borderRadius: 99, transition: 'width 0.3s ease' }} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: challengeProgress >= 100 ? '#1D9E75' : '#475569' }}>
+                      {challengeProgress >= 100 ? '🎉 완료!' : `${challengeProgress}% 달성`}
+                    </span>
+                    {challengeProgress < 100 && (
+                      <button
+                        onClick={handleAchieve}
+                        style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', background: '#E1F5EE', color: '#0F6E56', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      >+ 달성</button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })() : (
+              <Card style={{ flex: 1, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, textAlign: 'center' }}>로딩 중...</p>
+              </Card>
+            )}
           </div>
         </div>
 
@@ -899,6 +936,82 @@ export default function Dashboard() {
             </Card>
           </div>
         )}
+
+        {/* 3. 절세 현황 */}
+        {dashboard && (() => {
+          const IRP_LIMIT     = 9_000_000;
+          const PENSION_LIMIT = 6_000_000;
+          const annualIncome  = dashboard.salaryPlan.monthlyIncome * 12;
+          const taxRate       = annualIncome <= 55_000_000 ? 0.165 : 0.132;
+
+          const irpAmt     = dashboard.portfolio.find(p => p.categoryLabel === 'IRP')?.assetAmount ?? 0;
+          const pensionAmt = dashboard.portfolio.find(p => p.categoryLabel === '연금저축')?.assetAmount ?? 0;
+
+          const irpPct     = Math.min(100, Math.round(irpAmt     / IRP_LIMIT     * 100));
+          const pensionPct = Math.min(100, Math.round(pensionAmt / PENSION_LIMIT * 100));
+
+          const deductibleAmt = Math.min(IRP_LIMIT, irpAmt + pensionAmt);
+          const taxDeduction  = Math.round(deductibleAmt * taxRate);
+          const remaining     = Math.max(0, IRP_LIMIT - irpAmt - pensionAmt);
+
+          const fmtWon = (n: number) => n >= 10_000 ? `${Math.round(n / 10_000)}만원` : `${n.toLocaleString()}원`;
+
+          const bars = [
+            { label: 'IRP',    amt: irpAmt,     limit: IRP_LIMIT,     pct: irpPct,     color: '#085041' },
+            { label: '연금저축', amt: pensionAmt, limit: PENSION_LIMIT, pct: pensionPct, color: '#1D9E75' },
+          ];
+
+          return (
+            <div style={{ padding: '0 16px', marginBottom: 16 }}>
+              <SectionHeader icon="💰" title="절세 현황" right={<Pill bg="#E1F5EE" color="#0F6E56">{(taxRate * 100).toFixed(1)}% 공제율</Pill>} />
+              <Card>
+                {/* IRP / 연금저축 바 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 14 }}>
+                  {bars.map(b => (
+                    <div key={b.label}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>{b.label}</span>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{fmtWon(b.amt)}</span>
+                          {' '}/ {fmtWon(b.limit)}
+                        </span>
+                      </div>
+                      <div style={{ height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                        <div style={{ width: `${b.pct}%`, height: '100%', background: b.color, borderRadius: 99, transition: 'width 0.4s ease' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                        <span style={{ fontSize: 10, color: b.color, fontWeight: 600 }}>{b.pct}% 채움</span>
+                        {b.pct < 100 && (
+                          <span style={{ fontSize: 10, color: '#94a3b8' }}>한도까지 {fmtWon(b.limit - b.amt)} 남음</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 세액공제 예상 */}
+                <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 3px' }}>올해 예상 세액공제</p>
+                      <p style={{ fontSize: 18, fontWeight: 700, color: '#085041', margin: 0 }}>
+                        {taxDeduction > 0 ? `${taxDeduction.toLocaleString()}원` : '–'}
+                      </p>
+                    </div>
+                    {remaining > 0 && (
+                      <div style={{ background: '#E1F5EE', borderRadius: 8, padding: '6px 10px', textAlign: 'right' }}>
+                        <p style={{ fontSize: 9, color: '#0F6E56', margin: '0 0 1px' }}>한도 추가 납입 시</p>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: '#085041', margin: 0 }}>
+                          +{Math.round(remaining * taxRate).toLocaleString()}원 환급↑
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          );
+        })()}
 
         {/* 4. 자산 포트폴리오 */}
         <div style={{ padding: '0 16px', marginBottom: 16 }}>
@@ -1104,6 +1217,12 @@ export default function Dashboard() {
                 </button>
                 <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>목표 이력</span>
                 <button
+                  onClick={() => { setSidebarOpen(false); navigate('/tax-calculator'); }}
+                  style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                >
+                  세금 계산기
+                </button>
+                <button
                   onClick={() => { setSidebarOpen(false); navigate('/monthly-report'); }}
                   style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
                 >
@@ -1192,6 +1311,224 @@ export default function Dashboard() {
               onClose={() => setSettingsOpen(false)}
               onNavigate={(to) => { setSettingsOpen(false); navigate(to); }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── Pori 플로팅 버튼 (프로젝트 영역 우하단) ── */}
+      {!poriOpen && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%', maxWidth: 375,
+          pointerEvents: 'none', zIndex: 400,
+        }}>
+          <button
+            onClick={() => { setPoriOpen(true); setPoriStep('input'); setPoriMessage(''); setPoriProposal(null); setPoriError(null); }}
+            style={{
+              position: 'absolute', bottom: 28, right: 20,
+              pointerEvents: 'auto',
+              width: 56, height: 56, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1D9E75, #085041)',
+              border: 'none', cursor: 'pointer', padding: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 18px rgba(8,80,65,0.35)',
+              transition: 'transform 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
+            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+            aria-label="Pori AI 열기"
+          >
+            <img src={portiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Pori 모달 ── */}
+      {poriOpen && (
+        <div
+          onClick={() => { if (poriStep === 'input') { setPoriOpen(false); } }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 500,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            alignItems: 'center',
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 375,
+              background: '#fff', borderRadius: '20px 20px 0 0',
+              padding: '20px 16px 36px',
+              maxHeight: '82vh', overflowY: 'auto',
+              animation: 'slideUp 0.25s ease-out',
+            }}
+          >
+            {/* 핸들 */}
+            <div style={{ width: 36, height: 4, background: '#e2e8f0', borderRadius: 99, margin: '0 auto 18px' }} />
+
+            {/* ── step: input ── */}
+            {poriStep === 'input' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <span style={{ fontSize: 28 }}>🐥</span>
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori에게 물어보세요</p>
+                    <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>재무 목표를 자연어로 입력하면 대시보드를 조정해 드려요</p>
+                  </div>
+                </div>
+                <div style={{ background: '#f8fafc', borderRadius: 12, padding: '10px 12px', marginBottom: 10 }}>
+                  {['내년 봄에 유럽 여행 가고 싶어 🌍', '2년 뒤까지 결혼자금 3000만원 모으고 싶어 💍', '매달 투자 비중 늘리고 싶어 📈'].map(ex => (
+                    <button
+                      key={ex}
+                      onClick={() => setPoriMessage(ex)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '6px 4px', fontSize: 12, color: '#475569', cursor: 'pointer', borderRadius: 6 }}
+                    >{ex}</button>
+                  ))}
+                </div>
+                <textarea
+                  ref={poriInputRef}
+                  value={poriMessage}
+                  onChange={e => setPoriMessage(e.target.value)}
+                  placeholder="예: 6개월 안에 노트북 살 돈 모으고 싶어"
+                  rows={3}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    border: '1px solid #e2e8f0', borderRadius: 10,
+                    padding: '10px 12px', fontSize: 13, color: '#0f172a',
+                    resize: 'none', outline: 'none', marginBottom: 12,
+                    fontFamily: 'inherit',
+                  }}
+                />
+                {poriError && <p style={{ fontSize: 11, color: '#A32D2D', marginBottom: 8 }}>{poriError}</p>}
+                <button
+                  disabled={!poriMessage.trim()}
+                  onClick={async () => {
+                    if (!dashboard) return;
+                    setPoriStep('loading');
+                    setPoriError(null);
+                    try {
+                      const proposal = await fetchProposal(poriMessage, dashboard);
+                      setPoriProposal(proposal);
+                      setPoriStep('preview');
+                    } catch (e) {
+                      setPoriError(e instanceof Error ? e.message : 'AI 서버 오류');
+                      setPoriStep('input');
+                    }
+                  }}
+                  style={{
+                    width: '100%', padding: '12px 0', borderRadius: 12, border: 'none',
+                    background: poriMessage.trim() ? 'linear-gradient(135deg, #1D9E75, #085041)' : '#e2e8f0',
+                    color: poriMessage.trim() ? '#fff' : '#94a3b8',
+                    fontSize: 14, fontWeight: 700, cursor: poriMessage.trim() ? 'pointer' : 'default',
+                    transition: 'all 0.2s',
+                  }}
+                >Pori에게 보내기 →</button>
+              </>
+            )}
+
+            {/* ── step: loading ── */}
+            {poriStep === 'loading' && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>🐥</div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 6 }}>분석 중이에요...</p>
+                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>현재 재무 상태를 보고 최적 플랜을 찾고 있어요</p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} style={{
+                      width: 8, height: 8, borderRadius: '50%', background: '#1D9E75',
+                      animation: `bounce 1.2s ${i * 0.2}s infinite`,
+                    }} />
+                  ))}
+                </div>
+                <style>{`@keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }`}</style>
+              </div>
+            )}
+
+            {/* ── step: preview ── */}
+            {poriStep === 'preview' && poriProposal && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 22 }}>🐥</span>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori의 제안</p>
+                </div>
+                <p style={{ fontSize: 12, color: '#475569', marginBottom: 16, lineHeight: 1.6 }}>{poriProposal.explanation}</p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                  {poriProposal.changes.events.map((ev, i) => (
+                    <div key={i} style={{ background: '#E1F5EE', borderRadius: 10, padding: '10px 12px' }}>
+                      <p style={{ fontSize: 10, color: '#0F6E56', fontWeight: 600, margin: '0 0 3px' }}>🎯 목표 추가</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: '0 0 2px' }}>{ev.title}</p>
+                      <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>
+                        목표금액 {parseInt(ev.targetAmount).toLocaleString()}원 · 마감 {ev.deadline}
+                      </p>
+                    </div>
+                  ))}
+                  {poriProposal.changes.salaryAllocations.map((al, i) => (
+                    <div key={i} style={{ background: '#EEF2FF', borderRadius: 10, padding: '10px 12px' }}>
+                      <p style={{ fontSize: 10, color: '#4338CA', fontWeight: 600, margin: '0 0 3px' }}>💸 월 배분 변경</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>
+                        {al.purpose} &nbsp;+{al.plannedAmount.toLocaleString()}원/월
+                      </p>
+                    </div>
+                  ))}
+                  {poriProposal.changes.portfolio.map((pt, i) => (
+                    <div key={i} style={{ background: '#FEF9EC', borderRadius: 10, padding: '10px 12px' }}>
+                      <p style={{ fontSize: 10, color: '#854F0B', fontWeight: 600, margin: '0 0 3px' }}>📊 포트폴리오 조정</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>
+                        {pt.assetType} → {pt.assetAmount.toLocaleString()}원/월
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => setPoriOpen(false)}
+                    style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', fontSize: 14, fontWeight: 600, color: '#64748b', cursor: 'pointer' }}
+                  >거절</button>
+                  <button
+                    onClick={async () => {
+                      setPoriStep('applying');
+                      try {
+                        await applyProposal(poriProposal);
+                        setPoriStep('done');
+                        const fresh = await getDashboard();
+                        setDashboard(fresh);
+                      } catch (e) {
+                        setPoriError(e instanceof Error ? e.message : '적용 실패');
+                        setPoriStep('preview');
+                      }
+                    }}
+                    style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #1D9E75, #085041)', fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+                  >✓ 승인하기</button>
+                </div>
+                {poriError && <p style={{ fontSize: 11, color: '#A32D2D', marginTop: 8, textAlign: 'center' }}>{poriError}</p>}
+              </>
+            )}
+
+            {/* ── step: applying ── */}
+            {poriStep === 'applying' && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>🐥</div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>대시보드 업데이트 중...</p>
+              </div>
+            )}
+
+            {/* ── step: done ── */}
+            {poriStep === 'done' && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>적용 완료!</p>
+                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>대시보드가 업데이트 되었어요</p>
+                <button
+                  onClick={() => setPoriOpen(false)}
+                  style={{ padding: '10px 32px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #1D9E75, #085041)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                >닫기</button>
+              </div>
+            )}
           </div>
         </div>
       )}
