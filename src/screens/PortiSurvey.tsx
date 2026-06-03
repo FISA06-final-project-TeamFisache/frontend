@@ -530,8 +530,16 @@ export default function PortiSurvey() {
     const localResult = calcResult(answers);
     const answersArray = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => answers[i + 1] ?? 'A');
 
+    // 선택한 테마·목표 id → 한글 라벨로 변환해 함께 전송 (AI 진단에 활용)
+    const stockThemes = priorities
+      .filter((id): id is string => id !== null)
+      .map(id => THEME_CATEGORIES.find(c => c.id === id)?.label ?? id);
+    const lifeGoal = selectedGoal
+      ? (GOAL_CATEGORIES.find(g => g.id === selectedGoal)?.label ?? selectedGoal)
+      : null;
+
     const minDelay = new Promise<void>(resolve => setTimeout(resolve, 2800));
-    const apiCall = generateAgentProfile(answersArray)
+    const apiCall = generateAgentProfile(answersArray, stockThemes, lifeGoal)
       .then(profile => {
         setAgentProfile(profile);
         localStorage.setItem('agentProfile', JSON.stringify(profile));
@@ -544,7 +552,7 @@ export default function PortiSurvey() {
       setResult(localResult);
       setStep('result');
     });
-  }, [step, answers]);
+  }, [step, answers, priorities, selectedGoal]);
 
   const handleAnswer = (choice: 'A' | 'B') => {
     const newAnswers = { ...answers, [currentQ.id]: choice };
