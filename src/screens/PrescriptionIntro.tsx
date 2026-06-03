@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import heroImg from '../assets/hero.png';
 import { useAuth } from '../contexts/AuthContext';
+import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 
 const DISPLAY_MS = 3500;
 const FADE_MS = 500;
@@ -12,10 +13,28 @@ export default function PrescriptionIntro() {
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setExiting(true), DISPLAY_MS);
-    const navTimer = setTimeout(() => navigate('/asset-prescription', { replace: true }), DISPLAY_MS + FADE_MS);
+    let cancelled = false;
+    let navTimer: ReturnType<typeof setTimeout>;
+
+    // 인트로 노출과 병렬로 월급 리밸런싱 추천(POST /agent/rebalance) 호출
+    let recommend: AgentRecommend | null = null;
+    const apiCall = getAgentRecommend()
+      .then(data => { recommend = data; })
+      .catch((err: unknown) => console.error('[PrescriptionIntro] recommend 실패:', err));
+
+    // 최소 노출 시간과 API 응답을 함께 기다린 뒤 결과를 들고 이동
+    // (실패 시 recommend=null → AssetPrescription이 자체적으로 재호출하는 폴백)
+    const minDelay = new Promise<void>(resolve => setTimeout(resolve, DISPLAY_MS));
+    Promise.all([minDelay, apiCall]).then(() => {
+      if (cancelled) return;
+      setExiting(true);
+      navTimer = setTimeout(() => {
+        navigate('/asset-prescription', { replace: true, state: { recommend } });
+      }, FADE_MS);
+    });
+
     return () => {
-      clearTimeout(fadeTimer);
+      cancelled = true;
       clearTimeout(navTimer);
     };
   }, [navigate]);
