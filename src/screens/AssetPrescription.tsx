@@ -10,7 +10,7 @@ import hanaLogo from '../assets/banks/hana.png';
 import miraeLogo from '../assets/banks/mirae.png';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
-import { updatePortfolios } from '../api/portfolioApi';
+import { createPortfolios } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';
 
 const BANK_LOGOS: Record<string, string> = {
@@ -247,9 +247,9 @@ export default function AssetPrescription() {
       ...(a.assetId ? { assetId: a.assetId } : {}),
     }));
     try {
-      await updatePortfolios(portfolios, investmentAmount);
+      await createPortfolios(portfolios, investmentAmount, totalSalary);
     } catch (err) {
-      console.error('[AssetPrescription] PATCH /portfolios 실패:', err);
+      console.error('[AssetPrescription] POST /portfolios 실패:', err);
     }
     navigate('/prescription-complete');
   };
