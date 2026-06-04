@@ -250,67 +250,6 @@ const GURU_IMAGES: Record<string, string> = {
   '세스 클라만': sethKlarmanImg,
 };
 
-// dev 전용 목 거장 데이터 (실제 API의 investor 자리) — RESULT_TYPES 순서와 매칭, 백엔드 시드와 동일
-const MOCK_INVESTORS: { name: string; description: string; investmentStyle: string; hashtag1: string; hashtag2: string }[] = [
-  { name: '워렌 버핏', investmentStyle: '가장 중요한 투자 규칙은 절대 잃지 않는 것이다.', hashtag1: '가치투자의 아버지', hashtag2: '오마하의 현인',
-    description: '"이해할 수 있는 것에만 투자한다"는 버핏의 원칙이 딱 맞아요. 화려한 수익보다 리스크 관리를 먼저 생각하고, 복잡한 상품보다 단순하고 검증된 투자처를 선호하는 점이 닮았어요.' },
-  { name: '켄 피셔', investmentStyle: '시장은 항상 당신이 생각하는 것보다 더 멀리 간다.', hashtag1: '성장주 투자의 대가', hashtag2: '역발상 전략가',
-    description: '성장주 투자의 대가인 켄 피셔는 소비와 투자의 균형을 잡으며 전략적으로 타이밍을 포착하는 스타일이에요. 삶의 질을 즐기면서 체계적으로 자산을 불려가는 골프 타입과 딱 맞아요.' },
-  { name: '존 보글', investmentStyle: '시장을 이기려 하지 마라. 시장이 되어라.', hashtag1: '인덱스 투자의 창시자', hashtag2: '장기 복리의 전도사',
-    description: '저비용 인덱스 펀드를 오래 보유하는 보글의 전략이 딱 맞아요. 단기 수익에 흔들리지 않고 장기 복리를 믿는 묵묵한 스타일이 닮았어요.' },
-  { name: '레이 달리오', investmentStyle: '내가 틀릴 수 있다는 걸 항상 염두에 둔다.', hashtag1: '올웨더 전략의 설계자', hashtag2: '금융계의 스티브잡스',
-    description: '"올웨더 전략"처럼 어떤 경제 상황에서도 손실을 최소화하는 방어적 분산 투자가 잘 맞아요. 리스크를 먼저 생각하는 스타일이 닮았어요.' },
-  { name: '스탠리 드러켄밀러', investmentStyle: '기회가 왔을 때 크게 베팅하라.', hashtag1: '월가 최고의 공격수', hashtag2: '트렌드 선점의 달인',
-    description: '소로스보다 더 직접적인 공격형 트레이더예요. 빠른 판단과 대담한 집중 베팅이 특기로, 시장 기회를 빠르게 포착해 과감하게 진입하는 펜싱 스타일과 정확히 맞아요.' },
-  { name: '세스 클라만', investmentStyle: '안전마진 없이는 투자하지 않는다.', hashtag1: '안전마진의 수호자', hashtag2: '월가의 숨은 현인',
-    description: '안전 마진과 철저한 분석 후에만 진입하는 가치투자자예요. 벤저민 그레이엄보다 현대적이고 데이터 기반 이미지가 강해, 한 발 한 발 신중하게 겨냥하는 양궁 타입과 딱 맞아요.' },
-];
-
-// ?dev=N 진입 시 주입할 목 agentProfile (API 응답 형태 그대로, 백엔드 영향 없음)
-// 거장 정보는 선택한 타입(RESULT_TYPES[idx])에 맞춰 생성
-function buildMockProfile(idx: number): AgentProfile {
-  const rt = RESULT_TYPES[idx];
-  const m = MOCK_INVESTORS[idx] ?? MOCK_INVESTORS[0];
-  return {
-    portiType: rt.typeName,
-    portiTypeName: rt.typeName,
-    portiDescription: rt.subtitle,
-    monthlyAvgExpense: 985000,
-    categoryExpense: [
-      { name: '식비', amount: 413700, ratio: 42 },
-      { name: '온라인 쇼핑', amount: 167450, ratio: 17 },
-      { name: '문화/여가', amount: 147750, ratio: 15 },
-      { name: '교통', amount: 78800, ratio: 8 },
-      { name: '기타', amount: 177300, ratio: 18 },
-    ],
-    fixedExpense: [
-      { name: '보장성 보험료', amount: 150000 },
-      { name: '통신비', amount: 65000 },
-      { name: 'OTT 및 정기구독', amount: 30000 },
-    ],
-    totalFixedExpense: 245000,
-    investTendency: {
-      safeRatio: 62,
-      moderateRatio: 25,
-      riskRatio: 13,
-    },
-    expenseComment: '식비·교통 위주의 안정적인 소비 패턴이에요. 충동 소비 흔적이 거의 없어요.',
-    investComment: '안전 자산 비중이 높은 보수적 투자 성향이에요. 원금 보장을 최우선으로 합니다.',
-    investor: {
-      id: `mock-${idx}`,
-      name: m.name,
-      description: m.description,
-      hashtag1: m.hashtag1,
-      hashtag2: m.hashtag2,
-      investmentStyle: m.investmentStyle,
-      items: [
-        { id: 'i1', stockName: 'Apple', changeRate: 2.1, sharesHeld: 915560000, prevQuarterRatio: 47.2, currentRatio: 41.8, holdingMonths: 96 },
-        { id: 'i2', stockName: 'Coca-Cola', changeRate: -0.4, sharesHeld: 400000000, prevQuarterRatio: 9.1, currentRatio: 9.3, holdingMonths: 420 },
-      ],
-    },
-  };
-}
-
 type Step = 'intro' | 'question' | 'theme' | 'goal' | 'loading' | 'result';
 
 
@@ -318,25 +257,18 @@ export default function PortiSurvey() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
 
-  // ?dev=N (0~5) → 해당 결과 타입으로 바로 진입 (개발용, 백엔드 영향 없음)
-  const devParam = new URLSearchParams(window.location.search).get('dev');
-  const devIndex = devParam !== null && !Number.isNaN(Number(devParam))
-    ? Number(devParam) % RESULT_TYPES.length
-    : null;
-  const devResult = devIndex !== null ? RESULT_TYPES[devIndex] : null;
-
-  const [step, setStep] = useState<Step>(devResult ? 'result' : 'intro');
+  const [step, setStep] = useState<Step>('intro');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({});
   const [completing, setCompleting] = useState(false);
-  const [result, setResult] = useState<ResultType | null>(devResult);
+  const [result, setResult] = useState<ResultType | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [openDetail, setOpenDetail] = useState<Record<string, boolean>>({
     spending: false, investment: false, portfolio: false,
   });
   const [hoveredCat, setHoveredCat] = useState<number | null>(null);
   const [hoveredRisk, setHoveredRisk] = useState<string | null>(null);
-  const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(devIndex !== null ? buildMockProfile(devIndex) : null);
+  const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(null);
   const [priorities, setPriorities] = useState<(string | null)[]>([null, null, null]);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
 
