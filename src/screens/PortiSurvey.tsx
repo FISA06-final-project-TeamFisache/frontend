@@ -200,10 +200,10 @@ const RESULT_TYPES: ResultType[] = [
     investment: '수익과 리스크 사이에서 전략적으로 접근해요. 무턱대고 뛰어들기보단 타이밍을 잡는 편이에요.',
     saving: '목돈 마련 계획을 세우고, 지출과 저축을 균형 있게 배분하는 포트폴리오형 관리가 잘 맞아요.',
     investor: {
-      name: '피터 린치', emoji: '🎯',
-      role: '피델리티 마젤란 펀드 / 전설의 펀드매니저',
-      quote: '자신이 이해하는 것에 투자하라.',
-      reason: '피터 린치는 일상에서 투자 아이디어를 발굴하고 성장과 가치를 균형 있게 추구했어요. 삶의 질을 즐기면서 자산을 불리는 스타일이 딱 맞아요.',
+      name: '켄 피셔', emoji: '⛳',
+      role: '피셔 인베스트먼트 / 성장주 투자의 대가',
+      quote: '시장은 항상 당신이 생각하는 것보다 더 멀리 간다.',
+      reason: '성장주 투자의 대가인 켄 피셔는 소비와 투자의 균형을 잡으며 전략적으로 타이밍을 포착하는 스타일이에요. 삶의 질을 즐기면서 체계적으로 자산을 불려가는 골프 타입과 딱 맞아요.',
     },
     portfolio: {
       name: '밸런스 성장 포트폴리오',
@@ -323,10 +323,10 @@ const RESULT_TYPES: ResultType[] = [
     investment: '리스크를 감수하더라도 높은 수익을 추구해요. 시장 기회를 빠르게 포착하는 공격형 투자자예요.',
     saving: '저축보다 투자 비중이 높은 편이에요. 목돈을 만들면 곧바로 굴리고 싶어 하는 타입이에요.',
     investor: {
-      name: '조지 소로스', emoji: '⚡',
-      role: '소로스 펀드 / 퀀텀 펀드 창시자',
-      quote: '시장이 틀렸을 때 과감하게 배팅하라.',
-      reason: '빠른 판단과 대담한 실행이 특기인 소로스와 닮았어요. 기회를 포착하면 망설이지 않고 큰 배팅을 하는 공격적인 스타일이에요.',
+      name: '스탠리 드러켄밀러', emoji: '⚔️',
+      role: '듀케인 캐피탈 / 소로스의 후계자',
+      quote: '기회가 왔을 때 크게 베팅하라.',
+      reason: '소로스보다 더 직접적인 공격형 트레이더예요. 빠른 판단과 대담한 집중 베팅이 특기로, 시장 기회를 빠르게 포착해 과감하게 진입하는 펜싱 스타일과 정확히 맞아요.',
     },
     portfolio: {
       name: '공격 성장 집중 포트폴리오',
@@ -364,10 +364,10 @@ const RESULT_TYPES: ResultType[] = [
     investment: '투자 전 철저히 분석하고, 리스크 대비 수익률을 계산한 뒤 결정해요. 감이 아닌 근거로 투자해요.',
     saving: '구체적인 목표 금액과 기간을 정해두고 역산으로 저축 계획을 세워요. 목표 달성률이 높은 타입이에요.',
     investor: {
-      name: '벤저민 그레이엄', emoji: '📐',
-      role: '컬럼비아 대학 / 가치 투자의 아버지',
-      quote: '투자는 철저한 분석 후에 원금 안전과 적절한 수익을 확보하는 것이다.',
-      reason: '내재 가치 분석과 안전 마진 확보 후에만 투자를 결정하는 그레이엄과 닮았어요. 감이 아닌 데이터로 움직이는 정밀한 스타일이에요.',
+      name: '세스 클라만', emoji: '🎯',
+      role: '바우포스트 그룹 / 안전마진 투자의 대가',
+      quote: '안전마진 없이는 투자하지 않는다.',
+      reason: '안전 마진과 철저한 분석 후에만 진입하는 가치투자자예요. 벤저민 그레이엄보다 현대적이고 데이터 기반 이미지가 강해, 한 발 한 발 신중하게 겨냥하는 양궁 타입과 딱 맞아요.',
     },
     portfolio: {
       name: '가치·성장 정밀 포트폴리오',
@@ -459,7 +459,6 @@ export default function PortiSurvey() {
   });
   const [hoveredCat, setHoveredCat] = useState<number | null>(null);
   const [hoveredRisk, setHoveredRisk] = useState<string | null>(null);
-  const [hoveredTerm, setHoveredTerm] = useState<string | null>(null);
   const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(null);
   const [priorities, setPriorities] = useState<(string | null)[]>([null, null, null]);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
@@ -847,7 +846,7 @@ export default function PortiSurvey() {
 
               {showProfile && (
                 <div className="bg-[#FFFDF0] border border-yellow-200 rounded-xl p-4 text-left mx-2 mb-3 shadow-sm animate-in fade-in slide-in-from-top-1">
-                  <p className="text-xs font-bold text-yellow-700 mb-2">🐳 {result.typeName}이란?</p>
+                  <p className="text-xs font-bold text-yellow-700 mb-2">🐳 요약</p>
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{result.description}</p>
                 </div>
               )}
@@ -1024,79 +1023,33 @@ export default function PortiSurvey() {
                   const risk = agentProfile?.investTendency?.riskRatio ?? 29;
                   const moderate = Math.max(0, 100 - safe - risk);
 
-                  const savings = agentProfile?.savingsList ?? [
-                    { type: '입출금/CMA', amount: 0, ratio: 8 },
-                    { type: '예금/적금', amount: 0, ratio: 72 },
-                    { type: '주택청약', amount: 0, ratio: 20 },
-                  ];
-                  const totalAmt = savings.reduce((s, x) => s + x.amount, 0);
-                  const shortRatio = savings.find(s => s.type.includes('입출금') || s.type.includes('CMA'))?.ratio ?? 8;
-                  const longRatio = 100 - shortRatio;
-
-                  const fmtAmt = (pct: number) => totalAmt > 0
-                    ? ` ${Math.round(totalAmt * pct / 100 / 10000)}만 원` : '';
-
                   const safeAssets = agentProfile?.investTendency?.safeAssets ?? '예적금, 채권';
                   const riskAssets = agentProfile?.investTendency?.riskAssets ?? '국내외 주식, 코인';
-                  const riskHoverMap: Record<string, string> = {
-                    '안정': safeAssets,
-                    '중도': `${safeAssets} · ${riskAssets}`,
-                    '공격': riskAssets,
-                  };
-                  const termHoverMap: Record<string, string> = {
-                    '단기': savings.filter(s => s.type.includes('입출금') || s.type.includes('CMA')).map(s => s.type).join(', ') || '입출금·CMA 계좌',
-                    '중/장기': savings.filter(s => !s.type.includes('입출금') && !s.type.includes('CMA')).map(s => s.type).join(', ') || '예금·적금·청약',
-                  };
 
                   const riskSegs = [
-                    { label: '안정', pct: safe, bg: '#D1FAE5', text: '#065F46', tip: riskHoverMap['안정'] },
-                    { label: '중도', pct: moderate, bg: '#FEF9C3', text: '#854D0E', tip: riskHoverMap['중도'] },
-                    { label: '공격', pct: risk, bg: '#FFE4E6', text: '#9F1239', tip: riskHoverMap['공격'] },
-                  ];
-                  const termSegs = [
-                    { label: '단기', pct: shortRatio, bg: '#FFE4E6', text: '#9F1239', tip: termHoverMap['단기'] },
-                    { label: '중/장기', pct: longRatio, bg: '#D1FAE5', text: '#065F46', tip: termHoverMap['중/장기'] },
+                    { label: '안정', pct: safe, bg: '#D1FAE5', text: '#065F46', tip: safeAssets },
+                    { label: '중도', pct: moderate, bg: '#FEF9C3', text: '#854D0E', tip: `${safeAssets} · ${riskAssets}` },
+                    { label: '공격', pct: risk, bg: '#FFE4E6', text: '#9F1239', tip: riskAssets },
                   ];
 
                   return (
-                    <>
-                      {/* 안정/중도/공격 바 */}
-                      <div className="flex h-12 rounded-xl overflow-hidden">
-                        {riskSegs.map((s, i) => (
-                          <div key={s.label} className="flex flex-col items-center justify-center relative cursor-default select-none"
-                            style={{ flex: s.pct, background: s.bg, borderRight: i < riskSegs.length - 1 ? '2px solid white' : undefined }}
-                            onMouseEnter={() => setHoveredRisk(s.label)} onMouseLeave={() => setHoveredRisk(null)}
-                          >
-                            <span className="text-xs font-bold leading-tight" style={{ color: s.text }}>{s.label}</span>
-                            <span className="text-[10px] font-semibold leading-tight" style={{ color: s.text }}>{s.pct}%{fmtAmt(s.pct)}</span>
-                            {hoveredRisk === s.label && (
-                              <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                                <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 shadow-lg text-[11px] text-gray-700 whitespace-nowrap font-medium">{s.tip}</div>
-                                <div className="flex justify-center"><div className="w-2.5 h-2.5 bg-white border-r border-b border-gray-200 rotate-45 -mt-1.5" /></div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      {/* 단기/중장기 바 */}
-                      <div className="flex h-12 rounded-xl overflow-hidden">
-                        {termSegs.map((s, i) => (
-                          <div key={s.label} className="flex flex-col items-center justify-center relative cursor-default select-none"
-                            style={{ flex: s.pct, background: s.bg, borderRight: i < termSegs.length - 1 ? '2px solid white' : undefined }}
-                            onMouseEnter={() => setHoveredTerm(s.label)} onMouseLeave={() => setHoveredTerm(null)}
-                          >
-                            <span className="text-xs font-bold leading-tight" style={{ color: s.text }}>{s.label}</span>
-                            <span className="text-[10px] font-semibold leading-tight" style={{ color: s.text }}>{s.pct}%{fmtAmt(s.pct)}</span>
-                            {hoveredTerm === s.label && (
-                              <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                                <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 shadow-lg text-[11px] text-gray-700 whitespace-nowrap font-medium">{s.tip}</div>
-                                <div className="flex justify-center"><div className="w-2.5 h-2.5 bg-white border-r border-b border-gray-200 rotate-45 -mt-1.5" /></div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                    <div className="flex h-12 rounded-xl overflow-hidden">
+                      {riskSegs.map((s, i) => (
+                        <div key={s.label} className="flex flex-col items-center justify-center relative cursor-default select-none"
+                          style={{ flex: s.pct, background: s.bg, borderRight: i < riskSegs.length - 1 ? '2px solid white' : undefined }}
+                          onMouseEnter={() => setHoveredRisk(s.label)} onMouseLeave={() => setHoveredRisk(null)}
+                        >
+                          <span className="text-xs font-bold leading-tight" style={{ color: s.text }}>{s.label}</span>
+                          <span className="text-[10px] font-semibold leading-tight" style={{ color: s.text }}>{s.pct}%</span>
+                          {hoveredRisk === s.label && (
+                            <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                              <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 shadow-lg text-[11px] text-gray-700 whitespace-nowrap font-medium">{s.tip}</div>
+                              <div className="flex justify-center"><div className="w-2.5 h-2.5 bg-white border-r border-b border-gray-200 rotate-45 -mt-1.5" /></div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   );
                 })()}
 
