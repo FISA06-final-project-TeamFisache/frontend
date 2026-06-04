@@ -215,6 +215,16 @@ function calcResult(answers: Record<number, 'A' | 'B'>): ResultType {
   return RESULT_TYPES[2];                          // 사이클 (장기성장)
 }
 
+// 백엔드 portiType → RESULT_TYPES 인덱스 (히어로 타입은 백엔드 판정을 우선)
+const PORTI_TYPE_TO_INDEX: Record<string, number> = {
+  SWIMMING: 0,  // 수영
+  RHYTHMIC: 1,  // 골프 (백엔드 리듬체조 → 프론트 골프)
+  CYCLING: 2,   // 사이클
+  JUDO: 3,      // 유도
+  FENCING: 4,   // 펜싱
+  ARCHERY: 5,   // 양궁
+};
+
 const THEME_CATEGORIES = [
   { id: 'etf_domestic', label: '국내 ETF', emoji: '🇰🇷' },
   { id: 'etf_global', label: '해외 ETF', emoji: '🌏' },
@@ -351,13 +361,17 @@ export default function PortiSurvey() {
       .then(profile => {
         setAgentProfile(profile);
         localStorage.setItem('agentProfile', JSON.stringify(profile));
+        return profile;
       })
       .catch((err: unknown) => {
         console.error('[PortiSurvey] agent profile 생성 실패:', err);
+        return null;
       });
 
-    Promise.all([minDelay, apiCall]).then(() => {
-      setResult(localResult);
+    Promise.all([minDelay, apiCall]).then(([, profile]) => {
+      // 히어로 타입은 백엔드 portiType 우선, 실패 시 로컬 calcResult 폴백
+      const idx = profile ? PORTI_TYPE_TO_INDEX[profile.portiType] : undefined;
+      setResult(idx !== undefined ? RESULT_TYPES[idx] : localResult);
       setStep('result');
     });
   }, [step, answers, priorities, selectedGoal]);
