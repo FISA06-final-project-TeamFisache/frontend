@@ -131,19 +131,7 @@ interface ResultType {
   img: string;
   subtitle: string;
   quote: string;
-  traits: { label: string; pct: number; color: string }[];
   description: string;
-  spending: string;
-  investment: string;
-  saving: string;
-  investor: { name: string; role: string; quote: string; reason: string; emoji: string; img: string };
-  portfolio: {
-    name: string;
-    allocations: { label: string; pct: number; color: string }[];
-    stats: { return: string; maxDrawdown: string; volatility: string; sharpe: string };
-    commentary: string;
-    etfs: { name: string; code: string; pct: number }[];
-  };
   strengths: string[];
   weaknesses: string[];
 }
@@ -155,38 +143,7 @@ const RESULT_TYPES: ResultType[] = [
     img: swimporiImg,
     subtitle: '기본기에 충실한, 레인을 벗어나지 않는 타입',
     quote: '흔들리지 않아, 내 레인을 지킬 뿐',
-    traits: [
-      { label: '안전형', pct: 90, color: '#3b82f6' },
-      { label: '계획형', pct: 82, color: '#8b5cf6' },
-      { label: '신중형', pct: 86, color: '#10b981' },
-      { label: '단기형', pct: 74, color: '#f59e0b' },
-    ],
     description: '변동성이 낮은 안전 자산을 선호해요.' + '\n' + '원금 보장이 최우선이고, 꾸준한 적금으로 자산을 착실히 쌓아가는 타입이에요.' + '\n' + '시장 뉴스에 흔들리지 않고 내 계획대로 가는 것이 최고의 전략이라고 믿어요.',
-    spending: '식비·교통비 위주의 안정적인 지출 패턴이에요.' + '\n' + '충동 소비 흔적이 거의 없고, 꼭 필요한 곳에만 쓰는 편이에요.',
-    investment: '안전한 예적금을 선호하고, 원금 손실에 예민해요.' + '\n' + '작더라도 확실한 수익이 심리적으로 잘 맞아요.',
-    saving: '꾸준한 적금 납입을 통해 자산을 착실히 쌓고 있어요.' + '\n' + '계획한 금액을 빠짐없이 모으는 타입이에요.',
-    investor: {
-      name: '워렌 버핏', emoji: '🦁', img: warrenBuffettImg,
-      role: '버크셔 해서웨이 / 가치 투자의 아버지',
-      quote: '가장 중요한 투자 규칙은 절대 잃지 않는 것이다.',
-      reason: '"이해할 수 있는 것에만 투자한다"는 버핏의 원칙이 딱 맞아요. 화려한 수익보다 리스크 관리를 먼저 생각하고, 복잡한 상품보다 단순하고 검증된 투자처를 선호하는 점이 닮았어요.',
-    },
-    portfolio: {
-      name: '안전 우선 예적금 포트폴리오',
-      allocations: [
-        { label: '예금·적금', pct: 60, color: '#3b82f6' },
-        { label: '채권 ETF', pct: 30, color: '#8b5cf6' },
-        { label: 'CMA·파킹통장', pct: 10, color: '#10b981' },
-      ],
-      stats: { return: '3.8%', maxDrawdown: '-2%', volatility: '2.1%', sharpe: '1.81' },
-      commentary: '예금·채권 중심으로 원금 보호를 최우선으로 해요. 금리 상승기에 유리하며, 잠을 편하게 자는 포트폴리오예요.',
-      etfs: [
-        { name: 'KODEX 단기채권PLUS', code: '214980', pct: 30 },
-        { name: 'TIGER 단기통안채', code: '157450', pct: 30 },
-        { name: 'KOSEF 국고채10년', code: '148070', pct: 30 },
-        { name: '예금·적금 직접 가입', code: '—', pct: 10 },
-      ],
-    },
     strengths: ['감정적 손절 없이 안정적 보유', '꾸준한 적립으로 복리 극대화', '시장 폭락 때도 멘탈 흔들림 없음'],
     weaknesses: ['인플레이션 대비 낮은 실질 수익률', '고수익 기회를 놓치는 경향', '리스크 회피로 자산 증식 속도 더딤'],
   },
@@ -195,39 +152,7 @@ const RESULT_TYPES: ResultType[] = [
     img: golfporiImg,
     subtitle: '전략적으로 즐기는, 삶의 질을 고려하는 타입',
     quote: '즐기면서도 버는 거, 그게 나야',
-    traits: [
-      { label: '균형형', pct: 76, color: '#10b981' },
-      { label: '전략형', pct: 81, color: '#3b82f6' },
-      { label: '분석형', pct: 68, color: '#8b5cf6' },
-      { label: '중기형', pct: 72, color: '#f59e0b' },
-    ],
     description: '소비와 투자의 균형을 잘 잡는 타입이에요.\n삶의 질을 포기하지 않으면서 자산도 꾸준히 늘리고 싶어해요.\n가치 있다고 판단한 소비에는 과감하고, 투자는 전략적으로 접근해요.',
-    spending: '경험·여가에 아낌없이 쓰는 편이에요. 단, 가치 있다고 판단한 소비에만 집중하는 선택형 지출 스타일이에요.',
-    investment: '수익과 리스크 사이에서 전략적으로 접근해요. 무턱대고 뛰어들기보단 타이밍을 잡는 편이에요.',
-    saving: '목돈 마련 계획을 세우고, 지출과 저축을 균형 있게 배분하는 포트폴리오형 관리가 잘 맞아요.',
-    investor: {
-      name: '켄 피셔', emoji: '⛳', img: kenFisherImg,
-      role: '피셔 인베스트먼트 / 성장주 투자의 대가',
-      quote: '시장은 항상 당신이 생각하는 것보다 더 멀리 간다.',
-      reason: '성장주 투자의 대가인 켄 피셔는 소비와 투자의 균형을 잡으며 전략적으로 타이밍을 포착하는 스타일이에요. 삶의 질을 즐기면서 체계적으로 자산을 불려가는 골프 타입과 딱 맞아요.',
-    },
-    portfolio: {
-      name: '밸런스 성장 포트폴리오',
-      allocations: [
-        { label: '국내 주식', pct: 30, color: '#3b82f6' },
-        { label: '해외 주식', pct: 30, color: '#f59e0b' },
-        { label: '채권 ETF', pct: 25, color: '#8b5cf6' },
-        { label: '예금·현금', pct: 15, color: '#10b981' },
-      ],
-      stats: { return: '6.2%', maxDrawdown: '-18%', volatility: '8.5%', sharpe: '0.73' },
-      commentary: '국내외 주식과 채권을 균형 있게 담아요. 위기 때는 채권이 완충재 역할을 하고, 상승장엔 주식이 수익을 이끌어요.',
-      etfs: [
-        { name: 'TIGER 코스피200', code: '102110', pct: 30 },
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 30 },
-        { name: 'KODEX 국채10년', code: '148070', pct: 25 },
-        { name: '예금·CMA', code: '—', pct: 15 },
-      ],
-    },
     strengths: ['소비와 투자의 균형 감각', '전략적 타이밍 포착 능력', '다양한 자산으로 리스크 분산'],
     weaknesses: ['결정 시 지나치게 고민하는 경향', '수익률 극대화보다 안정을 택해 아쉬울 때 있음', '시장 급락 시 포트폴리오 리밸런싱 지연'],
   },
@@ -236,39 +161,7 @@ const RESULT_TYPES: ResultType[] = [
     img: cycleporiImg,
     subtitle: '묵묵히 자신의 페달 밟는, 장거리 레이서 타입',
     quote: '오르막이 있어야 내리막도 있지, 나는 계속 달린다',
-    traits: [
-      { label: '성장형', pct: 85, color: '#f59e0b' },
-      { label: '장기형', pct: 91, color: '#3b82f6' },
-      { label: '분산형', pct: 76, color: '#10b981' },
-      { label: '규율형', pct: 82, color: '#8b5cf6' },
-    ],
     description: '장기 복리의 힘을 믿는 타입이에요.\n단기 등락에 흔들리지 않고 꾸준히 인덱스를 적립하는 전략이 딱 맞아요.\n목적 통장을 분산 운영하며 목표별로 체계적으로 관리해요.',
-    spending: '지금 당장보다 미래를 위해 소비를 절제하는 편이에요. 장기 목표를 향해 꾸준히 달리는 스타일이에요.',
-    investment: '성장형 자산에 관심이 높고, 장기 우상향을 믿으며 시장 변동에 흔들리지 않아요.',
-    saving: '여러 목적 통장을 분산 운영하며 목표별로 저축을 관리해요. 복리의 힘을 믿는 타입이에요.',
-    investor: {
-      name: '존 보글', emoji: '📈', img: johnBogleImg,
-      role: '뱅가드 / 인덱스 투자의 창시자',
-      quote: '시장을 이기려 하지 마라. 시장이 되어라.',
-      reason: '저비용 인덱스 펀드를 오래 보유하는 보글의 전략이 딱 맞아요. 단기 수익에 흔들리지 않고 장기 복리를 믿는 묵묵한 스타일이 닮았어요.',
-    },
-    portfolio: {
-      name: '장기 복리 인덱스 포트폴리오',
-      allocations: [
-        { label: '미국 S&P500', pct: 50, color: '#f59e0b' },
-        { label: '글로벌 주식', pct: 25, color: '#3b82f6' },
-        { label: '미국 채권', pct: 20, color: '#8b5cf6' },
-        { label: '금', pct: 5, color: '#fbbf24' },
-      ],
-      stats: { return: '9.1%', maxDrawdown: '-35%', volatility: '14%', sharpe: '0.65' },
-      commentary: '미국 주식 + 글로벌 분산 + 채권으로 구성된 장기 성장형이에요. 20년 이상 보유 시 복리 효과가 극대화돼요.',
-      etfs: [
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 50 },
-        { name: 'TIGER 선진국MSCI World', code: '195930', pct: 25 },
-        { name: 'KODEX 미국채10년선물', code: '308620', pct: 20 },
-        { name: 'KODEX 골드선물(H)', code: '132030', pct: 5 },
-      ],
-    },
     strengths: ['장기 복리 효과 극대화', '단기 등락에 휘둘리지 않는 멘탈', '목표별 분산으로 체계적 자산 관리'],
     weaknesses: ['단기 수익 기회에 무감각할 수 있음', '너무 긴 시계로 유동성 부족', '시장 급변 시 리밸런싱 타이밍 놓침'],
   },
@@ -277,39 +170,7 @@ const RESULT_TYPES: ResultType[] = [
     img: judoporiImg,
     subtitle: '자산을 안전하게 지킬 줄 아는, 수비형 재테크 타입',
     quote: '지키는 것도 실력이야',
-    traits: [
-      { label: '안전형', pct: 94, color: '#3b82f6' },
-      { label: '방어형', pct: 89, color: '#10b981' },
-      { label: '현금선호', pct: 84, color: '#f59e0b' },
-      { label: '신중형', pct: 88, color: '#8b5cf6' },
-    ],
     description: '리스크보다 안전을 최우선으로 해요.\n원금 보장 상품과 비상금을 두둑이 쌓아두는 것이 최고의 재테크라고 생각해요.\n불필요한 지출을 잘 참고 한 번 더 생각하는 신중한 소비자예요.',
-    spending: '불필요한 지출을 잘 참는 편이에요. 무언가 사기 전에 한 번 더 생각하는 신중한 소비자예요.',
-    investment: '리스크보다 안전을 최우선으로 해요. 원금 보장 상품과 예금 위주로 자산을 지키는 타입이에요.',
-    saving: '비상금을 두둑이 쌓아두는 걸 좋아하고, 언제든 꺼낼 수 있는 유동성을 중요하게 여겨요.',
-    investor: {
-      name: '레이 달리오', emoji: '🛡️', img: rayDalioImg,
-      role: '브리지워터 / 올웨더 포트폴리오 창시자',
-      quote: '내가 틀릴 수 있다는 걸 항상 염두에 둔다.',
-      reason: '"올웨더 전략"처럼 어떤 경제 상황에서도 손실을 최소화하는 방어적 분산 투자가 잘 맞아요. 리스크를 먼저 생각하는 스타일이 닮았어요.',
-    },
-    portfolio: {
-      name: '올웨더 방어 포트폴리오',
-      allocations: [
-        { label: '채권 ETF', pct: 40, color: '#3b82f6' },
-        { label: '예금·현금', pct: 30, color: '#10b981' },
-        { label: '국내 주식', pct: 15, color: '#f59e0b' },
-        { label: '원자재·금', pct: 15, color: '#fbbf24' },
-      ],
-      stats: { return: '4.5%', maxDrawdown: '-8%', volatility: '5%', sharpe: '0.90' },
-      commentary: '어떤 경기 국면에서도 일정 이상의 수익을 유지하는 올웨더 구조예요. 폭락장에서도 자산을 지켜주는 방어형이에요.',
-      etfs: [
-        { name: 'KODEX 국채10년', code: '148070', pct: 40 },
-        { name: '예금·CMA', code: '—', pct: 30 },
-        { name: 'TIGER 코스피200', code: '102110', pct: 15 },
-        { name: 'KODEX 골드선물(H)', code: '132030', pct: 15 },
-      ],
-    },
     strengths: ['위기 때도 흔들리지 않는 수비 능력', '비상금 확보로 기회비용 항상 준비', '불필요한 손실 거의 없음'],
     weaknesses: ['자산 성장 속도가 느린 편', '인플레이션에 취약할 수 있음', '안전 추구로 투자 기회 종종 포기'],
   },
@@ -318,39 +179,7 @@ const RESULT_TYPES: ResultType[] = [
     img: fencingporiImg,
     subtitle: '빠른 판단으로 과감하게, 선제 공격형 투자 타입',
     quote: '남들이 망설일 때, 나는 이미 찔렀다',
-    traits: [
-      { label: '공격형', pct: 86, color: '#ef4444' },
-      { label: '고수익형', pct: 91, color: '#f59e0b' },
-      { label: '즉흥형', pct: 79, color: '#8b5cf6' },
-      { label: '단기형', pct: 73, color: '#3b82f6' },
-    ],
     description: '높은 수익을 위해 리스크를 기꺼이 감수해요.\n시장 기회를 빠르게 포착하고 과감하게 진입하는 공격형 투자자예요.\n빠른 결정이 특기지만 가끔 충동 소비로 이어지기도 해요.',
-    spending: '소비도 투자도 빠른 결정이 특기예요. 직관을 믿고 행동하는 편이라 가끔 충동 소비도 나타나요.',
-    investment: '리스크를 감수하더라도 높은 수익을 추구해요. 시장 기회를 빠르게 포착하는 공격형 투자자예요.',
-    saving: '저축보다 투자 비중이 높은 편이에요. 목돈을 만들면 곧바로 굴리고 싶어 하는 타입이에요.',
-    investor: {
-      name: '스탠리 드러켄밀러', emoji: '⚔️', img: stanleyDruckenmillerImg,
-      role: '듀케인 캐피탈 / 소로스의 후계자',
-      quote: '기회가 왔을 때 크게 베팅하라.',
-      reason: '소로스보다 더 직접적인 공격형 트레이더예요. 빠른 판단과 대담한 집중 베팅이 특기로, 시장 기회를 빠르게 포착해 과감하게 진입하는 펜싱 스타일과 정확히 맞아요.',
-    },
-    portfolio: {
-      name: '공격 성장 집중 포트폴리오',
-      allocations: [
-        { label: '미국 나스닥', pct: 40, color: '#ef4444' },
-        { label: '미국 S&P500', pct: 25, color: '#f59e0b' },
-        { label: '테마 ETF', pct: 20, color: '#8b5cf6' },
-        { label: '채권·현금', pct: 15, color: '#3b82f6' },
-      ],
-      stats: { return: '14.2%', maxDrawdown: '-42%', volatility: '22%', sharpe: '0.65' },
-      commentary: '나스닥 + 테마 ETF 중심의 고성장 포트폴리오예요. 강세장에서 강력하지만 변동성이 크므로 장기 보유가 핵심이에요.',
-      etfs: [
-        { name: 'TIGER 미국나스닥100', code: '133690', pct: 40 },
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 25 },
-        { name: 'KODEX 반도체', code: '091160', pct: 20 },
-        { name: 'KODEX 미국채10년선물', code: '308620', pct: 15 },
-      ],
-    },
     strengths: ['시장 기회 빠른 포착', '고수익 추구로 자산 성장 속도 빠름', '새로운 투자 트렌드 선도'],
     weaknesses: ['충동적 결정으로 손실 날 수 있음', '변동성 큰 자산으로 심리 불안정', '포트폴리오 집중 리스크'],
   },
@@ -359,39 +188,7 @@ const RESULT_TYPES: ResultType[] = [
     img: archeryporiImg,
     subtitle: '한 발 한 발 신중하게 겨냥하는, 정밀 조준 타입',
     quote: '데이터가 맞다고 할 때만 쏜다',
-    traits: [
-      { label: '분석형', pct: 95, color: '#8b5cf6' },
-      { label: '전략형', pct: 88, color: '#3b82f6' },
-      { label: '계획형', pct: 92, color: '#10b981' },
-      { label: '중장기형', pct: 80, color: '#f59e0b' },
-    ],
     description: '투자 전 철저히 분석하고 근거를 확인한 뒤에야 결정해요.\n목표 금액과 기간을 정해두고 역산으로 저축 계획을 세우는 정밀한 타입이에요.\n가성비와 효율을 중시하며 즉흥적 지출은 거의 없어요.',
-    spending: '목표에 필요한 것만 정밀하게 소비해요. 즉흥적인 지출은 거의 없고, 가성비와 효율을 중요시해요.',
-    investment: '투자 전 철저히 분석하고, 리스크 대비 수익률을 계산한 뒤 결정해요. 감이 아닌 근거로 투자해요.',
-    saving: '구체적인 목표 금액과 기간을 정해두고 역산으로 저축 계획을 세워요. 목표 달성률이 높은 타입이에요.',
-    investor: {
-      name: '세스 클라만', emoji: '🎯', img: sethKlarmanImg,
-      role: '바우포스트 그룹 / 안전마진 투자의 대가',
-      quote: '안전마진 없이는 투자하지 않는다.',
-      reason: '안전 마진과 철저한 분석 후에만 진입하는 가치투자자예요. 벤저민 그레이엄보다 현대적이고 데이터 기반 이미지가 강해, 한 발 한 발 신중하게 겨냥하는 양궁 타입과 딱 맞아요.',
-    },
-    portfolio: {
-      name: '가치·성장 정밀 포트폴리오',
-      allocations: [
-        { label: '가치주 ETF', pct: 40, color: '#8b5cf6' },
-        { label: '성장주 ETF', pct: 30, color: '#3b82f6' },
-        { label: '채권 ETF', pct: 20, color: '#10b981' },
-        { label: '금', pct: 10, color: '#fbbf24' },
-      ],
-      stats: { return: '8.5%', maxDrawdown: '-25%', volatility: '12%', sharpe: '0.71' },
-      commentary: '가치와 성장의 균형을 데이터 기반으로 구성했어요. 철저한 분석 후 보유하는 정밀 전략으로 중장기 목표에 최적화됐어요.',
-      etfs: [
-        { name: 'KODEX 배당성장', code: '211560', pct: 40 },
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 30 },
-        { name: 'KODEX 국채10년', code: '148070', pct: 20 },
-        { name: 'KODEX 골드선물(H)', code: '132030', pct: 10 },
-      ],
-    },
     strengths: ['데이터 기반 리스크 최소화', '목표 달성률 높은 계획 실행력', '가성비 높은 정밀 포트폴리오'],
     weaknesses: ['분석에 너무 오래 걸려 기회 놓침', '지나친 신중함으로 결단 지연', '직관적 기회에 느린 반응'],
   },
@@ -442,6 +239,78 @@ const GOAL_CATEGORIES = [
   { id: 'other', label: '자유/기타', emoji: '💼' },
 ];
 
+// 거장 이름 → 사진 (API는 이미지를 주지 않으므로 프론트에서 이름으로 매칭)
+const GURU_IMAGES: Record<string, string> = {
+  '워렌 버핏': warrenBuffettImg,
+  '워런 버핏': warrenBuffettImg,
+  '켄 피셔': kenFisherImg,
+  '존 보글': johnBogleImg,
+  '레이 달리오': rayDalioImg,
+  '스탠리 드러켄밀러': stanleyDruckenmillerImg,
+  '세스 클라만': sethKlarmanImg,
+};
+
+// dev 전용 목 거장 데이터 (실제 API의 investor 자리) — RESULT_TYPES 순서와 매칭, 백엔드 시드와 동일
+const MOCK_INVESTORS: { name: string; description: string; investmentStyle: string; hashtag1: string; hashtag2: string }[] = [
+  { name: '워렌 버핏', investmentStyle: '가장 중요한 투자 규칙은 절대 잃지 않는 것이다.', hashtag1: '가치투자의 아버지', hashtag2: '오마하의 현인',
+    description: '"이해할 수 있는 것에만 투자한다"는 버핏의 원칙이 딱 맞아요. 화려한 수익보다 리스크 관리를 먼저 생각하고, 복잡한 상품보다 단순하고 검증된 투자처를 선호하는 점이 닮았어요.' },
+  { name: '켄 피셔', investmentStyle: '시장은 항상 당신이 생각하는 것보다 더 멀리 간다.', hashtag1: '성장주 투자의 대가', hashtag2: '역발상 전략가',
+    description: '성장주 투자의 대가인 켄 피셔는 소비와 투자의 균형을 잡으며 전략적으로 타이밍을 포착하는 스타일이에요. 삶의 질을 즐기면서 체계적으로 자산을 불려가는 골프 타입과 딱 맞아요.' },
+  { name: '존 보글', investmentStyle: '시장을 이기려 하지 마라. 시장이 되어라.', hashtag1: '인덱스 투자의 창시자', hashtag2: '장기 복리의 전도사',
+    description: '저비용 인덱스 펀드를 오래 보유하는 보글의 전략이 딱 맞아요. 단기 수익에 흔들리지 않고 장기 복리를 믿는 묵묵한 스타일이 닮았어요.' },
+  { name: '레이 달리오', investmentStyle: '내가 틀릴 수 있다는 걸 항상 염두에 둔다.', hashtag1: '올웨더 전략의 설계자', hashtag2: '금융계의 스티브잡스',
+    description: '"올웨더 전략"처럼 어떤 경제 상황에서도 손실을 최소화하는 방어적 분산 투자가 잘 맞아요. 리스크를 먼저 생각하는 스타일이 닮았어요.' },
+  { name: '스탠리 드러켄밀러', investmentStyle: '기회가 왔을 때 크게 베팅하라.', hashtag1: '월가 최고의 공격수', hashtag2: '트렌드 선점의 달인',
+    description: '소로스보다 더 직접적인 공격형 트레이더예요. 빠른 판단과 대담한 집중 베팅이 특기로, 시장 기회를 빠르게 포착해 과감하게 진입하는 펜싱 스타일과 정확히 맞아요.' },
+  { name: '세스 클라만', investmentStyle: '안전마진 없이는 투자하지 않는다.', hashtag1: '안전마진의 수호자', hashtag2: '월가의 숨은 현인',
+    description: '안전 마진과 철저한 분석 후에만 진입하는 가치투자자예요. 벤저민 그레이엄보다 현대적이고 데이터 기반 이미지가 강해, 한 발 한 발 신중하게 겨냥하는 양궁 타입과 딱 맞아요.' },
+];
+
+// ?dev=N 진입 시 주입할 목 agentProfile (API 응답 형태 그대로, 백엔드 영향 없음)
+// 거장 정보는 선택한 타입(RESULT_TYPES[idx])에 맞춰 생성
+function buildMockProfile(idx: number): AgentProfile {
+  const rt = RESULT_TYPES[idx];
+  const m = MOCK_INVESTORS[idx] ?? MOCK_INVESTORS[0];
+  return {
+    portiType: rt.typeName,
+    portiTypeName: rt.typeName,
+    portiDescription: rt.subtitle,
+    monthlyAvgExpense: 985000,
+    categoryExpense: [
+      { name: '식비', amount: 413700, ratio: 42 },
+      { name: '온라인 쇼핑', amount: 167450, ratio: 17 },
+      { name: '문화/여가', amount: 147750, ratio: 15 },
+      { name: '교통', amount: 78800, ratio: 8 },
+      { name: '기타', amount: 177300, ratio: 18 },
+    ],
+    fixedExpense: [
+      { name: '보장성 보험료', amount: 150000 },
+      { name: '통신비', amount: 65000 },
+      { name: 'OTT 및 정기구독', amount: 30000 },
+    ],
+    totalFixedExpense: 245000,
+    investTendency: {
+      safeRatio: 62,
+      moderateRatio: 25,
+      riskRatio: 13,
+    },
+    expenseComment: '식비·교통 위주의 안정적인 소비 패턴이에요. 충동 소비 흔적이 거의 없어요.',
+    investComment: '안전 자산 비중이 높은 보수적 투자 성향이에요. 원금 보장을 최우선으로 합니다.',
+    investor: {
+      id: `mock-${idx}`,
+      name: m.name,
+      description: m.description,
+      hashtag1: m.hashtag1,
+      hashtag2: m.hashtag2,
+      investmentStyle: m.investmentStyle,
+      items: [
+        { id: 'i1', stockName: 'Apple', changeRate: 2.1, sharesHeld: 915560000, prevQuarterRatio: 47.2, currentRatio: 41.8, holdingMonths: 96 },
+        { id: 'i2', stockName: 'Coca-Cola', changeRate: -0.4, sharesHeld: 400000000, prevQuarterRatio: 9.1, currentRatio: 9.3, holdingMonths: 420 },
+      ],
+    },
+  };
+}
+
 type Step = 'intro' | 'question' | 'theme' | 'goal' | 'loading' | 'result';
 
 
@@ -451,7 +320,10 @@ export default function PortiSurvey() {
 
   // ?dev=N (0~5) → 해당 결과 타입으로 바로 진입 (개발용, 백엔드 영향 없음)
   const devParam = new URLSearchParams(window.location.search).get('dev');
-  const devResult = devParam !== null ? RESULT_TYPES[Number(devParam) % RESULT_TYPES.length] : null;
+  const devIndex = devParam !== null && !Number.isNaN(Number(devParam))
+    ? Number(devParam) % RESULT_TYPES.length
+    : null;
+  const devResult = devIndex !== null ? RESULT_TYPES[devIndex] : null;
 
   const [step, setStep] = useState<Step>(devResult ? 'result' : 'intro');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -460,12 +332,11 @@ export default function PortiSurvey() {
   const [result, setResult] = useState<ResultType | null>(devResult);
   const [showProfile, setShowProfile] = useState(false);
   const [openDetail, setOpenDetail] = useState<Record<string, boolean>>({
-    spending: false, investment: false, saving: false,
-    profile: false, investor: false, portfolio: false, strengths: false,
+    spending: false, investment: false, portfolio: false,
   });
   const [hoveredCat, setHoveredCat] = useState<number | null>(null);
   const [hoveredRisk, setHoveredRisk] = useState<string | null>(null);
-  const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(null);
+  const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(devIndex !== null ? buildMockProfile(devIndex) : null);
   const [priorities, setPriorities] = useState<(string | null)[]>([null, null, null]);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
 
@@ -1027,10 +898,11 @@ export default function PortiSurvey() {
                 {(() => {
                   const safe = agentProfile?.investTendency?.safeRatio ?? 31;
                   const risk = agentProfile?.investTendency?.riskRatio ?? 29;
-                  const moderate = Math.max(0, 100 - safe - risk);
+                  const moderate = agentProfile?.investTendency?.moderateRatio ?? Math.max(0, 100 - safe - risk);
 
-                  const safeAssets = agentProfile?.investTendency?.safeAssets ?? '예적금, 채권';
-                  const riskAssets = agentProfile?.investTendency?.riskAssets ?? '국내외 주식, 코인';
+                  // 백엔드 미제공 — 툴팁 설명용 고정 라벨
+                  const safeAssets = '예적금, 채권';
+                  const riskAssets = '국내외 주식, 코인';
 
                   const riskSegs = [
                     { label: '안정', pct: safe, bg: '#D1FAE5', text: '#065F46', tip: safeAssets },
@@ -1093,25 +965,101 @@ export default function PortiSurvey() {
                 </div>
               </section>
 
-              {/* 나와 닮은 투자 거장 */}
-              <section className="space-y-3">
-                <h3 className="font-bold text-lg font-wooridaum">나와 닮은 투자 거장</h3>
-                <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                  <div className="flex flex-col items-center text-center shrink-0 w-20">
-                    <div className="w-14 h-14 rounded-full overflow-hidden shadow-inner border border-blue-100 mb-2">
-                      <img src={result.investor.img} alt={result.investor.name} className="w-full h-full object-cover" />
+              {/* 나와 닮은 투자 거장 (API agentProfile.investor 있을 때만) */}
+              {agentProfile?.investor && (() => {
+                const inv = agentProfile.investor;
+                const investorName = inv.name;
+                // 이름 매칭되는 거장 사진(없으면 이니셜 플레이스홀더)
+                const investorImg = GURU_IMAGES[investorName];
+                const investorQuote = inv.investmentStyle;   // 말풍선 인용구(거장 명언)
+                const investorDesc = inv.description;         // 말풍선 본문
+                const hashtags = [inv.hashtag1, inv.hashtag2].filter((t): t is string => !!t);
+
+                return (
+                  <section className="space-y-3">
+                    <h3 className="font-bold text-lg font-wooridaum">나와 닮은 투자 거장</h3>
+                    <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                      <div className="flex flex-col items-center text-center shrink-0 w-20">
+                        <div className="w-14 h-14 rounded-full overflow-hidden shadow-inner border border-blue-100 mb-2">
+                          {investorImg ? (
+                            <img src={investorImg} alt={investorName} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-blue-50 flex items-center justify-center text-lg font-bold text-blue-400">{investorName.charAt(0)}</div>
+                          )}
+                        </div>
+                        <p className="font-bold text-sm text-gray-900 leading-tight">{investorName}</p>
+                      </div>
+                      <div className="flex-1">
+                        {/* 해시태그 */}
+                        {hashtags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {hashtags.map(tag => (
+                              <span key={tag} className="text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1 leading-none">
+                                #{tag.replace(/^#/, '')}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {/* 노란 말풍선 박스 */}
+                        <div className="bg-[#FFFDF0] border border-yellow-200 rounded-2xl rounded-tl-none p-3.5 relative shadow-sm">
+                          <div className="absolute top-4 -left-2 border-[6px] border-transparent border-r-[#FFFDF0] z-10" />
+                          <div className="absolute top-4 -left-[9px] border-[6px] border-transparent border-r-yellow-200 z-0" />
+                          {investorQuote && (
+                            <p className="text-xs text-gray-400 italic mb-1.5">"{investorQuote}"</p>
+                          )}
+                          <p className="text-xs text-gray-700 leading-relaxed font-semibold">{investorDesc}</p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="font-bold text-sm text-gray-900 leading-tight">{result.investor.name}</p>
-                    <p className="text-[10px] text-blue-500 font-semibold mt-0.5 leading-tight">{result.investor.role.split('/')[0].trim()}</p>
-                  </div>
-                  <div className="flex-1 bg-[#FFFDF0] border border-yellow-200 rounded-2xl rounded-tl-none p-3.5 relative shadow-sm">
-                    <div className="absolute top-4 -left-2 border-[6px] border-transparent border-r-[#FFFDF0] z-10" />
-                    <div className="absolute top-4 -left-[9px] border-[6px] border-transparent border-r-yellow-200 z-0" />
-                    <p className="text-xs text-gray-400 italic mb-1.5">"{result.investor.quote}"</p>
-                    <p className="text-xs text-gray-700 leading-relaxed font-semibold">{result.investor.reason}</p>
-                  </div>
-                </div>
-              </section>
+
+                    {/* 큰손 포트폴리오 (거장 보유 종목) */}
+                    {inv?.items && inv.items.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => toggleDetail('portfolio')}
+                          className="w-full flex justify-between items-center px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 transition active:scale-[0.98]"
+                        >
+                          <span>💰 {investorName}의 포트폴리오</span>
+                          {openDetail.portfolio ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {openDetail.portfolio && (
+                          <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                            {inv.items.map(item => {
+                              const delta = item.currentRatio - item.prevQuarterRatio;
+                              const up = item.changeRate >= 0;
+                              return (
+                                <div key={item.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-sm text-gray-900 truncate">{item.stockName}</p>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">
+                                      보유 {item.holdingMonths}개월 · {item.sharesHeld.toLocaleString()}주
+                                    </p>
+                                  </div>
+                                  <div className="text-right shrink-0 ml-3">
+                                    <p className="text-sm font-bold text-gray-800">
+                                      비중 {item.currentRatio}%
+                                      {delta !== 0 && (
+                                        <span className={`ml-1 text-[11px] font-semibold ${delta > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                          {delta > 0 ? '+' : ''}{delta.toFixed(1)}%p
+                                        </span>
+                                      )}
+                                    </p>
+                                    <p className={`text-[11px] font-semibold ${up ? 'text-red-500' : 'text-blue-500'}`}>
+                                      {up ? '▲' : '▼'} {Math.abs(item.changeRate)}%
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            <p className="text-[10px] text-gray-400 text-center pt-0.5">전분기 대비 비중 변화 · 최근 등락률 기준</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </section>
+                );
+              })()}
 
             </div>{/* /마이데이터 섹션 px-5 */}
 
