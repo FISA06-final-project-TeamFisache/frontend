@@ -11,6 +11,12 @@ import fencingporiImg from '../assets/FencingPori.png';
 import archeryporiImg from '../assets/Archerypori.png';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAgentProfile, type AgentProfile } from '../api/agentApi';
+import warrenBuffettImg from '../assets/Warren Buffett.png';
+import kenFisherImg from '../assets/Ken Fisher.png';
+import johnBogleImg from '../assets/John Bogle.png';
+import rayDalioImg from '../assets/Ray Dalio.png';
+import stanleyDruckenmillerImg from '../assets/Stanley Druckenmiller.png';
+import sethKlarmanImg from '../assets/Seth Klarman.png';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -130,7 +136,7 @@ interface ResultType {
   spending: string;
   investment: string;
   saving: string;
-  investor: { name: string; role: string; quote: string; reason: string; emoji: string };
+  investor: { name: string; role: string; quote: string; reason: string; emoji: string; img: string };
   portfolio: {
     name: string;
     allocations: { label: string; pct: number; color: string }[];
@@ -160,7 +166,7 @@ const RESULT_TYPES: ResultType[] = [
     investment: '안전한 예적금을 선호하고, 원금 손실에 예민해요.' + '\n' + '작더라도 확실한 수익이 심리적으로 잘 맞아요.',
     saving: '꾸준한 적금 납입을 통해 자산을 착실히 쌓고 있어요.' + '\n' + '계획한 금액을 빠짐없이 모으는 타입이에요.',
     investor: {
-      name: '워렌 버핏', emoji: '🦁',
+      name: '워렌 버핏', emoji: '🦁', img: warrenBuffettImg,
       role: '버크셔 해서웨이 / 가치 투자의 아버지',
       quote: '가장 중요한 투자 규칙은 절대 잃지 않는 것이다.',
       reason: '"이해할 수 있는 것에만 투자한다"는 버핏의 원칙이 딱 맞아요. 화려한 수익보다 리스크 관리를 먼저 생각하고, 복잡한 상품보다 단순하고 검증된 투자처를 선호하는 점이 닮았어요.',
@@ -200,7 +206,7 @@ const RESULT_TYPES: ResultType[] = [
     investment: '수익과 리스크 사이에서 전략적으로 접근해요. 무턱대고 뛰어들기보단 타이밍을 잡는 편이에요.',
     saving: '목돈 마련 계획을 세우고, 지출과 저축을 균형 있게 배분하는 포트폴리오형 관리가 잘 맞아요.',
     investor: {
-      name: '켄 피셔', emoji: '⛳',
+      name: '켄 피셔', emoji: '⛳', img: kenFisherImg,
       role: '피셔 인베스트먼트 / 성장주 투자의 대가',
       quote: '시장은 항상 당신이 생각하는 것보다 더 멀리 간다.',
       reason: '성장주 투자의 대가인 켄 피셔는 소비와 투자의 균형을 잡으며 전략적으로 타이밍을 포착하는 스타일이에요. 삶의 질을 즐기면서 체계적으로 자산을 불려가는 골프 타입과 딱 맞아요.',
@@ -241,7 +247,7 @@ const RESULT_TYPES: ResultType[] = [
     investment: '성장형 자산에 관심이 높고, 장기 우상향을 믿으며 시장 변동에 흔들리지 않아요.',
     saving: '여러 목적 통장을 분산 운영하며 목표별로 저축을 관리해요. 복리의 힘을 믿는 타입이에요.',
     investor: {
-      name: '존 보글', emoji: '📈',
+      name: '존 보글', emoji: '📈', img: johnBogleImg,
       role: '뱅가드 / 인덱스 투자의 창시자',
       quote: '시장을 이기려 하지 마라. 시장이 되어라.',
       reason: '저비용 인덱스 펀드를 오래 보유하는 보글의 전략이 딱 맞아요. 단기 수익에 흔들리지 않고 장기 복리를 믿는 묵묵한 스타일이 닮았어요.',
@@ -282,7 +288,7 @@ const RESULT_TYPES: ResultType[] = [
     investment: '리스크보다 안전을 최우선으로 해요. 원금 보장 상품과 예금 위주로 자산을 지키는 타입이에요.',
     saving: '비상금을 두둑이 쌓아두는 걸 좋아하고, 언제든 꺼낼 수 있는 유동성을 중요하게 여겨요.',
     investor: {
-      name: '레이 달리오', emoji: '🛡️',
+      name: '레이 달리오', emoji: '🛡️', img: rayDalioImg,
       role: '브리지워터 / 올웨더 포트폴리오 창시자',
       quote: '내가 틀릴 수 있다는 걸 항상 염두에 둔다.',
       reason: '"올웨더 전략"처럼 어떤 경제 상황에서도 손실을 최소화하는 방어적 분산 투자가 잘 맞아요. 리스크를 먼저 생각하는 스타일이 닮았어요.',
@@ -323,7 +329,7 @@ const RESULT_TYPES: ResultType[] = [
     investment: '리스크를 감수하더라도 높은 수익을 추구해요. 시장 기회를 빠르게 포착하는 공격형 투자자예요.',
     saving: '저축보다 투자 비중이 높은 편이에요. 목돈을 만들면 곧바로 굴리고 싶어 하는 타입이에요.',
     investor: {
-      name: '스탠리 드러켄밀러', emoji: '⚔️',
+      name: '스탠리 드러켄밀러', emoji: '⚔️', img: stanleyDruckenmillerImg,
       role: '듀케인 캐피탈 / 소로스의 후계자',
       quote: '기회가 왔을 때 크게 베팅하라.',
       reason: '소로스보다 더 직접적인 공격형 트레이더예요. 빠른 판단과 대담한 집중 베팅이 특기로, 시장 기회를 빠르게 포착해 과감하게 진입하는 펜싱 스타일과 정확히 맞아요.',
@@ -364,7 +370,7 @@ const RESULT_TYPES: ResultType[] = [
     investment: '투자 전 철저히 분석하고, 리스크 대비 수익률을 계산한 뒤 결정해요. 감이 아닌 근거로 투자해요.',
     saving: '구체적인 목표 금액과 기간을 정해두고 역산으로 저축 계획을 세워요. 목표 달성률이 높은 타입이에요.',
     investor: {
-      name: '세스 클라만', emoji: '🎯',
+      name: '세스 클라만', emoji: '🎯', img: sethKlarmanImg,
       role: '바우포스트 그룹 / 안전마진 투자의 대가',
       quote: '안전마진 없이는 투자하지 않는다.',
       reason: '안전 마진과 철저한 분석 후에만 진입하는 가치투자자예요. 벤저민 그레이엄보다 현대적이고 데이터 기반 이미지가 강해, 한 발 한 발 신중하게 겨냥하는 양궁 타입과 딱 맞아요.',
@@ -1092,8 +1098,8 @@ export default function PortiSurvey() {
                 <h3 className="font-bold text-lg font-wooridaum">나와 닮은 투자 거장</h3>
                 <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
                   <div className="flex flex-col items-center text-center shrink-0 w-20">
-                    <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-3xl shadow-inner border border-blue-100 mb-2">
-                      {result.investor.emoji}
+                    <div className="w-14 h-14 rounded-full overflow-hidden shadow-inner border border-blue-100 mb-2">
+                      <img src={result.investor.img} alt={result.investor.name} className="w-full h-full object-cover" />
                     </div>
                     <p className="font-bold text-sm text-gray-900 leading-tight">{result.investor.name}</p>
                     <p className="text-[10px] text-blue-500 font-semibold mt-0.5 leading-tight">{result.investor.role.split('/')[0].trim()}</p>
