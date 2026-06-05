@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import heroImg from '../assets/hero.png';
 import portiImg from '../assets/porti.png';
@@ -266,8 +266,26 @@ type Step = 'intro' | 'question' | 'theme' | 'goal' | 'loading' | 'result';
 export default function PortiSurvey() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [step, setStep] = useState<Step>('intro');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('agentProfile');
+    if (saved && !location.state?.forceIntro) {
+      try {
+        const profile = JSON.parse(saved);
+        const idx = PORTI_TYPE_TO_INDEX[profile.portiType];
+        if (idx !== undefined) {
+          setAgentProfile(profile);
+          setResult(RESULT_TYPES[idx]);
+          setStep('result');
+        }
+      } catch (e) {
+        console.error('[PortiSurvey] Failed to restore profile:', e);
+      }
+    }
+  }, [location.state]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({});
   const [completing, setCompleting] = useState(false);
