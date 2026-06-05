@@ -424,11 +424,12 @@ function SettingsPanel({ onClose, onNavigate }: { onClose: () => void; onNavigat
 
 const CHALLENGE_TYPES = new Set(['CHALLENGE_NAG', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
 
-function NotificationPanel({ onClose, items, setItems, onChallengeClick }: {
+function NotificationPanel({ onClose, items, setItems, onChallengeClick, userName }: {
   onClose: () => void;
   items: NotiItem[];
   setItems: Dispatch<SetStateAction<NotiItem[]>>;
   onChallengeClick: (id: string, type: string) => void;
+  userName: string;
 }) {
   const markRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -464,29 +465,53 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick }: {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '8px 12px 20px', overflowY: 'auto' }}>
-        {items.map(n => (
-          <div key={n.id} onClick={() => {
-            markRead(n.id);
-            if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
-          }}
-            style={{
-              background: '#fff', border: '0.5px solid #f1f5f9', borderRadius: 14, padding: 14,
-              display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer',
-              opacity: n.read ? 0.5 : 1, transition: 'opacity .15s',
-            }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: n.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-              {n.icon}
+        {items.map(n => {
+          let title = n.title;
+          let body = n.body;
+
+          if (n.type === 'SALARY_REBALANCING') {
+            title = '월급';
+            body = '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!';
+          } else if (n.type === 'REPORT_READY') {
+            title = '월간리포트';
+            body = `${userName}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`;
+          } else if (n.type === 'CHALLENGE_NAG') {
+            title = '이번주 소비 미션';
+            if (n.body.includes('50%')) body = '50% 도달했어요ㅜㅡㅜ';
+            else if (n.body.includes('90%')) body = '90% 도달했어요!!!';
+            else if (n.body.includes('80%')) body = '80% 도달했어요..!';
+          } else if (n.type === 'CHALLENGE_COMPLETE') {
+            title = '이번주 소비 미션';
+            body = '뿌우~축하해요 성공했어요';
+          } else if (n.type === 'CHALLENGE_FAILED') {
+            title = '이번주 소비 미션';
+            body = '뿌우,,,아쉽게 실패했어요';
+          }
+
+          return (
+            <div key={n.id} onClick={() => {
+              markRead(n.id);
+              if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
+            }}
+              style={{
+                background: '#fff', border: '0.5px solid #f1f5f9', borderRadius: 14, padding: 14,
+                display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer',
+                opacity: n.read ? 0.5 : 1, transition: 'opacity .15s',
+              }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: n.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+                {n.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: n.read ? 400 : 600, color: n.read ? '#64748b' : '#0f172a', margin: '0 0 4px', lineHeight: 1.35 }}>{title}</p>
+                <p style={{ fontSize: 12, color: n.read ? '#94a3b8' : '#64748b', margin: 0, lineHeight: 1.55 }}>{body}</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                <span style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>{n.time}</span>
+                {!n.read && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#378ADD', display: 'block' }} />}
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 14, fontWeight: n.read ? 400 : 600, color: n.read ? '#64748b' : '#0f172a', margin: '0 0 4px', lineHeight: 1.35 }}>{n.title}</p>
-              <p style={{ fontSize: 12, color: n.read ? '#94a3b8' : '#64748b', margin: 0, lineHeight: 1.55 }}>{n.body}</p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-              <span style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>{n.time}</span>
-              {!n.read && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#378ADD', display: 'block' }} />}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -679,9 +704,13 @@ export default function Dashboard() {
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
   const [notiOpen, setNotiOpen] = useState(false);
   const DEV_NOTI_ITEMS: NotiItem[] = [
-    { id: 'dev-nag', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '[DEV] 챌린지 소비 감지', body: '커피 3잔만 마시기 — 결제가 발생했어요', time: '방금 전', read: false },
-    { id: 'dev-complete', type: 'CHALLENGE_COMPLETE', icon: '🏆', iconBg: '#E1F5EE', title: '[DEV] 챌린지 성공!', body: '커피 3잔만 마시기 — 이번 주 미션 성공했어요', time: '1시간 전', read: false },
-    { id: 'dev-failed', type: 'CHALLENGE_FAILED', icon: '😢', iconBg: '#FCEBEB', title: '[DEV] 챌린지 종료', body: '커피 3잔만 마시기 — 다음엔 꼭 성공해봐요', time: '1일 전', read: false },
+    { id: 'dev-salary', type: 'SALARY_REBALANCING', icon: '💳', iconBg: '#E6F1FB', title: '월급', body: '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!', time: '방금 전', read: false },
+    { id: 'dev-nag-50', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '50% 도달했어요ㅜㅡㅜ', time: '1시간 전', read: false },
+    { id: 'dev-nag-80', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '80% 도달했어요..!', time: '2시간 전', read: false },
+    { id: 'dev-nag-90', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '90% 도달했어요!!!', time: '3시간 전', read: false },
+    { id: 'dev-complete', type: 'CHALLENGE_COMPLETE', icon: '🏆', iconBg: '#E1F5EE', title: '이번주 소비 미션', body: '뿌우~축하해요 성공했어요', time: '5시간 전', read: false },
+    { id: 'dev-failed', type: 'CHALLENGE_FAILED', icon: '😢', iconBg: '#FCEBEB', title: '이번주 소비 미션', body: '뿌우,,,아쉽게 실패했어요', time: '1일 전', read: false },
+    { id: 'dev-report', type: 'REPORT_READY', icon: '📋', iconBg: '#E1F5EE', title: '월간리포트', body: `${USER_NAME}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`, time: '2일 전', read: false },
   ];
   const [notiItems, setNotiItems] = useState<NotiItem[]>(DEV_NOTI_ITEMS);
   const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
@@ -942,7 +971,7 @@ export default function Dashboard() {
                     <span style={{ fontSize: 10, color: '#854F0B', opacity: 0.8 }}>방금 전</span>
                   </div>
                   <p style={{ fontSize: 11, color: '#854F0B', margin: 0, lineHeight: 1.4, whiteSpace: 'pre-line' }}>
-                    Pori가 자동으로 이번 달 분배 계획을 세웠어요.{'\n'}확인하고 자동이체를 시작해볼까요?
+                    PorTI가 자동으로 이번 달 분배 계획을 세웠어요.{'\n'}확인하고 자동이체를 시작해볼까요?
                   </p>
                 </div>
 
@@ -1699,33 +1728,63 @@ export default function Dashboard() {
             </div>
 
             <div className="hide-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '10px 16px 24px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingLeft: 6, paddingBottom: 20 }}>
-                <button
-                  onClick={() => { setSidebarOpen(false); setAccountMgmtOpen(true); }}
-                  style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
-                >
-                  내 계좌 연결 관리
-                </button>
-                <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>목표 이력</span>
-                <button
-                  onClick={() => { setSidebarOpen(false); navigate('/tax-calculator'); }}
-                  style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
-                >
-                  세금 계산기
-                </button>
-                <button
-                  onClick={() => { setSidebarOpen(false); navigate('/monthly-report'); }}
-                  style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
-                >
-                  월간 리포트
-                </button>
-                <span style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer' }}>관심사 재설정</span>
-                <button
-                  onClick={() => { setSidebarOpen(false); setSettingsOpen(true); }}
-                  style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
-                >
-                  내 포트폴리오 변경하기
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingLeft: 6, paddingBottom: 20 }}>
+                {/* [초기 설정] */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, letterSpacing: -0.2 }}>[초기 설정]</span>
+                  <button
+                    onClick={() => { setSidebarOpen(false); setAccountMgmtOpen(true); }}
+                    style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                  >
+                    계좌 연결 관리
+                  </button>
+                  <button
+                    onClick={() => { setSidebarOpen(false); navigate('/salary-select'); }}
+                    style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                  >
+                    급여 통장 변경
+                  </button>
+                </div>
+
+                {/* [PorTI] */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, letterSpacing: -0.2 }}>[PorTI]</span>
+                  <button
+                    onClick={() => { setSidebarOpen(false); navigate('/porti-survey', { state: { forceIntro: true } }); }}
+                    style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                  >
+                    관심사 재설정
+                  </button>
+                  <button
+                    onClick={() => { setSidebarOpen(false); navigate('/porti-survey'); }}
+                    style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                  >
+                    AI 자산 초상화
+                  </button>
+                </div>
+
+                {/* [자산 관리] */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, letterSpacing: -0.2 }}>[자산 관리]</span>
+                  <button
+                    onClick={() => { setSidebarOpen(false); navigate('/monthly-report'); }}
+                    style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                  >
+                    월간리포트 조회
+                  </button>
+                  <button
+                    onClick={() => { setSidebarOpen(false); setSalaryMgmtOpen(true); }}
+                    style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                  >
+                    월급 분배 수정
+                  </button>
+                  <button
+                    onClick={() => { setSidebarOpen(false); setSettingsOpen(true); }}
+                    style={{ fontSize: 15, color: '#0f172a', fontWeight: 500, cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+                  >
+                    투자 분배 수정
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1740,7 +1799,7 @@ export default function Dashboard() {
                 onClick={handleWithdraw}
                 style={{ fontSize: 13, color: '#ef4444', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
               >
-                회원탈퇴
+                회원 탈퇴
               </button>
             </div>
           </div>
@@ -1762,6 +1821,7 @@ export default function Dashboard() {
               onClose={() => setNotiOpen(false)}
               items={notiItems}
               setItems={setNotiItems}
+              userName={USER_NAME}
               onChallengeClick={async (id, type) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
                   CHALLENGE_NAG: 'ACTIVE',
