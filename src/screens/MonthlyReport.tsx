@@ -25,9 +25,9 @@ const MOCK_HOLDINGS = [
 ];
 
 const MOCK_MISSIONS = [
-  { title: '커피 6번만 마시기', period: '5월 7일 ~ 5월 14일', result: '성공', note: '05.14 11:10 삼성전자 매수' },
+  { title: '커피 6번만 마시기', period: '5월 7일 ~ 5월 14일', result: '성공', note: '05.14 삼성전자 매수' },
   { title: '배달 2번만 시키기', period: '5월 15일 ~ 5월 22일', result: '실패', note: '-' },
-  { title: '택시 1번만 타기', period: '5월 23일 ~ 5월 30일', result: '성공', note: '05.30 16:10 카카오 매수' },
+  { title: '택시 1번만 타기', period: '5월 23일 ~ 5월 30일', result: '성공', note: '05.30 카카오 매수' },
 ];
 
 const MOCK_TAX_DEDUCTIONS = [
@@ -605,15 +605,15 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
             <SpendingDonut categories={donutCategories} report={report} />
           </Card>
 
-          {/* 미션 요약 */}
-          <SectionTitle>소비 미션 요약</SectionTitle>
-          <MissionSummarySection comment={missionComment} />
-
           {/* AI 가이드라인 */}
           <div style={{ background: '#0f172a', borderRadius: 14, padding: '16px 18px', marginTop: 4 }}>
             <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 8px' }}>Pori의 다음달 가이드</p>
             <p style={{ fontSize: 13, color: '#f1f5f9', lineHeight: 1.9, margin: 0 }}>{guideline}</p>
           </div>
+
+          {/* 미션 요약 */}
+          <SectionTitle>소비 미션 요약</SectionTitle>
+          <MissionSummarySection comment={missionComment} />
 
           {/* ──── 세금 공제 ──── */}
           <BlockHeader color="#1D9E75">세금 공제</BlockHeader>
