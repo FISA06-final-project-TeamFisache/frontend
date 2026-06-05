@@ -19,15 +19,28 @@ export interface FixedExpenseItem {
 
 export interface InvestTendency {
   safeRatio: number;
+  moderateRatio: number;
   riskRatio: number;
-  safeAssets: string;
-  riskAssets: string;
 }
 
-export interface SavingsItem {
-  type: string;
-  amount: number;
-  ratio: number;
+export interface InvestorPortfolioItem {
+  id: string;
+  stockName: string;
+  changeRate: number;
+  sharesHeld: number;
+  prevQuarterRatio: number;
+  currentRatio: number;
+  holdingMonths: number;
+}
+
+export interface InvestorMaster {
+  id: string;
+  name: string;
+  description: string;
+  hashtag1: string;
+  hashtag2: string;
+  investmentStyle: string;
+  items: InvestorPortfolioItem[];
 }
 
 export interface AgentProfile {
@@ -39,10 +52,9 @@ export interface AgentProfile {
   fixedExpense: FixedExpenseItem[];
   totalFixedExpense: number;
   investTendency: InvestTendency;
-  savingsList: SavingsItem[];
   expenseComment: string;
   investComment: string;
-  savingsComment: string;
+  investor: InvestorMaster;
 }
 
 /**
