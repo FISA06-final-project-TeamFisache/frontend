@@ -11,7 +11,7 @@ export default function Welcome() {
           <img src={heroImg} alt="WooriPort 마스코트" className="w-52 h-52 object-contain mb-4" />
 
           <h1 className="text-4xl font-bold text-blue-500 tracking-tight font-wooridaum">WooriPort</h1>
-          <p className="text-md text-gray-600 mb-12 font-wooridaum">나의 첫 자산관리</p>
+          <p className="text-md text-gray-600 mb-12 font-wooridaum">나의 첫번째 자산 관리</p>
 
           <div className="w-full flex flex-col items-center gap-4">
             <button

@@ -7,7 +7,13 @@ import SalaryManagement from './SalaryManagement';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notificationApi';
 import { getAssets, type Asset } from '../api/assetApi';
 import { fetchProposal, applyProposal, type Proposal } from '../api/poriApi';
+import { getChallengeAlarmDetail, type ChallengeAlarmDetail } from '../api/challengeApi';
+import ChallengeAlarmModal from '../components/ChallengeAlarmModal';
 import portiImg from '../assets/porti.png';
+import sunnyImg from '../assets/sunny.png';
+import rainImg from '../assets/rain.jpg';
+import cloudyImg from '../assets/cloudy.png';
+import tornadoImg from '../assets/tornado .png';
 
 
 interface Goal {
@@ -23,7 +29,7 @@ interface Goal {
 interface SpendingItem { label: string; pct: number; color: string; }
 interface PopularProduct { rank: number; name: string; sub: string; pct: number; }
 interface PortfolioSlice { label: string; pct: number; color: string; rate?: string; }
-interface NotiItem { id: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; }
+interface NotiItem { id: string; type: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; }
 
 const GOAL_COLORS: Goal['color'][] = [
   { bg: '#EEEDFE', bar: '#7F77DD', text: '#534AB7', badge: '#EEEDFE', badgeText: '#534AB7' },
@@ -34,16 +40,16 @@ const GOAL_COLORS: Goal['color'][] = [
 
 function pickGoalIcon(text: string): string {
   if (/여행|해외|비행|유럽|제주|일본/.test(text)) return '✈';
-  if (/집|주택|전세|매매|부동산/.test(text))      return '🏠';
-  if (/차|자동차/.test(text))                     return '🚗';
-  if (/결혼|웨딩/.test(text))                     return '💍';
-  if (/공부|학위|자격증|교육/.test(text))          return '📚';
+  if (/집|주택|전세|매매|부동산/.test(text)) return '🏠';
+  if (/차|자동차/.test(text)) return '🚗';
+  if (/결혼|웨딩/.test(text)) return '💍';
+  if (/공부|학위|자격증|교육/.test(text)) return '📚';
   return '🎯';
 }
 
 // (하드) 또래비교 인기상품 — API 미제공
 const POPULAR_PRODUCTS: PopularProduct[] = [
-  { rank: 1, name: 'TIGER 미국S&P500',  sub: 'ETF · 가입률 68%',  pct: 68 },
+  { rank: 1, name: 'TIGER 미국S&P500', sub: 'ETF · 가입률 68%', pct: 68 },
   { rank: 2, name: '우리은행 정기적금', sub: '적금 · 가입률 54%', pct: 54 },
   { rank: 3, name: '토스뱅크 파킹통장', sub: '파킹 · 가입률 47%', pct: 47 },
 ];
@@ -72,10 +78,11 @@ function pctToXY(cx: number, cy: number, r: number, pct: number) {
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-function SalaryDonutChart({ data, total, totalAmt }: {
+function SalaryDonutChart({ data, total, totalAmt, size = 128 }: {
   data: PortfolioSlice[];
   total: string;
   totalAmt: number;
+  size?: number;
 }) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const cx = 64, cy = 64, outerR = 56, innerR = 36, midR = (outerR + innerR) / 2;
@@ -95,11 +102,11 @@ function SalaryDonutChart({ data, total, totalAmt }: {
   });
 
   const active = activeIdx !== null ? data[activeIdx] : null;
-  const fmtAmt = (n: number) => `${Math.round(n / 10000)}만 원`;
+  const fmtAmt = (n: number) => `${Math.round(n / 10000)}만`;
 
   return (
-    <div style={{ position: 'relative', width: 128, height: 128, flexShrink: 0 }}>
-      <svg width="128" height="128" viewBox="0 0 128 128">
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox="0 0 128 128">
         {segments.map((seg, i) => (
           <path
             key={i}
@@ -126,17 +133,17 @@ function SalaryDonutChart({ data, total, totalAmt }: {
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
-        textAlign: 'center', pointerEvents: 'none', width: 64,
+        textAlign: 'center', pointerEvents: 'none', width: size * 0.6,
       }}>
         {active ? (
           <>
-            <div style={{ fontSize: 9, fontWeight: 700, color: active.color, lineHeight: 1.4 }}>{active.label}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{fmtAmt(totalAmt * active.pct / 100)}</div>
+            <div style={{ fontSize: size < 100 ? 8 : 9, fontWeight: 700, color: active.color, lineHeight: 1.4 }}>{active.label}</div>
+            <div style={{ fontSize: size < 100 ? 10 : 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{fmtAmt(totalAmt * active.pct / 100)}</div>
           </>
         ) : (
           <>
-            <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>급여</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{total}</div>
+            <div style={{ fontSize: size < 100 ? 8 : 9, color: '#94a3b8', lineHeight: 1.4 }}>급여</div>
+            <div style={{ fontSize: size < 100 ? 10 : 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{total}</div>
           </>
         )}
       </div>
@@ -198,12 +205,12 @@ interface LinkedBank {
 }
 
 const BANK_BADGE_COLORS: Record<string, { bg: string; color: string }> = {
-  '우리은행':    { bg: '#DBEAFE', color: '#1E40AF' },
-  '카카오뱅크':  { bg: '#FEF3C7', color: '#854D0E' },
-  '토스뱅크':   { bg: '#DBEAFE', color: '#1D4ED8' },
-  '신한은행':   { bg: '#DBEAFE', color: '#1E40AF' },
-  '국민은행':   { bg: '#FEF3C7', color: '#92400E' },
-  '하나은행':   { bg: '#D1FAE5', color: '#065F46' },
+  '우리은행': { bg: '#DBEAFE', color: '#1E40AF' },
+  '카카오뱅크': { bg: '#FEF3C7', color: '#854D0E' },
+  '토스뱅크': { bg: '#DBEAFE', color: '#1D4ED8' },
+  '신한은행': { bg: '#DBEAFE', color: '#1E40AF' },
+  '국민은행': { bg: '#FEF3C7', color: '#92400E' },
+  '하나은행': { bg: '#D1FAE5', color: '#065F46' },
   '미래에셋증권': { bg: '#FFEDD5', color: '#9A3412' },
 };
 
@@ -248,7 +255,7 @@ function AccountManagePanel({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     getAssets()
       .then(assets => setBanks(assetsToLinkedBanks(assets)))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const toggleBank = (id: string) =>
@@ -306,7 +313,7 @@ function AccountManagePanel({ onClose }: { onClose: () => void }) {
 
               {/* 계좌 목록 */}
               {expanded && (
-                <div style={{ borderTop: '0.5px solid #f1f5f9', background: '#f8fafc' }}>
+                <div style={{ borderTop: '0.5px solid #f1f5f9', background: '#EFF8FF' }}>
                   {bank.accounts.map(acc => (
                     <div key={acc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 10px 60px', borderBottom: '0.5px solid #f1f5f9' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -362,8 +369,8 @@ interface SettingsItem {
 }
 
 const SETTINGS_ITEMS: SettingsItem[] = [
-  { id: 'salary-split', icon: '💰', title: '월급 나눈 비율 재설정', desc: '각 계좌별 분배 비율을 다시 정해요',         to: '/prescription-loading' },
-  { id: 'portfolio',    icon: '📊', title: '포트폴리오 재설정',     desc: '흐름·상품 구성을 처음부터 다시 짜요',     to: '/asset-portfolio' },
+  { id: 'salary-split', icon: '💰', title: '월급 나눈 비율 재설정', desc: '각 계좌별 분배 비율을 다시 정해요', to: '/prescription-loading' },
+  { id: 'portfolio', icon: '📊', title: '포트폴리오 재설정', desc: '흐름·상품 구성을 처음부터 다시 짜요', to: '/asset-portfolio' },
 ];
 
 function SettingsPanel({ onClose, onNavigate }: { onClose: () => void; onNavigate: (to: string) => void }) {
@@ -415,14 +422,21 @@ function SettingsPanel({ onClose, onNavigate }: { onClose: () => void; onNavigat
   );
 }
 
-function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; items: NotiItem[]; setItems: Dispatch<SetStateAction<NotiItem[]>> }) {
+const CHALLENGE_TYPES = new Set(['CHALLENGE_NAG', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
+
+function NotificationPanel({ onClose, items, setItems, onChallengeClick }: {
+  onClose: () => void;
+  items: NotiItem[];
+  setItems: Dispatch<SetStateAction<NotiItem[]>>;
+  onChallengeClick: (id: string, type: string) => void;
+}) {
   const markRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    markNotificationRead(id).catch(() => {});
+    markNotificationRead(id).catch(() => { });
   };
   const markAll = () => {
     setItems(prev => prev.map(n => ({ ...n, read: true })));
-    markAllNotificationsRead().catch(() => {});
+    markAllNotificationsRead().catch(() => { });
   };
   const unreadCount = items.filter(n => !n.read).length;
 
@@ -451,7 +465,10 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '8px 12px 20px', overflowY: 'auto' }}>
         {items.map(n => (
-          <div key={n.id} onClick={() => markRead(n.id)}
+          <div key={n.id} onClick={() => {
+            markRead(n.id);
+            if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
+          }}
             style={{
               background: '#fff', border: '0.5px solid #f1f5f9', borderRadius: 14, padding: 14,
               display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer',
@@ -470,6 +487,113 @@ function NotificationPanel({ onClose, items, setItems }: { onClose: () => void; 
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── 날씨 자산 위젯 ───
+type WeatherType = 'sunny' | 'cloudy' | 'rain' | 'tornado';
+
+function getWeatherState(dashboard: DashboardData): WeatherType {
+  const exceed = dashboard.consumption.budgetExceedRate ?? 0;
+  if (!dashboard.consumption.isBudgetExceeded) return 'sunny';
+  if (exceed < 0.2) return 'rain';
+  return 'tornado';
+}
+
+const WEATHER_CONFIG: Record<WeatherType, {
+  img: string; label: string; desc: string;
+  bg: string; textColor: string;
+}> = {
+  sunny: { img: sunnyImg, label: '맑음', desc: '자산 흐름이 순항 중이에요', bg: 'linear-gradient(160deg,#38bdf8,#0369a1)', textColor: '#fff' },
+  cloudy: { img: cloudyImg, label: '흐림', desc: '지출이 살짝 늘고 있어요', bg: 'linear-gradient(160deg,#94a3b8,#475569)', textColor: '#fff' },
+  rain: { img: rainImg, label: '비', desc: '예산을 초과하고 있어요', bg: 'linear-gradient(160deg,#1e40af,#1e3a5f)', textColor: '#e0f2fe' },
+  tornado: { img: tornadoImg, label: '폭풍', desc: '지출 관리가 시급해요!', bg: 'linear-gradient(160deg,#7f1d1d,#1e1b4b)', textColor: '#fecaca' },
+};
+
+function WeatherAssetWidget({ dashboard }: { dashboard: DashboardData }) {
+  const weather = getWeatherState(dashboard);
+  const cfg = WEATHER_CONFIG[weather];
+  const total = dashboard.assetsSummary.totalBalance;
+  const invest = dashboard.assetsSummary.investmentBalance;
+  const cash = dashboard.assetsSummary.cashBalance;
+  const fmtM = (n: number) => `${Math.round(n / 10000).toLocaleString()}만`;
+
+  // 요일별 예상 지출 5칸 (Mon~Fri)
+  const dailyAmt = Math.round(dashboard.consumption.totalExpense / 30);
+  const weekdays = [
+    { label: 'Mon', amt: dailyAmt },
+    { label: 'Tue', amt: dailyAmt },
+    { label: 'Wed', amt: dailyAmt },
+    { label: 'Thu', amt: dailyAmt },
+    { label: 'Fri', amt: dailyAmt },
+  ];
+
+  return (
+    <div style={{
+      borderRadius: 22, overflow: 'hidden',
+      background: cfg.bg,
+      padding: '18px 20px 16px',
+      color: cfg.textColor,
+      position: 'relative',
+      minHeight: 180,
+    }}>
+      {/* 날씨 이미지 — 오른쪽 위 */}
+      <img
+        src={cfg.img}
+        alt={cfg.label}
+        style={{
+          position: 'absolute', top: 12, right: 16,
+          width: 80, height: 80, objectFit: 'contain',
+          opacity: 0.9,
+          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+        }}
+      />
+
+      {/* 날씨 레이블 */}
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, opacity: 0.85 }}>{cfg.label}</p>
+      <p style={{ margin: '2px 0 0', fontSize: 11, opacity: 0.65 }}>{cfg.desc}</p>
+
+      {/* 총 자산 */}
+      <p style={{ margin: '14px 0 2px', fontSize: 36, fontWeight: 800, letterSpacing: -1 }}>
+        {fmtM(total)}<span style={{ fontSize: 16, fontWeight: 500, marginLeft: 4 }}>원</span>
+      </p>
+      <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>총 자산</p>
+
+      {/* 구분선 */}
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.2)', margin: '14px 0 10px' }} />
+
+      {/* 투자 / 현금 */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
+        {[
+          { label: '💰 투자', value: fmtM(invest) },
+          { label: '💵 현금', value: fmtM(cash) },
+        ].map(item => (
+          <div key={item.label}>
+            <p style={{ margin: 0, fontSize: 10, opacity: 0.65 }}>{item.label}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700 }}>{item.value}원</p>
+          </div>
+        ))}
+      </div>
+
+      {/* 요일별 예상 지출 바 */}
+      <div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {weekdays.map(w => (
+            <div key={w.label} style={{ flex: 1, textAlign: 'center' }}>
+              <p style={{ margin: '0 0 3px', fontSize: 9, opacity: 0.7 }}>{w.label}</p>
+              <div style={{
+                height: 28, borderRadius: 6,
+                background: 'rgba(255,255,255,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#fff' }}>{fmtM(w.amt)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: '6px 0 0', fontSize: 9, opacity: 0.6, textAlign: 'right' }}>지난달 동일 시점 기준 예상치</p>
       </div>
     </div>
   );
@@ -502,28 +626,29 @@ export default function Dashboard() {
   // 알림 타입 → 아이콘/색상 매핑
   function notiTypeToIcon(type: string): { icon: string; iconBg: string } {
     const map: Record<string, { icon: string; iconBg: string }> = {
-      SALARY:         { icon: '💳', iconBg: '#E6F1FB' },
+      SALARY_REBALANCING: { icon: '💳', iconBg: '#E6F1FB' },
       SPENDING_TREND: { icon: '📉', iconBg: '#FCEBEB' },
-      REPORT:         { icon: '📋', iconBg: '#E1F5EE' },
-      EVENT:          { icon: '🎯', iconBg: '#EEEDFE' },
-      POLICY:         { icon: '🏦', iconBg: '#E1F5EE' },
+      REPORT_READY: { icon: '📋', iconBg: '#E1F5EE' },
+      CHALLENGE_NAG: { icon: '⚡', iconBg: '#FEF9C3' },
+      CHALLENGE_COMPLETE: { icon: '🏆', iconBg: '#E1F5EE' },
+      CHALLENGE_FAILED: { icon: '😢', iconBg: '#FCEBEB' },
     };
     return map[type] ?? { icon: '🔔', iconBg: '#F1F5F9' };
   }
 
   function formatRelativeTime(createdAt: string): string {
     const diff = Date.now() - new Date(createdAt).getTime();
-    const min  = Math.floor(diff / 60000);
-    if (min < 1)   return '방금 전';
-    if (min < 60)  return `${min}분 전`;
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return '방금 전';
+    if (min < 60) return `${min}분 전`;
     const hr = Math.floor(min / 60);
-    if (hr < 24)   return `${hr}시간 전`;
+    if (hr < 24) return `${hr}시간 전`;
     return `${Math.floor(hr / 24)}일 전`;
   }
 
   // ── 대시보드 API 상태 ────────────────────────────────────
-  const [dashboard,           setDashboard]           = useState<DashboardData | null>(null);
-  const [loadError,           setLoadError]           = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -536,43 +661,95 @@ export default function Dashboard() {
 
   useEffect(() => {
     getNotifications()
-      .then(notifications => setNotiItems(notifications.map(n => {
-        const { icon, iconBg } = notiTypeToIcon(n.type);
-        return { id: n.id, icon, iconBg, title: n.title, body: n.content, time: formatRelativeTime(n.sentAt), read: n.isRead };
-      })))
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .then(notifications => {
+        const fetched = (notifications ?? []).map(n => {
+          const { icon, iconBg } = notiTypeToIcon(n.type);
+          return { id: n.id, type: n.type, icon, iconBg, title: n.title, body: n.content, time: formatRelativeTime(n.sentAt), read: n.isRead };
+        });
+        setNotiItems(prev => [...fetched, ...prev.filter(n => n.id.startsWith('dev-'))]);
+      })
+      .catch(() => { });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── UI 상태 ──────────────────────────────────────────────
-  const [bannerVisible,       setBannerVisible]       = useState(true);
-  const [anomalyOpen,         setAnomalyOpen]         = useState(false);
-  const [recapOpen,           setRecapOpen]           = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(true);
+  const [anomalyOpen, setAnomalyOpen] = useState(false);
+  const [recapOpen, setRecapOpen] = useState(false);
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
-  const [notiOpen,            setNotiOpen]            = useState(false);
-  const [notiItems,           setNotiItems]           = useState<NotiItem[]>([]);
-  const [accountMgmtOpen,     setAccountMgmtOpen]     = useState(false);
-  const [settingsOpen,        setSettingsOpen]        = useState(false);
-  const [sidebarOpen,         setSidebarOpen]         = useState(false);
-  const [salaryMgmtOpen,      setSalaryMgmtOpen]      = useState(false);
-  const [peerTab,             setPeerTab]             = useState<'asset' | 'product'>('asset');
-  const [goals,               setGoals]               = useState<Goal[]>(() => {
+  const [notiOpen, setNotiOpen] = useState(false);
+  const DEV_NOTI_ITEMS: NotiItem[] = [
+    { id: 'dev-nag', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '[DEV] 챌린지 소비 감지', body: '커피 3잔만 마시기 — 결제가 발생했어요', time: '방금 전', read: false },
+    { id: 'dev-complete', type: 'CHALLENGE_COMPLETE', icon: '🏆', iconBg: '#E1F5EE', title: '[DEV] 챌린지 성공!', body: '커피 3잔만 마시기 — 이번 주 미션 성공했어요', time: '1시간 전', read: false },
+    { id: 'dev-failed', type: 'CHALLENGE_FAILED', icon: '😢', iconBg: '#FCEBEB', title: '[DEV] 챌린지 종료', body: '커피 3잔만 마시기 — 다음엔 꼭 성공해봐요', time: '1일 전', read: false },
+  ];
+  const [notiItems, setNotiItems] = useState<NotiItem[]>(DEV_NOTI_ITEMS);
+  const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [salaryMgmtOpen, setSalaryMgmtOpen] = useState(false);
+  const [peerTab, setPeerTab] = useState<'asset' | 'product'>('asset');
+  const [goals, setGoals] = useState<Goal[]>(() => {
     try { return JSON.parse(sessionStorage.getItem('user:goals') ?? '[]'); } catch { return []; }
   });
-  const [goalModalOpen,       setGoalModalOpen]       = useState(false);
-  const [goalText,            setGoalText]            = useState('');
-  const [challengeProgress,   setChallengeProgress]   = useState<number>(() => {
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [goalText, setGoalText] = useState('');
+  const [challengeProgress, setChallengeProgress] = useState<number>(() => {
     try { return parseInt(sessionStorage.getItem(`challenge:progress:${new Date().getMonth()}`) ?? '0', 10); }
     catch { return 0; }
   });
+  const [challengeAlarmOpen, setChallengeAlarmOpen] = useState(false);
+  const [challengeAlarmDetail, setChallengeAlarmDetail] = useState<ChallengeAlarmDetail | null>(null);
+
+  // ── SSE 구독 ─────────────────────────────────────────────
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const es = new EventSource(
+      `http://localhost:8080/api/v1/notifications/subscribe?token=${token}`
+    );
+
+    es.addEventListener('notification', async (e: MessageEvent) => {
+      const payload = JSON.parse(e.data) as {
+        id: string; type: string; title: string; content: string; sentAt: string;
+      };
+
+      const { icon, iconBg } = notiTypeToIcon(payload.type);
+      setNotiItems(prev => [{
+        id: payload.id, type: payload.type, icon, iconBg,
+        title: payload.title, body: payload.content,
+        time: formatRelativeTime(payload.sentAt), read: false,
+      }, ...prev]);
+
+      const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
+        CHALLENGE_NAG: 'ACTIVE',
+        CHALLENGE_COMPLETE: 'SUCCESS',
+        CHALLENGE_FAILED: 'FAILED',
+      };
+
+      if (payload.type in challengeTypeMap) {
+        try {
+          const detail = await getChallengeAlarmDetail(payload.id);
+          setChallengeAlarmDetail({ ...detail, weeklyStatus: challengeTypeMap[payload.type] });
+          setChallengeAlarmOpen(true);
+        } catch { /* ignore */ }
+      }
+    });
+
+    es.onerror = () => es.close();
+
+    return () => es.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Pori ─────────────────────────────────────────────────
   type PoriStep = 'input' | 'loading' | 'preview' | 'applying' | 'done';
-  const [poriOpen,     setPoriOpen]     = useState(false);
-  const [poriStep,     setPoriStep]     = useState<PoriStep>('input');
-  const [poriMessage,  setPoriMessage]  = useState('');
+  const [poriOpen, setPoriOpen] = useState(false);
+  const [poriStep, setPoriStep] = useState<PoriStep>('input');
+  const [poriMessage, setPoriMessage] = useState('');
   const [poriProposal, setPoriProposal] = useState<Proposal | null>(null);
-  const [poriError,    setPoriError]    = useState<string | null>(null);
+  const [poriError, setPoriError] = useState<string | null>(null);
   const poriInputRef = useRef<HTMLTextAreaElement>(null);
 
   // 대시보드 fetch 결과로 목표 카드 채우기 (events[0] 우선)
@@ -597,72 +774,72 @@ export default function Dashboard() {
   const SALARY_PALETTE = ['#EF9F27', '#7F77DD', '#378ADD', '#1D9E75', '#94a3b8'];
   const salarySlices: PortfolioSlice[] = dashboard
     ? (() => {
-        const income = dashboard.salaryPlan.monthlyIncome;
-        if (income <= 0) return [];
+      const income = dashboard.salaryPlan.monthlyIncome;
+      if (income <= 0) return [];
 
-        const slices: PortfolioSlice[] = dashboard.salaryPlan.allocations.map((a, i) => ({
-          label: a.purpose ?? '기타',
-          pct: Math.round(a.plannedAmount / income * 100),
-          color: SALARY_PALETTE[i % (SALARY_PALETTE.length - 2)],
-        }));
+      const slices: PortfolioSlice[] = dashboard.salaryPlan.allocations.map((a, i) => ({
+        label: a.purpose ?? '기타',
+        pct: Math.round(a.plannedAmount / income * 100),
+        color: SALARY_PALETTE[i % (SALARY_PALETTE.length - 2)],
+      }));
 
-        const investAmt = dashboard.salaryPlan.investmentAmount ?? 0;
-        if (investAmt > 0) {
-          slices.push({ label: '투자', pct: Math.round(investAmt / income * 100), color: '#1D9E75' });
-        }
+      const investAmt = dashboard.salaryPlan.investmentAmount ?? 0;
+      if (investAmt > 0) {
+        slices.push({ label: '투자', pct: Math.round(investAmt / income * 100), color: '#1D9E75' });
+      }
 
-        const surplus = dashboard.salaryPlan.surplus ?? 0;
-        if (surplus > 0) {
-          slices.push({ label: '잔여', pct: Math.round(surplus / income * 100), color: '#94a3b8' });
-        }
+      const surplus = dashboard.salaryPlan.surplus ?? 0;
+      if (surplus > 0) {
+        slices.push({ label: '잔여', pct: Math.round(surplus / income * 100), color: '#94a3b8' });
+      }
 
-        return slices;
-      })()
+      return slices;
+    })()
     : [];
 
   // 소비 카테고리 색상 (API 카테고리명 → 표시 색상 매핑, (하드))
   const SPENDING_COLOR: Record<string, string> = {
-    '식비':       '#D85A30',
-    '문화/여가':  '#D85A30',
+    '식비': '#D85A30',
+    '문화/여가': '#D85A30',
     '온라인쇼핑': '#A32D2D',
-    '교통':       '#D85A30',
-    '기타':       '#D85A30',
+    '교통': '#D85A30',
+    '기타': '#D85A30',
   };
   const generateChallenge = (cats: typeof dashboard extends null ? never : (typeof dashboard)['consumption']['categories']) => {
     const top = [...(cats ?? [])].sort((a, b) => b.percentage - a.percentage)[0];
     const name = top?.categoryName ?? '';
-    if (/카페|커피/.test(name)) return { icon: '☕', title: '이번달 카페 5번 줄이기',        step: 20 };
-    if (/배달/.test(name))      return { icon: '🍕', title: '이번달 배달음식 5번만 시키기',  step: 20 };
-    if (/외식|식비/.test(name)) return { icon: '🍽', title: '이번달 외식 3번 줄이기',        step: 33 };
-    if (/쇼핑|온라인/.test(name)) return { icon: '🛍', title: '이번달 충동구매 0번 도전',    step: 25 };
-    if (/편의점/.test(name))    return { icon: '🏪', title: '편의점 지출 20% 줄이기',         step: 20 };
-    if (/구독/.test(name))      return { icon: '📱', title: '불필요한 구독 1개 해지하기',     step: 100 };
-    if (/교통/.test(name))      return { icon: '🚌', title: '이번달 택시 10번 줄이기',        step: 10 };
-    return { icon: '💡', title: `이번달 ${name || '지출'} 10% 줄이기`,                        step: 10 };
+    if (/카페|커피/.test(name)) return { icon: '☕', title: '이번달 카페 5번 줄이기', step: 20 };
+    if (/배달/.test(name)) return { icon: '🍕', title: '이번달 배달음식 5번만 시키기', step: 20 };
+    if (/외식|식비/.test(name)) return { icon: '🍽', title: '이번달 외식 3번 줄이기', step: 33 };
+    if (/쇼핑|온라인/.test(name)) return { icon: '🛍', title: '이번달 충동구매 0번 도전', step: 25 };
+    if (/편의점/.test(name)) return { icon: '🏪', title: '편의점 지출 20% 줄이기', step: 20 };
+    if (/구독/.test(name)) return { icon: '📱', title: '불필요한 구독 1개 해지하기', step: 100 };
+    if (/교통/.test(name)) return { icon: '🚌', title: '이번달 택시 10번 줄이기', step: 10 };
+    return { icon: '💡', title: `이번달 ${name || '지출'} 10% 줄이기`, step: 10 };
   };
 
   const spendingItems: SpendingItem[] = dashboard
     ? dashboard.consumption.categories.map(c => ({
-        label: c.categoryName,
-        pct: c.percentage,
-        color: SPENDING_COLOR[c.categoryName] ?? '#D85A30',
-      }))
+      label: c.categoryName,
+      pct: c.percentage,
+      color: SPENDING_COLOR[c.categoryName] ?? '#D85A30',
+    }))
     : [];
 
   // 포트폴리오 카테고리별 색상 (categoryLabel → 색상)
   const PORTFOLIO_COLOR: Record<string, string> = {
-    'ETF':    '#1D9E75',
+    'ETF': '#1D9E75',
     '현금성': '#5DCAA5',
-    '적금':   '#9FE1CB',
-    'IRP':    '#085041',
+    '적금': '#9FE1CB',
+    'IRP': '#085041',
   };
   const portfolioSlices: PortfolioSlice[] = dashboard
     ? dashboard.portfolio.map(p => ({
-        label: p.categoryLabel,
-        pct: p.ratio,
-        color: PORTFOLIO_COLOR[p.categoryLabel] ?? '#94a3b8',
-        rate: p.rate,
-      }))
+      label: p.categoryLabel,
+      pct: p.ratio,
+      color: PORTFOLIO_COLOR[p.categoryLabel] ?? '#94a3b8',
+      rate: p.rate,
+    }))
     : [];
 
   const handleGoalSubmit = () => {
@@ -691,7 +868,7 @@ export default function Dashboard() {
   // ── 로딩 / 에러 화면 ────────────────────────────────────
   if (loadError) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f8fafc', fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#EFF8FF', fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
         <p style={{ fontSize: 14, color: '#A32D2D', margin: 0 }}>{loadError}</p>
         <button
           onClick={() => window.location.reload()}
@@ -702,11 +879,11 @@ export default function Dashboard() {
   }
   if (!dashboard) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#EFF8FF' }}>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{
           width: 32, height: 32, borderRadius: '50%',
-          border: '3px solid #e2e8f0', borderTopColor: '#0f172a',
+          border: '3px solid #e2e8f0', borderTopColor: '#0095DB',
           animation: 'spin 0.8s linear infinite',
         }} />
       </div>
@@ -718,9 +895,9 @@ export default function Dashboard() {
       fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif",
       background: '#f8fafc',
       minHeight: '100vh',
-      paddingBottom: 48,
-      position: 'relative',
-      overflowX: 'hidden',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'flex-start',
     }}>
       <style>{`
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -730,17 +907,27 @@ export default function Dashboard() {
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      <div style={{ maxWidth: 375, margin: '0 auto' }}>
+      <div style={{
+        maxWidth: 375,
+        width: '100%',
+        minHeight: '100vh',
+        background: '#EFF8FF',
+        position: 'relative',
+        boxShadow: '0 0 24px rgba(0,0,0,0.05)',
+        paddingBottom: 48,
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
         <div style={{ height: 8 }} />
 
         {/* 월급 알림 배너 (하드) — 별도 API 미제공 */}
         {bannerVisible && (
           <div style={{ padding: '0 16px', marginBottom: 10 }}>
-            <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: 14, padding: '12px 14px', position: 'relative' }}>
+            <div style={{ background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.4)', borderRadius: 22, padding: '16px', position: 'relative' }}>
               {/* 1. 닫기 버튼 - 우측 상단 모서리에 절대 위치로 배치 */}
               <button
                 onClick={() => setBannerVisible(false)}
-                style={{ position: 'absolute', right: 12, top: 12, border: 'none', background: 'none', cursor: 'pointer', color: '#BA7517', fontSize: 16, lineHeight: 1, padding: 0 }}
+                style={{ position: 'absolute', right: 12, top: 12, border: 'none', background: 'none', cursor: 'pointer', color: '#854F0B', fontSize: 16, lineHeight: 1, padding: 0 }}
                 aria-label="닫기"
               >✕</button>
 
@@ -749,23 +936,23 @@ export default function Dashboard() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <span style={{ fontSize: 14 }}>🔔</span>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: '#854F0B' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#854F0B' }}>
                       월급이 들어왔어요
                     </span>
-                    <span style={{ fontSize: 10, color: '#BA7517' }}>방금 전</span>
+                    <span style={{ fontSize: 10, color: '#854F0B', opacity: 0.8 }}>방금 전</span>
                   </div>
-                  <p style={{ fontSize: 11, color: '#633806', margin: 0, lineHeight: 1.4, whiteSpace: 'pre-line' }}>
+                  <p style={{ fontSize: 11, color: '#854F0B', margin: 0, lineHeight: 1.4, whiteSpace: 'pre-line' }}>
                     Pori가 자동으로 이번 달 분배 계획을 세웠어요.{'\n'}확인하고 자동이체를 시작해볼까요?
                   </p>
                 </div>
-                
+
                 {/* 3. 우측: 확인 버튼 - 우측 끝 테두리에서 살짝 왼쪽으로 당겨지도록 여백 설정 */}
-                <div style={{ flexShrink: 0, marginRight: 8, marginTop: 4 }}>
+                <div style={{ flexShrink: 0, marginRight: 8 }}>
                   <button
                     onClick={() => setSalaryMgmtOpen(true)}
                     style={{ fontSize: 11, fontWeight: 600, padding: '6px 12px', background: '#854F0B', color: '#FAEEDA', border: 'none', borderRadius: 8, cursor: 'pointer' }}
                   >
-                    확인 →
+                    확인
                   </button>
                 </div>
               </div>
@@ -777,10 +964,10 @@ export default function Dashboard() {
         <div style={{ padding: '0 16px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#0f172a', display: 'flex', alignItems: 'center' }} aria-label="메뉴">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <button onClick={() => setSidebarOpen(true)} style={{ border: '1px solid #E0F2FE', background: '#FFFFFF', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#0f172a', boxShadow: '0 2px 12px rgba(0,149,219,0.06)' }} aria-label="메뉴">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="6"  x2="21" y2="6"  />
+                  <line x1="3" y1="6" x2="21" y2="6" />
                   <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
               </button>
@@ -795,7 +982,7 @@ export default function Dashboard() {
             </div>
 
             <div style={{ position: 'relative' }}>
-              <button onClick={() => setNotiOpen(true)} style={{ border: '0.5px solid #e2e8f0', background: '#fff', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} aria-label="알림">
+              <button onClick={() => setNotiOpen(true)} style={{ border: '1px solid #E0F2FE', background: '#FFFFFF', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,149,219,0.06)' }} aria-label="알림">
                 🔔
               </button>
               {unreadCount > 0 && (
@@ -804,336 +991,640 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div style={{ background: '#f1f5f9', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* 왼쪽: 총 자산 요약 */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 4px' }}>총 자산</p>
-              <span style={{ fontSize: 26, fontWeight: 500, color: '#0f172a', display: 'block', marginBottom: 10 }}>
-                {fmtManwon(dashboard.assetsSummary.totalBalance)}
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[
-                  { label: '투자 자산',   value: fmtManwon(dashboard.assetsSummary.investmentBalance) },
-                  { label: '현금성 자산', value: fmtManwon(dashboard.assetsSummary.cashBalance) },
-                ].map(item => (
-                  <div key={item.label} style={{ background: '#fff', borderRadius: 8, padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <p style={{ fontSize: 10, color: '#64748b', margin: 0 }}>{item.label}</p>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* 오른쪽: 월급 도넛 차트 */}
-            <div style={{ flexShrink: 0 }}>
-              <SalaryDonutChart
-                data={salarySlices}
-                total={fmtManwon(dashboard.salaryPlan.monthlyIncome)}
-                totalAmt={dashboard.salaryPlan.monthlyIncome}
-              />
-            </div>
-          </div>
         </div>
 
-        {/* 1. 소비 + 목표 (2-column) */}
-        <div style={{ padding: '0 16px', marginBottom: recapOpen ? 0 : 16, display: 'flex', gap: 10, alignItems: 'stretch' }}>
-          {/* 소비 */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <SectionHeader
-              icon="🧾" title="소비"
-              right={dashboard.consumption.isBudgetExceeded
-                ? <Pill bg="#FCEBEB" color="#A32D2D">초과</Pill>
-                : undefined}
-            />
-            <div
-              onClick={() => setRecapOpen(v => !v)}
-              style={{ flex: 1, background: '#fff', border: `0.5px solid ${recapOpen ? '#378ADD' : '#e2e8f0'}`, borderRadius: 14, padding: '12px 12px', cursor: 'pointer' }}
-            >
-              <p style={{ fontSize: 9, color: '#64748b', margin: '0 0 4px' }}>{dashboard.consumption.referenceMonth}월 총 지출 {recapOpen ? '↑' : '↓'}</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>{fmtManwon(dashboard.consumption.totalExpense)}</p>
-            </div>
+        {/* 위젯 그리드 레이아웃 */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px',
+          padding: '0 16px',
+          marginBottom: 16
+        }}>
+          {/* [1] 자산 날씨 위젯 */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <WeatherAssetWidget dashboard={dashboard} />
           </div>
 
-          {/* 미니 챌린지 */}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <SectionHeader icon="💪" title="미니 챌린지" />
-            {dashboard ? (() => {
-              const ch = generateChallenge(dashboard.consumption.categories);
-              const handleAchieve = () => {
-                const next = Math.min(100, challengeProgress + ch.step);
-                setChallengeProgress(next);
-                sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(next));
-              };
+          {/* [2] 소비 위젯 */}
+          <div style={{ gridColumn: '1' }}>
+            {(() => {
+              const totalExpense = dashboard.consumption.totalExpense;
+              const budget = (dashboard.consumption as any).budget || (totalExpense * 1.5);
+              const remainingPercent = Math.round((budget - totalExpense) / budget * 100);
+
+              let fillColor = '#0095DB';
+              if (remainingPercent < 20 || dashboard.consumption.isBudgetExceeded) {
+                fillColor = '#EF4444';
+              } else if (remainingPercent >= 20 && remainingPercent < 50) {
+                fillColor = '#FFD700';
+              }
+
               return (
-                <Card style={{ flex: 1, padding: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                    <span style={{ fontSize: 20 }}>{ch.icon}</span>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: '#0f172a', lineHeight: 1.4 }}>{ch.title}</span>
-                  </div>
-                  <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 6 }}>
-                    <div style={{ width: `${challengeProgress}%`, height: '100%', background: '#1D9E75', borderRadius: 99, transition: 'width 0.3s ease' }} />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: challengeProgress >= 100 ? '#1D9E75' : '#475569' }}>
-                      {challengeProgress >= 100 ? '🎉 완료!' : `${challengeProgress}% 달성`}
-                    </span>
-                    {challengeProgress < 100 && (
-                      <button
-                        onClick={handleAchieve}
-                        style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', background: '#E1F5EE', color: '#0F6E56', border: 'none', borderRadius: 6, cursor: 'pointer' }}
-                      >+ 달성</button>
+                <div
+                  onClick={() => setRecapOpen(v => !v)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: `1px solid ${recapOpen ? '#0095DB' : '#E0F2FE'}`,
+                    borderRadius: 22,
+                    padding: '16px',
+                    boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: 180,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {/* 상단 */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>소비</span>
+                    {dashboard.consumption.isBudgetExceeded && (
+                      <span style={{ fontSize: 9, fontWeight: 700, background: '#FCEBEB', color: '#EF4444', padding: '2px 6px', borderRadius: 99 }}>초과</span>
                     )}
                   </div>
-                </Card>
-              );
-            })() : (
-              <Card style={{ flex: 1, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, textAlign: 'center' }}>로딩 중...</p>
-              </Card>
-            )}
-          </div>
-        </div>
 
-        {/* 소비 펼침 */}
-        {recapOpen && (
-          <div style={{ padding: '0 16px', marginBottom: 16 }}>
-            <Card>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0 }}>지출 카테고리 비율</p>
-                <button onClick={e => { e.stopPropagation(); setAnomalyOpen(!anomalyOpen); }} style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: '#F7C1C1', color: '#791F1F', border: 'none', cursor: 'pointer' }}>⚠ 이상 소비 감지</button>
-              </div>
-              {anomalyOpen && (
-                <div style={{ background: '#FCEBEB', border: '0.5px solid #F09595', borderRadius: 8, padding: '9px 11px', marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 500, color: '#A32D2D', margin: '0 0 3px' }}>온라인 쇼핑 급증 감지</p>
-                  <p style={{ fontSize: 11, color: '#791F1F', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line' }}>지난달 대비 온라인 쇼핑이 43% 증가했어요.{'\n'}예산 초과로 이어질 수 있으니 주의해요!</p>
+                  {/* 중앙 세로 연료탱크 바 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0' }}>
+                    <div style={{
+                      width: 20,
+                      height: 60,
+                      background: '#F8FAFC',
+                      border: '1px solid #E0F2FE',
+                      borderRadius: 8,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      flexShrink: 0
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: `${Math.max(0, Math.min(100, remainingPercent))}%`,
+                        background: fillColor,
+                        borderRadius: '0 0 6px 6px',
+                        transition: 'height 0.4s ease'
+                      }} />
+                    </div>
+
+                    <div>
+                      <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: fillColor, lineHeight: 1.2 }}>
+                        {remainingPercent}%
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>남음</p>
+                    </div>
+                  </div>
+
+                  {/* 하단 총지출액 */}
+                  <div>
+                    <p style={{ margin: 0, fontSize: 10, color: '#64748b' }}>지출액</p>
+                    <p style={{ margin: '1px 0 0', fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                      {fmtManwon(totalExpense)}
+                    </p>
+                  </div>
                 </div>
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 20 }}>
-                {spendingItems.map(s => (
-                  <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: '#64748b', width: 60, flexShrink: 0 }}>{s.label}</span>
-                    <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', flex: 1 }}>
-                      <div style={{ width: `${s.pct}%`, height: '100%', background: s.color, borderRadius: 99 }} />
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: '#0f172a', width: 32, textAlign: 'right', flexShrink: 0 }}>{s.pct}%</span>
-                  </div>
-                ))}
-              </div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>상세 지출 내역</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {dashboard.consumption.categories.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1' }} />
-                      <div>
-                        <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.categoryName}</p>
-                        <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>{item.sub ?? '-'}</p>
-                      </div>
-                    </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{item.expenseAmount.toLocaleString()}원</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
+              );
+            })()}
           </div>
-        )}
 
-        {/* 3. 절세 현황 */}
-        {dashboard && (() => {
-          const IRP_LIMIT     = 9_000_000;
-          const PENSION_LIMIT = 6_000_000;
-          const annualIncome  = dashboard.salaryPlan.monthlyIncome * 12;
-          const taxRate       = annualIncome <= 55_000_000 ? 0.165 : 0.132;
+          {/* [3] 월급 가이드 위젯 */}
+          <div style={{ gridColumn: '2' }}>
+            {(() => {
+              const income = dashboard.salaryPlan.monthlyIncome;
+              const topSlices = [...salarySlices]
+                .sort((a, b) => b.pct - a.pct)
+                .slice(0, 2);
 
-          const irpAmt     = dashboard.portfolio.find(p => p.categoryLabel === 'IRP')?.assetAmount ?? 0;
-          const pensionAmt = dashboard.portfolio.find(p => p.categoryLabel === '연금저축')?.assetAmount ?? 0;
+              return (
+                <div
+                  onClick={() => setSalaryMgmtOpen(true)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E0F2FE',
+                    borderRadius: 22,
+                    padding: '16px',
+                    boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: 180,
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                  }}
+                >
+                  {/* 상단 */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>월급</span>
+                  </div>
 
-          const irpPct     = Math.min(100, Math.round(irpAmt     / IRP_LIMIT     * 100));
-          const pensionPct = Math.min(100, Math.round(pensionAmt / PENSION_LIMIT * 100));
+                  {/* 중앙 SalaryDonutChart */}
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0' }}>
+                    <SalaryDonutChart
+                      data={salarySlices}
+                      total={fmtManwon(income)}
+                      totalAmt={income}
+                      size={80}
+                    />
+                  </div>
 
-          const deductibleAmt = Math.min(IRP_LIMIT, irpAmt + pensionAmt);
-          const taxDeduction  = Math.round(deductibleAmt * taxRate);
-          const remaining     = Math.max(0, IRP_LIMIT - irpAmt - pensionAmt);
-
-          const fmtWon = (n: number) => n >= 10_000 ? `${Math.round(n / 10_000)}만원` : `${n.toLocaleString()}원`;
-
-          const bars = [
-            { label: 'IRP',    amt: irpAmt,     limit: IRP_LIMIT,     pct: irpPct,     color: '#085041' },
-            { label: '연금저축', amt: pensionAmt, limit: PENSION_LIMIT, pct: pensionPct, color: '#1D9E75' },
-          ];
-
-          return (
-            <div style={{ padding: '0 16px', marginBottom: 16 }}>
-              <SectionHeader icon="💰" title="절세 현황" right={<Pill bg="#E1F5EE" color="#0F6E56">{(taxRate * 100).toFixed(1)}% 공제율</Pill>} />
-              <Card>
-                {/* IRP / 연금저축 바 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 14 }}>
-                  {bars.map(b => (
-                    <div key={b.label}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>{b.label}</span>
-                        <span style={{ fontSize: 11, color: '#64748b' }}>
-                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{fmtWon(b.amt)}</span>
-                          {' '}/ {fmtWon(b.limit)}
+                  {/* 하단 범례 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {topSlices.map((s, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {s.label} {s.pct}%
                         </span>
                       </div>
-                      <div style={{ height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                        <div style={{ width: `${b.pct}%`, height: '100%', background: b.color, borderRadius: 99, transition: 'width 0.4s ease' }} />
+                    ))}
+                  </div>
+
+                  {/* 우측 하단 화살표 */}
+                  <span style={{ position: 'absolute', bottom: 12, right: 16, fontSize: 14, color: '#94a3b8', fontWeight: 700 }}>›</span>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* 소비 펼침 영역 (recapOpen) */}
+          {recapOpen && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{
+                background: '#FFFFFF',
+                border: '1px solid #E0F2FE',
+                borderRadius: 22,
+                padding: '16px',
+                boxShadow: '0 2px 12px rgba(0,149,219,0.06)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0 }}>지출 카테고리 비율</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 20 }}>
+                  {spendingItems.map(s => (
+                    <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, color: '#64748b', width: 60, flexShrink: 0 }}>{s.label}</span>
+                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', flex: 1 }}>
+                        <div style={{ width: `${s.pct}%`, height: '100%', background: s.color, borderRadius: 99 }} />
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-                        <span style={{ fontSize: 10, color: b.color, fontWeight: 600 }}>{b.pct}% 채움</span>
-                        {b.pct < 100 && (
-                          <span style={{ fontSize: 10, color: '#94a3b8' }}>한도까지 {fmtWon(b.limit - b.amt)} 남음</span>
-                        )}
-                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: '#0f172a', width: 32, textAlign: 'right', flexShrink: 0 }}>{s.pct}%</span>
                     </div>
                   ))}
                 </div>
-
-                {/* 세액공제 예상 */}
-                <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 3px' }}>올해 예상 세액공제</p>
-                      <p style={{ fontSize: 18, fontWeight: 700, color: '#085041', margin: 0 }}>
-                        {taxDeduction > 0 ? `${taxDeduction.toLocaleString()}원` : '–'}
-                      </p>
-                    </div>
-                    {remaining > 0 && (
-                      <div style={{ background: '#E1F5EE', borderRadius: 8, padding: '6px 10px', textAlign: 'right' }}>
-                        <p style={{ fontSize: 9, color: '#0F6E56', margin: '0 0 1px' }}>한도 추가 납입 시</p>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: '#085041', margin: 0 }}>
-                          +{Math.round(remaining * taxRate).toLocaleString()}원 환급↑
-                        </p>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>상세 지출 내역</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {dashboard.consumption.categories.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1' }} />
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.categoryName}</p>
+                          <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>{item.sub ?? '-'}</p>
+                        </div>
                       </div>
-                    )}
-                  </div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{item.expenseAmount.toLocaleString()}원</p>
+                    </div>
+                  ))}
                 </div>
-              </Card>
-            </div>
-          );
-        })()}
-
-        {/* 4. 자산 포트폴리오 */}
-        <div style={{ padding: '0 16px', marginBottom: 16 }}>
-          <SectionHeader icon="📊" title="투자 포트폴리오" right={<SmallBtn onClick={() => setPortfolioDetailOpen(!portfolioDetailOpen)}>현황보기 {portfolioDetailOpen ? '↑' : '↓'}</SmallBtn>} />
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <DonutChart data={portfolioSlices} />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {portfolioSlices.map(p => (
-                  <div key={p.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0, display: 'inline-block' }} />
-                      <span style={{ fontSize: 12, color: '#0f172a' }}>{p.label}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {p.rate && p.rate !== '-' && (
-                        <span style={{ fontSize: 11, fontWeight: 600, color: p.rate.startsWith('+') ? '#A32D2D' : '#64748b' }}>{p.rate}</span>
-                      )}
-                      <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>{p.pct}%</span>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
+          )}
 
-            {/* 상품별 비중 상세 — API portfolio[].items */}
-            {portfolioDetailOpen && (
-              <div style={{ marginTop: 16, borderTop: '1px dashed #e2e8f0', paddingTop: 14 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>상품별 비중 상세</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {dashboard.portfolio.map((cat, idx) => {
-                    const catColor = PORTFOLIO_COLOR[cat.categoryLabel] ?? '#94a3b8';
-                    const showRate = cat.rate && cat.rate !== '-';
-                    return (
-                      <div key={idx}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: catColor }} />
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{cat.categoryLabel} (총 {cat.ratio}%)</span>
-                          {showRate && (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: cat.rate.startsWith('+') ? '#A32D2D' : '#94a3b8', marginLeft: 2 }}>{cat.rate}</span>
+          {/* [4] 미션 위젯 */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            {dashboard ? (() => {
+              const ch = generateChallenge(dashboard.consumption.categories);
+
+              let savings = 'TIGER 미국S&P500 0.03주';
+              if (ch.title.includes('카페') || ch.title.includes('커피')) {
+                savings = 'TIGER 미국S&P500 0.02주';
+              } else if (ch.title.includes('배달') || ch.title.includes('외식')) {
+                savings = 'TIGER 미국S&P500 0.05주';
+              } else if (ch.title.includes('쇼핑')) {
+                savings = 'TIGER 미국S&P500 0.06주';
+              }
+
+              const threeColorBarBg = 'linear-gradient(to right, #10B981 33%, #FBBF24 33% 66%, #EF4444 66%)';
+              const isProgressing = challengeProgress > 0;
+
+              return (
+                <div style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E0F2FE',
+                  borderRadius: 22,
+                  padding: '16px',
+                  boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
+                  position: 'relative'
+                }}>
+                  {!isProgressing ? (
+                    /* 상태 1 — 미션 없음 (challengeProgress === 0) */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>⚓ 이번주 추천 미션</span>
+                        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Pori의 추천</span>
+                      </div>
+
+                      {/* Pori 코멘트 및 미션 추천 */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F0F9FF', padding: '10px 12px', borderRadius: 12 }}>
+                        <img src="/src/assets/missionpori.png" alt="Pori" style={{ width: 36, height: 36, objectFit: 'contain', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 11, color: '#0095DB', fontWeight: 600 }}>"뿌우~ 도전해볼만한 미션을 가져왔어요!"</p>
+                          <p style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {ch.icon} {ch.title}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 삼색 진행바 (초록/노랑/빨강 3등분, 고정) */}
+                      <div style={{ height: 10, background: threeColorBarBg, borderRadius: 99, marginTop: 4 }} />
+
+                      {/* 보상 및 변경 버튼 */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                        <div style={{ background: '#FFD700', borderRadius: 8, padding: '4px 10px', display: 'flex', alignItems: 'center' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#713F12' }}>🏆 성공 시 {savings}</span>
+                        </div>
+
+                        <button
+                          onClick={() => alert('더 알맞은 미션으로 변경되었습니다!')}
+                          style={{ border: 'none', background: '#F1F5F9', borderRadius: 8, padding: '5px 10px', fontSize: 10, color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          🔄 변경
+                        </button>
+                      </div>
+
+                      {/* 버튼 행: [쉽게 ▲] [▶ 시작] [어렵게 ▼] */}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button
+                          onClick={() => alert('난이도가 한 단계 쉬워졌습니다!')}
+                          style={{ flex: 1, padding: '10px 0', border: '1px solid #E0F2FE', background: '#FFFFFF', borderRadius: 12, fontSize: 11, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}
+                        >
+                          쉽게 ▲
+                        </button>
+                        <button
+                          onClick={() => {
+                            setChallengeProgress(1);
+                            sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '1');
+                          }}
+                          style={{ flex: 2, padding: '10px 0', border: 'none', background: 'linear-gradient(135deg, #0095DB, #00BFFF)', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#FFFFFF', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,149,219,0.2)' }}
+                        >
+                          ▶ 시작
+                        </button>
+                        <button
+                          onClick={() => alert('난이도가 한 단계 어려워졌습니다!')}
+                          style={{ flex: 1, padding: '10px 0', border: '1px solid #E0F2FE', background: '#FFFFFF', borderRadius: 12, fontSize: 11, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}
+                        >
+                          어렵게 ▼
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 상태 2 — 미션 진행중 (challengeProgress > 0) */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>이번주 미션</span>
+                        <div style={{ background: '#FFD700', borderRadius: 8, padding: '3px 8px' }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#713F12' }}>🏆 성공 시 {savings}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0' }}>
+                        <span style={{ fontSize: 24 }}>{ch.icon}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{ch.title}</span>
+                      </div>
+
+                      {/* 삼색 진행바 + 흰 점 */}
+                      <div style={{ position: 'relative', height: 10, background: threeColorBarBg, borderRadius: 99, margin: '8px 0 4px' }}>
+                        <div style={{
+                          position: 'absolute',
+                          left: `${Math.min(100, challengeProgress)}%`,
+                          top: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          width: 12,
+                          height: 12,
+                          background: '#FFFFFF',
+                          border: '2px solid #0095DB',
+                          borderRadius: '50%',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          transition: 'left 0.3s ease'
+                        }} />
+                      </div>
+
+                      {/* 0% ~ 100% 레이블 및 진행상태 */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>0%</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#0095DB' }}>
+                          {challengeProgress}% 달성중
+                        </span>
+                        <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>100%</span>
+                      </div>
+
+                      {/* 중앙 일시정지 버튼만 */}
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                        <button
+                          onClick={() => {
+                            setChallengeProgress(0);
+                            sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '0');
+                          }}
+                          style={{
+                            width: '50%',
+                            padding: '10px 0',
+                            border: '1px solid #E2E8F0',
+                            background: '#FFFFFF',
+                            borderRadius: 12,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#64748b',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6
+                          }}
+                        >
+                          ⏸ 일시정지
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })() : null}
+          </div>
+
+          {/* [5] 투자 위젯 */}
+          <div style={{ gridColumn: '1' }}>
+            {(() => {
+              const investAmt = dashboard.assetsSummary.investmentBalance;
+              const portfolioItems = dashboard.portfolio.slice(0, 3);
+
+              return (
+                <div
+                  onClick={() => setPortfolioDetailOpen(v => !v)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: `1px solid ${portfolioDetailOpen ? '#0095DB' : '#E0F2FE'}`,
+                    borderRadius: 22,
+                    padding: '16px',
+                    boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: 180,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {/* 상단 */}
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>투자</span>
+
+                  {/* 중앙 포트폴리오 리스트 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0' }}>
+                    {portfolioItems.map((p, idx) => {
+                      const catColor = PORTFOLIO_COLOR[p.categoryLabel] ?? '#94a3b8';
+                      const rateInfo = (() => {
+                        const r = p.rate;
+                        if (!r || r === '-') return { text: '-', color: '#94a3b8' };
+                        if (r.startsWith('+')) return { text: '▲' + r.slice(1), color: '#EF4444' };
+                        if (r.startsWith('-')) return { text: '▼' + r.slice(1), color: '#0095DB' };
+                        return { text: r, color: '#94a3b8' };
+                      })();
+
+                      return (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: catColor, flexShrink: 0 }} />
+                            <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {p.categoryLabel}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: rateInfo.color, flexShrink: 0 }}>
+                            {rateInfo.text}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 하단 총투자금액 */}
+                  <div>
+                    <p style={{ margin: 0, fontSize: 10, color: '#64748b' }}>총 투자금액</p>
+                    <p style={{ margin: '1px 0 0', fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                      {fmtManwon(investAmt)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* [6] 절세 위젯 */}
+          <div style={{ gridColumn: '2' }}>
+            {(() => {
+              const IRP_LIMIT = 9_000_000;
+              const PENSION_LIMIT = 6_000_000;
+              const annualIncome = dashboard.salaryPlan.monthlyIncome * 12;
+              const taxRate = annualIncome <= 55_000_000 ? 0.165 : 0.132;
+
+              const irpAmt = dashboard.portfolio.find(p => p.categoryLabel === 'IRP')?.assetAmount ?? 0;
+              const pensionAmt = dashboard.portfolio.find(p => p.categoryLabel === '연금저축')?.assetAmount ?? 0;
+
+              const deductibleAmt = Math.min(IRP_LIMIT, irpAmt + pensionAmt);
+              const taxDeduction = Math.round(deductibleAmt * taxRate);
+
+              return (
+                <div
+                  onClick={() => setAnomalyOpen(v => !v)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: `1px solid ${anomalyOpen ? '#0095DB' : '#E0F2FE'}`,
+                    borderRadius: 22,
+                    padding: '16px',
+                    boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: 180,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {/* 상단 */}
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>절세</span>
+
+                  {/* 중앙 예상 환급액 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', margin: '4px 0' }}>
+                    <span style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>13월의 월급으로</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#1D9E75', marginTop: 2, lineHeight: 1.35 }}>
+                      {taxDeduction.toLocaleString()}원<br />돌려받아요
+                    </span>
+                  </div>
+
+                  {/* 하단 */}
+                  <div>
+                    <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>+ 더 채우면 환급 ↑</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* 투자 펼침 영역 (portfolioDetailOpen) */}
+          {portfolioDetailOpen && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{
+                background: '#FFFFFF',
+                border: '1px solid #E0F2FE',
+                borderRadius: 22,
+                padding: '16px',
+                boxShadow: '0 2px 12px rgba(0,149,219,0.06)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <DonutChart data={portfolioSlices} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {portfolioSlices.map(p => (
+                      <div key={p.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0, display: 'inline-block' }} />
+                          <span style={{ fontSize: 12, color: '#0f172a' }}>{p.label}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {p.rate && p.rate !== '-' && (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: p.rate.startsWith('+') ? '#A32D2D' : '#64748b' }}>{p.rate}</span>
+                          )}
+                          <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>{p.pct}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 16, borderTop: '1px dashed #e2e8f0', paddingTop: 14 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>상품별 비중 상세</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {dashboard.portfolio.map((cat, idx) => {
+                      const catColor = PORTFOLIO_COLOR[cat.categoryLabel] ?? '#94a3b8';
+                      const showRate = cat.rate && cat.rate !== '-';
+                      return (
+                        <div key={idx}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: catColor }} />
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{cat.categoryLabel} (총 {cat.ratio}%)</span>
+                            {showRate && (
+                              <span style={{ fontSize: 11, fontWeight: 600, color: cat.rate.startsWith('+') ? '#A32D2D' : '#94a3b8', marginLeft: 2 }}>{cat.rate}</span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {cat.items.map((item, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#EFF8FF', padding: '8px 10px', borderRadius: 8 }}>
+                                <span style={{ fontSize: 12, color: '#0f172a' }}>{item.name}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  {item.rate && item.rate !== '-' && (
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: item.rate.startsWith('+') ? '#A32D2D' : '#94a3b8' }}>{item.rate}</span>
+                                  )}
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{item.ratio}%</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 절세 펼침 영역 (anomalyOpen 활용) */}
+          {anomalyOpen && dashboard && (() => {
+            const IRP_LIMIT = 9_000_000;
+            const PENSION_LIMIT = 6_000_000;
+            const annualIncome = dashboard.salaryPlan.monthlyIncome * 12;
+            const taxRate = annualIncome <= 55_000_000 ? 0.165 : 0.132;
+
+            const irpAmt = dashboard.portfolio.find(p => p.categoryLabel === 'IRP')?.assetAmount ?? 0;
+            const pensionAmt = dashboard.portfolio.find(p => p.categoryLabel === '연금저축')?.assetAmount ?? 0;
+
+            const irpPct = Math.min(100, Math.round(irpAmt / IRP_LIMIT * 100));
+            const pensionPct = Math.min(100, Math.round(pensionAmt / PENSION_LIMIT * 100));
+
+            const deductibleAmt = Math.min(IRP_LIMIT, irpAmt + pensionAmt);
+            const taxDeduction = Math.round(deductibleAmt * taxRate);
+            const remaining = Math.max(0, IRP_LIMIT - irpAmt - pensionAmt);
+
+            const fmtWon = (n: number) => n >= 10_000 ? `${Math.round(n / 10_000)}만원` : `${n.toLocaleString()}원`;
+
+            const bars = [
+              { label: 'IRP', amt: irpAmt, limit: IRP_LIMIT, pct: irpPct, color: '#085041' },
+              { label: '연금저축', amt: pensionAmt, limit: PENSION_LIMIT, pct: pensionPct, color: '#1D9E75' },
+            ];
+
+            return (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E0F2FE',
+                  borderRadius: 22,
+                  padding: '16px',
+                  boxShadow: '0 2px 12px rgba(0,149,219,0.06)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: '#E1F5EE', color: '#0F6E56' }}>
+                      {(taxRate * 100).toFixed(1)}% 공제율
+                    </span>
+                  </div>
+                  {/* IRP / 연금저축 바 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 14 }}>
+                    {bars.map(b => (
+                      <div key={b.label}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: '#0f172a' }}>{b.label}</span>
+                          <span style={{ fontSize: 11, color: '#64748b' }}>
+                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{fmtWon(b.amt)}</span>
+                            {' '}/ {fmtWon(b.limit)}
+                          </span>
+                        </div>
+                        <div style={{ height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                          <div style={{ width: `${b.pct}%`, height: '100%', background: b.color, borderRadius: 99, transition: 'width 0.4s ease' }} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                          <span style={{ fontSize: 10, color: b.color, fontWeight: 600 }}>{b.pct}% 채움</span>
+                          {b.pct < 100 && (
+                            <span style={{ fontSize: 10, color: '#94a3b8' }}>한도까지 {fmtWon(b.limit - b.amt)} 남음</span>
                           )}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {cat.items.map((item, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 10px', borderRadius: 8 }}>
-                              <span style={{ fontSize: 12, color: '#0f172a' }}>{item.name}</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {item.rate && item.rate !== '-' && (
-                                  <span style={{ fontSize: 11, fontWeight: 600, color: item.rate.startsWith('+') ? '#A32D2D' : '#94a3b8' }}>{item.rate}</span>
-                                )}
-                                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{item.ratio}%</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* 5. 또래 비교 (하드) — API 미제공, 화면 전체 mock 값 */}
-        <div style={{ padding: '0 16px' }}>
-          <SectionHeader icon="👥" title="또래 비교" right={<Pill bg="#E6F1FB" color="#185FA5">30대 초반 · 2~4천만 원</Pill>} />
-          <Card>
-            {/* 탭 바 */}
-            <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 8, padding: 3, marginBottom: 16 }}>
-              <button
-                onClick={() => setPeerTab('asset')}
-                style={{ flex: 1, padding: '5px 0', fontSize: 11, fontWeight: 600, background: peerTab === 'asset' ? '#fff' : 'transparent', color: peerTab === 'asset' ? '#0f172a' : '#64748b', border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s' }}
-              >순자산 비교</button>
-              <button
-                onClick={() => setPeerTab('product')}
-                style={{ flex: 1, padding: '5px 0', fontSize: 11, fontWeight: 600, background: peerTab === 'product' ? '#fff' : 'transparent', color: peerTab === 'product' ? '#0f172a' : '#64748b', border: 'none', borderRadius: 6, cursor: 'pointer', transition: 'all 0.15s' }}
-              >보유상품 비교</button>
-            </div>
-
-            {peerTab === 'asset' && (
-              <div>
-                {/* 세로 막대 바 차트 */}
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 40, marginBottom: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#185FA5' }}>3,245만 원</span>
-                    <div style={{ width: 44, height: 100, background: 'linear-gradient(180deg, #60a5fa 0%, #1D5FA5 100%)', borderRadius: '6px 6px 0 0' }} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#0f172a' }}>나</span>
+                    ))}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>2,800만 원</span>
-                    <div style={{ width: 44, height: Math.round(2800 / 3245 * 100), background: '#cbd5e1', borderRadius: '6px 6px 0 0' }} />
-                    <span style={{ fontSize: 11, color: '#64748b' }}>또래 평균</span>
-                  </div>
-                </div>
-                <div style={{ background: '#E6F1FB', border: '0.5px solid #B5D4F4', borderRadius: 8, padding: '9px 11px' }}>
-                  <p style={{ fontSize: 11, color: '#0C447C', margin: 0, lineHeight: 1.5 }}>
-                    또래 평균보다 <strong style={{ fontWeight: 600 }}>445만 원</strong> 더 모았어요. 비슷한 그룹 중 상위 28%예요 🎉
-                  </p>
-                </div>
-              </div>
-            )}
 
-            {peerTab === 'product' && (
-              <div>
-                <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', margin: '0 0 10px' }}>또래가 많이 가입하는 상품</p>
-                {POPULAR_PRODUCTS.map((p, i) => (
-                  <div key={p.rank} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < POPULAR_PRODUCTS.length - 1 ? '0.5px solid #f1f5f9' : 'none' }}>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: '#185FA5', width: 16, flexShrink: 0 }}>{p.rank}</span>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: 0 }}>{p.name}</p>
-                      <p style={{ fontSize: 10, color: '#64748b', margin: 0 }}>{p.sub}</p>
-                    </div>
-                    <div style={{ width: 60, height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', flexShrink: 0 }}>
-                      <div style={{ width: `${p.pct}%`, height: '100%', background: '#378ADD', borderRadius: 99, opacity: 1 - i * 0.2 }} />
+                  {/* 세액공제 예상 */}
+                  <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 3px' }}>올해 예상 세액공제</p>
+                        <p style={{ fontSize: 18, fontWeight: 700, color: '#085041', margin: 0 }}>
+                          {taxDeduction > 0 ? `${taxDeduction.toLocaleString()}원` : '–'}
+                        </p>
+                      </div>
+                      {remaining > 0 && (
+                        <div style={{ background: '#E1F5EE', borderRadius: 8, padding: '6px 10px', textAlign: 'right' }}>
+                          <p style={{ fontSize: 9, color: '#0F6E56', margin: '0 0 1px' }}>한도 추가 납입 시</p>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: '#085041', margin: 0 }}>
+                            +{Math.round(remaining * taxRate).toLocaleString()}원 환급↑
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
-            )}
-          </Card>
+            );
+          })()}
         </div>
+
+
 
       </div>
 
@@ -1171,7 +1662,7 @@ export default function Dashboard() {
                 width: '100%', boxSizing: 'border-box', marginBottom: 12,
                 fontSize: 14, padding: '12px 14px',
                 border: '1px solid #e2e8f0', borderRadius: 12,
-                background: '#f8fafc', color: '#0f172a', outline: 'none',
+                background: '#EFF8FF', color: '#0f172a', outline: 'none',
               }}
             />
             <button
@@ -1267,7 +1758,22 @@ export default function Dashboard() {
           animation: 'fadeIn 0.2s ease-out',
         }}>
           <div style={{ width: '100%', maxWidth: 375, display: 'flex', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
-            <NotificationPanel onClose={() => setNotiOpen(false)} items={notiItems} setItems={setNotiItems} />
+            <NotificationPanel
+              onClose={() => setNotiOpen(false)}
+              items={notiItems}
+              setItems={setNotiItems}
+              onChallengeClick={async (id, type) => {
+                const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
+                  CHALLENGE_NAG: 'ACTIVE',
+                  CHALLENGE_COMPLETE: 'SUCCESS',
+                  CHALLENGE_FAILED: 'FAILED',
+                };
+                const detail = await getChallengeAlarmDetail(id);
+                setChallengeAlarmDetail({ ...detail, weeklyStatus: challengeTypeMap[type] });
+                setNotiOpen(false);
+                setChallengeAlarmOpen(true);
+              }}
+            />
           </div>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '85vh', zIndex: -1 }} onClick={() => setNotiOpen(false)} />
         </div>
@@ -1329,10 +1835,10 @@ export default function Dashboard() {
               position: 'absolute', bottom: 28, right: 20,
               pointerEvents: 'auto',
               width: 56, height: 56, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #1D9E75, #085041)',
+              background: 'linear-gradient(135deg, #0095DB, #00BFFF)',
               border: 'none', cursor: 'pointer', padding: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 18px rgba(8,80,65,0.35)',
+              boxShadow: '0 4px 20px rgba(0,149,219,0.35)',
               transition: 'transform 0.15s',
             }}
             onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
@@ -1379,7 +1885,7 @@ export default function Dashboard() {
                     <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>재무 목표를 자연어로 입력하면 대시보드를 조정해 드려요</p>
                   </div>
                 </div>
-                <div style={{ background: '#f8fafc', borderRadius: 12, padding: '10px 12px', marginBottom: 10 }}>
+                <div style={{ background: '#EFF8FF', borderRadius: 12, padding: '10px 12px', marginBottom: 10 }}>
                   {['내년 봄에 유럽 여행 가고 싶어 🌍', '2년 뒤까지 결혼자금 3000만원 모으고 싶어 💍', '매달 투자 비중 늘리고 싶어 📈'].map(ex => (
                     <button
                       key={ex}
@@ -1532,6 +2038,16 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ── 챌린지 알람 모달 ── */}
+      {challengeAlarmOpen && challengeAlarmDetail && (
+        <ChallengeAlarmModal
+          detail={challengeAlarmDetail}
+          userName={USER_NAME ?? '사용자'}
+          onClose={() => setChallengeAlarmOpen(false)}
+        />
+      )}
+
     </div>
   );
 }
