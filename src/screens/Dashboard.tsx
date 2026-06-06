@@ -888,7 +888,7 @@ export default function Dashboard() {
                 {
                   label: 'PorTI',
                   items: [
-                    { id: 'interest', title: '관심사 재설정', disabled: true, onClick: () => { } },
+                    { id: 'interest', title: '관심사 재설정', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/porti-survey', { state: { mode: 'editGoal' } }); } },
                     { id: 'portrait', title: 'AI 자산 초상화', disabled: true, onClick: () => { } },
                   ],
                 },
