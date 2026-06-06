@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import heroImg from '../assets/hero.png';
 import portiImg from '../assets/porti.png';
 import swimporiImg from '../assets/Swimpori.png';
@@ -271,6 +271,8 @@ export default function PortiSurvey() {
 
   // 사이드바 "관심사 재설정" 진입: 테마·목표만 다시 고르고 PATCH /me/goal 로 저장
   const editMode = location.state?.mode === 'editGoal';
+  // 사이드바 "AI 자산 초상화" 진입: 저장된 결과를 읽기 전용으로 다시 보기
+  const viewMode = location.state?.mode === 'viewProfile';
 
   const [step, setStep] = useState<Step>(editMode ? 'theme' : 'intro');
 
@@ -696,7 +698,17 @@ export default function PortiSurvey() {
 
           {/* 헤더 */}
           <header className="flex items-center justify-between px-4 py-3 bg-white sticky top-0 z-10 border-b border-gray-100 shrink-0">
-            <div className="w-10" />
+            {viewMode ? (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-10 h-10 flex items-center justify-center -ml-2 text-gray-600 active:scale-90 transition"
+                aria-label="대시보드로"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            ) : (
+              <div className="w-10" />
+            )}
             <h1 className="font-semibold text-base font-wooridaum">AI 자산 초상화</h1>
             <div className="w-10" />
           </header>
@@ -1077,10 +1089,10 @@ export default function PortiSurvey() {
           {/* 하단 고정 버튼 */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-5 pt-4 pb-6 z-20 shrink-0">
             <button
-              onClick={() => navigate('/prescription-intro')}
+              onClick={() => navigate(viewMode ? '/dashboard' : '/prescription-intro')}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95"
             >
-              맞춤형 월급 가이드 받기 <ArrowRight className="w-5 h-5" />
+              {viewMode ? '대시보드로' : '맞춤형 월급 가이드 받기'} <ArrowRight className="w-5 h-5" />
             </button>
           </div>
 
