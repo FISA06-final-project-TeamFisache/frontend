@@ -889,7 +889,7 @@ export default function Dashboard() {
                   label: 'PorTI',
                   items: [
                     { id: 'interest', title: '관심사 재설정', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/porti-survey', { state: { mode: 'editGoal' } }); } },
-                    { id: 'portrait', title: 'AI 자산 초상화', disabled: true, onClick: () => { } },
+                    { id: 'portrait', title: 'AI 자산 초상화', disabled: false, onClick: () => { if (!localStorage.getItem('agentProfile')) { alert('아직 AI 자산 초상화가 없어요. 먼저 PorTI 진단을 완료해주세요.'); return; } setSidebarOpen(false); navigate('/porti-survey', { state: { mode: 'viewProfile' } }); } },
                   ],
                 },
                 {
