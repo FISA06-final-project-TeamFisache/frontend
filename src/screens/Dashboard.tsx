@@ -331,17 +331,18 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
 
 const CHALLENGE_TYPES = new Set(['CHALLENGE_NAG', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
 
-function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalaryClick, userName }: {
+function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalaryClick, onReportClick, userName }: {
   onClose: () => void;
   items: NotiItem[];
   setItems: Dispatch<SetStateAction<NotiItem[]>>;
   onChallengeClick: (id: string, type: string) => void;
   onSalaryClick: () => void;
+  onReportClick: () => void;
   userName: string;
 }) {
   const markRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    markNotificationRead(id).catch(() => { });
+    if (!id.startsWith('dev-')) markNotificationRead(id).catch(() => { });
   };
   const markAll = () => {
     setItems(prev => prev.map(n => ({ ...n, read: true })));
@@ -376,6 +377,8 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
         {items.map(n => {
           let title = n.title;
           let body = n.body;
+          let icon = n.icon;
+          let iconBg = n.iconBg;
 
           if (n.type === 'SALARY_REBALANCING') {
             title = '월급';
@@ -384,15 +387,15 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
             title = '월간리포트';
             body = `${userName}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`;
           } else if (n.type === 'CHALLENGE_NAG') {
-            title = '이번주 소비 미션';
-            if (n.body.includes('50%')) body = '50% 도달했어요ㅜㅡㅜ';
-            else if (n.body.includes('90%')) body = '90% 도달했어요!!!';
-            else if (n.body.includes('80%')) body = '80% 도달했어요..!';
+            title = '미니챌린지'; icon = '🟡'; iconBg = '#FEF9C3';
+            if (n.body.includes('50%')) body = '벌써 미션에 50%나 도달했어요...';
+            else if (n.body.includes('80%')) body = '벌써 미션에 80%나 도달했어요...';
+            else if (n.body.includes('90%')) body = '벌써 미션에 90%나 도달했어요...';
           } else if (n.type === 'CHALLENGE_COMPLETE') {
-            title = '이번주 소비 미션';
+            title = '미니챌린지'; icon = '🏆'; iconBg = '#E1F5EE';
             body = '뿌우~축하해요 성공했어요';
           } else if (n.type === 'CHALLENGE_FAILED') {
-            title = '이번주 소비 미션';
+            title = '미니챌린지'; icon = '😢'; iconBg = '#FCEBEB';
             body = '뿌우,,,아쉽게 실패했어요';
           }
 
@@ -400,6 +403,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
             <div key={n.id} onClick={() => {
               markRead(n.id);
               if (n.type === 'SALARY_REBALANCING') { onClose(); onSalaryClick(); return; }
+              if (n.type === 'REPORT_READY') { onReportClick(); return; }
               if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
             }}
               style={{
@@ -407,8 +411,8 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
                 display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer',
                 opacity: n.read ? 0.5 : 1, transition: 'opacity .15s',
               }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: n.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-                {n.icon}
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+                {icon}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: n.read ? 400 : 600, color: n.read ? '#64748b' : '#0f172a', margin: '0 0 4px', lineHeight: 1.35 }}>{title}</p>
@@ -425,7 +429,6 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
     </div>
   );
 }
-
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
@@ -925,8 +928,8 @@ export default function Dashboard() {
                 {
                   label: 'PorTI',
                   items: [
-                    { id: 'interest', title: '관심사 재설정', disabled: true, onClick: () => { } },
-                    { id: 'portrait', title: 'AI 자산 초상화', disabled: true, onClick: () => { } },
+                    { id: 'interest', title: '관심사 재설정', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/porti-survey', { state: { mode: 'editGoal' } }); } },
+                    { id: 'portrait', title: 'AI 자산 초상화', disabled: false, onClick: () => { if (!localStorage.getItem('agentProfile')) { alert('아직 AI 자산 초상화가 없어요. 먼저 PorTI 진단을 완료해주세요.'); return; } setSidebarOpen(false); navigate('/porti-survey', { state: { mode: 'viewProfile' } }); } },
                   ],
                 },
                 {
@@ -1002,6 +1005,7 @@ export default function Dashboard() {
               setItems={setNotiItems}
               userName={USER_NAME}
               onSalaryClick={() => { setNotiOpen(false); navigate('/salary-management'); }}
+              onReportClick={() => { setNotiOpen(false); navigate('/monthly-report'); }}
               onChallengeClick={async (id, type) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
                   CHALLENGE_NAG: 'ACTIVE',
