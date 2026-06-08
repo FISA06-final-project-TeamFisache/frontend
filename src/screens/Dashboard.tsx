@@ -7,7 +7,14 @@ import SalaryManagement from './SalaryManagement';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notificationApi';
 import { getAssets, deleteAsset, type Asset } from '../api/assetApi';
 import { fetchProposal, applyProposal, type Proposal } from '../api/poriApi';
-import { getChallengeAlarmDetail, type ChallengeAlarmDetail } from '../api/challengeApi';
+import {
+  getChallengeAlarmDetail,
+  recommendChallenge,
+  adjustChallenge,
+  createChallenge,
+  type ChallengeAlarmDetail,
+  type ChallengeProposal,
+} from '../api/challengeApi';
 import ChallengeAlarmModal from '../components/ChallengeAlarmModal';
 import portiImg from '../assets/porti.png';
 import {
@@ -15,7 +22,6 @@ import {
   buildSpendingItems,
   buildPortfolioSlices,
   computeConsumption,
-  computeMission,
 } from '../components/dashboard/shared';
 import WeatherAssetWidget from '../components/dashboard/WeatherAssetWidget';
 import { ConsumptionWidget, ConsumptionDetail } from '../components/dashboard/ConsumptionWidget';
@@ -325,12 +331,13 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
 
 const CHALLENGE_TYPES = new Set(['CHALLENGE_NAG', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
 
-function NotificationPanel({ onClose, items, setItems, onChallengeClick, onReportClick, userName }: {
+function NotificationPanel({ onClose, items, setItems, onChallengeClick, onReportClick, onSalaryClick, userName }: {
   onClose: () => void;
   items: NotiItem[];
   setItems: Dispatch<SetStateAction<NotiItem[]>>;
   onChallengeClick: (id: string, type: string) => void;
   onReportClick: () => void;
+  onSalaryClick: () => void;
   userName: string;
 }) {
   const markRead = (id: string) => {
@@ -371,6 +378,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onRepor
           <div key={n.id} onClick={() => {
             markRead(n.id);
             if (n.type === 'REPORT_READY') { onReportClick(); return; }
+            if (n.type === 'SALARY_REBALANCING') { onClose(); onSalaryClick(); return; }
             if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
           }}
             style={{
@@ -498,6 +506,10 @@ export default function Dashboard() {
   });
   const [challengeAlarmOpen, setChallengeAlarmOpen] = useState(false);
   const [challengeAlarmDetail, setChallengeAlarmDetail] = useState<ChallengeAlarmDetail | null>(null);
+  const [challengeProposal, setChallengeProposal] = useState<ChallengeProposal | null>(null);
+  const [challengeLoading, setChallengeLoading] = useState(false);
+  const [challengeAdjusting, setChallengeAdjusting] = useState(false);
+  const [adjustHistory, setAdjustHistory] = useState<Array<ChallengeProposal & { feedback: string }>>([]);
 
   // ── SSE 구독 ─────────────────────────────────────────────
   useEffect(() => {
@@ -571,8 +583,33 @@ export default function Dashboard() {
   const spendingItems = dashboard ? buildSpendingItems(dashboard.consumption.categories) : [];
   const portfolioSlices = dashboard ? buildPortfolioSlices(dashboard.portfolio) : [];
   const consumptionView = dashboard ? computeConsumption(dashboard.consumption) : null;
-  const mission = dashboard ? computeMission(dashboard.consumption.categories) : null;
   const taxSaving = dashboard?.taxSaving ?? null;
+
+  // AI 챌린지 추천 — 대시보드 로드 후 1회 실행
+  useEffect(() => {
+    if (!dashboard || challengeProposal || challengeLoading) return;
+    setChallengeLoading(true);
+    recommendChallenge()
+      .then(p => setChallengeProposal(p))
+      .finally(() => setChallengeLoading(false));
+  }, [dashboard]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAdjust = async (feedback: string) => {
+    if (!challengeProposal) return;
+    setChallengeAdjusting(true);
+    const history = [...adjustHistory, { ...challengeProposal, feedback }];
+    setAdjustHistory(history);
+    const next = await adjustChallenge(history);
+    setChallengeProposal(next);
+    setChallengeAdjusting(false);
+  };
+
+  const handleChallengeStart = async () => {
+    if (!challengeProposal) return;
+    try { await createChallenge(challengeProposal); } catch { /* ignore */ }
+    setChallengeProgress(1);
+    sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '1');
+  };
 
   const handleGoalSubmit = () => {
     const text = goalText.trim();
@@ -729,20 +766,20 @@ export default function Dashboard() {
 
           {/* [4] 미션 위젯 */}
           <div style={{ gridColumn: '1 / -1' }}>
-            {mission && (
-              <MissionWidget
-                mission={mission}
-                progress={challengeProgress}
-                onStart={() => {
-                  setChallengeProgress(1);
-                  sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '1');
-                }}
-                onPause={() => {
-                  setChallengeProgress(0);
-                  sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '0');
-                }}
-              />
-            )}
+            <MissionWidget
+              proposal={challengeProposal}
+              loading={challengeLoading}
+              adjusting={challengeAdjusting}
+              progress={challengeProgress}
+              onStart={handleChallengeStart}
+              onPause={() => {
+                setChallengeProgress(0);
+                sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '0');
+              }}
+              onEasier={() => handleAdjust('더 쉽게 조정해주세요')}
+              onHarder={() => handleAdjust('더 어렵게 조정해주세요')}
+              onChangeTopic={() => handleAdjust('주제를 바꿔주세요')}
+            />
           </div>
 
           {/* [5] 투자 위젯 */}
@@ -942,6 +979,7 @@ export default function Dashboard() {
               setItems={setNotiItems}
               userName={USER_NAME}
               onReportClick={() => { setNotiOpen(false); navigate('/monthly-report'); }}
+              onSalaryClick={() => { setNotiOpen(false); navigate('/salary-management'); }}
               onChallengeClick={async (id, type) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
                   CHALLENGE_NAG: 'ACTIVE',
