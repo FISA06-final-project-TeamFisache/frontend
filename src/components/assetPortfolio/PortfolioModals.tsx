@@ -1,7 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { type HubItem, type ProductItem, lookupProduct } from './portfolioRegistry';
+import { useState, useMemo, type ReactNode } from 'react';
+import type { HubItem, ProductItem } from './portfolioRegistry';
+import { lookupProduct } from './portfolioRegistry';
 
-// ─── 공통 서브컴포넌트 ─────────────────────────────
+// ─── 공통 아이콘 컴포넌트 ─────────────────────────────────
 
 export function Logo({ letter, bg, color, size = 20, imgSrc }: { letter: string; bg: string; color: string; size?: number; imgSrc?: string }) {
   return (
@@ -34,9 +35,9 @@ export function ProductIcon({ icon, color, size = 18 }: { icon: 'trending-up' | 
   );
 }
 
-// ─── 모달들 ─────────────────────────────────────────
+// ─── 모달 쉘 ─────────────────────────────────────────────
 
-function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 360, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
@@ -52,7 +53,16 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
   );
 }
 
-export function HubPickerModal({ catalog, currentId, onClose, onPick }: { catalog: HubItem[]; currentId: string; onClose: () => void; onPick: (h: HubItem) => void }) {
+// ─── HubPickerModal ───────────────────────────────────────
+
+interface HubPickerModalProps {
+  catalog: HubItem[];
+  currentId: string;
+  onClose: () => void;
+  onPick: (h: HubItem) => void;
+}
+
+export function HubPickerModal({ catalog, currentId, onClose, onPick }: HubPickerModalProps) {
   const [filter, setFilter] = useState<'전체' | '일반' | 'IRP' | 'ISA'>('전체');
   const filtered = filter === '전체' ? catalog : catalog.filter(h => h.kind === filter);
   return (
@@ -111,7 +121,17 @@ export function HubPickerModal({ catalog, currentId, onClose, onPick }: { catalo
   );
 }
 
-export function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }: { catalog: ProductItem[]; currentId?: string; mode: 'add' | 'replace'; onClose: () => void; onPick: (p: ProductItem) => void }) {
+// ─── ProductPickerModal ───────────────────────────────────
+
+interface ProductPickerModalProps {
+  catalog: ProductItem[];
+  currentId?: string;
+  mode: 'add' | 'replace';
+  onClose: () => void;
+  onPick: (p: ProductItem) => void;
+}
+
+export function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }: ProductPickerModalProps) {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'전체' | ProductItem['type']>('전체');
   const [selected, setSelected] = useState<ProductItem | null>(currentId ? lookupProduct(currentId) : null);
@@ -215,7 +235,6 @@ export function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }
         )}
       </div>
 
-      {/* 선택된 상품 상세 + 확정 버튼 */}
       {selected && (
         <div style={{ borderTop: '1px solid #f1f5f9', padding: 14, background: '#f8fafc' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>선택한 상품</div>

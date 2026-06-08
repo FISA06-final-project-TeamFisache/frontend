@@ -183,7 +183,7 @@ export default function SalarySelect() {
               const result = await setSalaryAccount(selectedAccount.id);
               if (result.isWooriBank) {
                 // 우리은행 → 자동이체 자기 계좌로 설정, 바로 다음 단계
-                navigate('/porti-survey');
+                navigate('/porti-survey', { state: { forceIntro: true } });
               } else {
                 // 타행 → 자동이체 설정 화면으로
                 setStep('transfer-setup');
@@ -191,7 +191,7 @@ export default function SalarySelect() {
             } catch {
               // 에러 시에도 isWoori 여부로 fallback
               if (selectedAccount.isWoori) {
-                navigate('/porti-survey');
+                navigate('/porti-survey', { state: { forceIntro: true } });
               } else {
                 setStep('transfer-setup');
               }
@@ -388,10 +388,10 @@ export default function SalarySelect() {
             try {
               // POST /assets/auto-transfer/connect
               await connectAutoTransfer(transferAccount.id, transferDate);
-              navigate('/porti-survey');
+              navigate('/porti-survey', { state: { forceIntro: true } });
             } catch {
               // 실패해도 다음 단계로 진행
-              navigate('/porti-survey');
+              navigate('/porti-survey', { state: { forceIntro: true } });
             } finally {
               setTransferLoading(false);
             }

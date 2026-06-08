@@ -26,10 +26,10 @@ function WaveBar({ topColor }: { topColor: string }) {
 // ── 진행 바 (50% / 80% / 90% 마일스톤 마커 포함) ─────────────
 function ProgressBar({ progressPercent, weeklyStatus }: { progressPercent: number; weeklyStatus: string }) {
   const pct = Math.min(100, Math.max(0, progressPercent));
-  const isActive  = weeklyStatus === 'ACTIVE';
+  const isActive = weeklyStatus === 'ACTIVE';
   const isSuccess = weeklyStatus === 'SUCCESS';
 
-  const pinEmoji    = isActive ? '📍' : isSuccess ? '🏆' : '😢';
+  const pinEmoji = isActive ? '📍' : isSuccess ? '🏆' : '😢';
   const pinFontSize = isActive ? 22 : 20;
 
   return (
@@ -123,7 +123,7 @@ function getCategoryEmoji(category: string): string {
     case '카페': return '☕';
     case '배달': return '🛵';
     case '야식': return '🌙';
-    case '술':   return '🍺';
+    case '술': return '🍺';
     case '쇼핑': return '🛍️';
     case '택시': return '🚕';
     case '식비': return '🍽️';
@@ -292,13 +292,13 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
       .finally(() => setStockLoading(false));
   }, [showChartDetail]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isActive  = detail.weeklyStatus === 'ACTIVE';
+  const isActive = detail.weeklyStatus === 'ACTIVE';
   const isSuccess = detail.weeklyStatus === 'SUCCESS';
-  const isFailed  = detail.weeklyStatus === 'FAILED';
+  const isFailed = detail.weeklyStatus === 'FAILED';
 
-  const savedCount     = detail.weeklyBaseline !== undefined ? Math.max(0, detail.weeklyBaseline - detail.target) : 5;
-  const categoryEmoji  = getCategoryEmoji(detail.category);
-  const savedEmojis    = Array.from({ length: Math.min(savedCount, 8) }, (_, i) => i);
+  const savedCount = detail.weeklyBaseline !== undefined ? Math.max(0, detail.weeklyBaseline - detail.target) : 5;
+  const categoryEmoji = getCategoryEmoji(detail.category);
+  const savedEmojis = Array.from({ length: Math.min(savedCount, 8) }, (_, i) => i);
 
   async function handleNewMission() {
     setSuggesting(true);
@@ -325,12 +325,12 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
   }
 
   // ── 헤더 색상 / 문구 (상태별) ──
-  const headerBg    = isSuccess ? '#16A34A' : isFailed ? '#64748B' : '#00BFFF';
+  const headerBg = isSuccess ? '#16A34A' : isFailed ? '#64748B' : '#00BFFF';
   const headerTitle = isActive
     ? `${userName}님의 이번주 미션 연관 결제가 발생했어요`
     : isSuccess
-    ? `${userName}님, 이번주 미션 성공했어요! 🎉`
-    : `${userName}님의 이번주 미션이 종료됐어요`;
+      ? `${userName}님, 이번주 미션 성공했어요! 🎉`
+      : `${userName}님의 이번주 미션이 종료됐어요`;
 
   // ── SUCCESS 메인 모달 ──
   if (isSuccess) {
@@ -374,7 +374,7 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
                 <p style={{ fontSize: 18, fontWeight: 800, color: '#166534', margin: 0 }}>{detail.tickerName} {detail.estimatedShares}</p>
               </div>
               <button onClick={() => setShowChartDetail(true)} style={{ background: '#16A34A', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                주식 받기 →
+                주식 받기
               </button>
             </div>
 
@@ -433,7 +433,7 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
                 닫기
               </button>
               <button onClick={handleNewMission} disabled={suggesting} style={{ flex: 2, padding: '14px 0', borderRadius: 12, background: '#0095DB', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, opacity: suggesting ? 0.7 : 1 }}>
-                {suggesting ? '처리 중...' : '새 미션 도전하기 →'}
+                {suggesting ? '처리 중...' : '새 미션 도전하기'}
               </button>
             </div>
           </div>

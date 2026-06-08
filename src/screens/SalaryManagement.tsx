@@ -8,6 +8,7 @@ import shinhanLogo from '../assets/banks/shinhan.png';
 import hanaLogo from '../assets/banks/hana.png';
 import kbLogo from '../assets/banks/kb.png';
 import miraeLogo from '../assets/banks/mirae.png';
+import samsungLogo from '../assets/banks/samsung.png';
 import heroImg from '../assets/hero.png';
 import { updatePortfolios } from '../api/portfolioApi';
 import { getTransferPlans, updateTransferPlan } from '../api/transferApi';
@@ -31,13 +32,17 @@ const SPEND_TYPE_META: Record<string, { tag: string; color: string }> = {
 
 const BANK_META: Record<string, { bg: string; imgSrc: string }> = {
   '카카오뱅크': { bg: '#FEE500', imgSrc: kakaoLogo },
-  '토스뱅크': { bg: '#3182F6', imgSrc: tossLogo },
-  '토스증권': { bg: '#3182F6', imgSrc: tossLogo },
-  '신한은행': { bg: '#0046FF', imgSrc: shinhanLogo },
-  '하나은행': { bg: '#009F6B', imgSrc: hanaLogo },
-  '우리은행': { bg: '#0067AC', imgSrc: wooriLogo },
+  '토스뱅크':   { bg: '#3182F6', imgSrc: tossLogo },
+  '토스증권':   { bg: '#3182F6', imgSrc: tossLogo },
+  '신한은행':   { bg: '#0046FF', imgSrc: shinhanLogo },
+  '하나은행':   { bg: '#009F6B', imgSrc: hanaLogo },
+  '우리은행':   { bg: '#0067AC', imgSrc: wooriLogo },
   'KB국민은행': { bg: '#FFBC00', imgSrc: kbLogo },
-  '미래에셋': { bg: '#F05928', imgSrc: miraeLogo },
+  '국민은행':   { bg: '#FFBC00', imgSrc: kbLogo },   // DB 기관명 매핑
+  'KB증권':     { bg: '#FFBC00', imgSrc: kbLogo },
+  '삼성증권':   { bg: '#034EA2', imgSrc: samsungLogo },
+  '미래에셋':   { bg: '#F05928', imgSrc: miraeLogo },
+  '미래에셋증권': { bg: '#F05928', imgSrc: miraeLogo },
 };
 
 const TERM_META: Record<string, { label: string; bg: string; text: string }> = {

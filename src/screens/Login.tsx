@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ChevronLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { login as loginApi } from '../api/authApi';
+import { getAssets } from '../api/assetApi';
 
 const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -26,7 +27,17 @@ export default function Login() {
     try {
       const token = await loginApi(email, password);
       setAuthToken(token);
-      navigate('/linking');
+      // 자산이 있으면 이미 온보딩 완료 → 대시보드, 없으면 링킹부터
+      try {
+        const assets = await getAssets();
+        if (assets.length > 0) {
+          navigate('/dashboard');
+        } else {
+          navigate('/linking');
+        }
+      } catch {
+        navigate('/linking');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인 중 오류가 발생했습니다.');
     } finally {

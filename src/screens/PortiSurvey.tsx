@@ -250,15 +250,16 @@ const GOAL_CATEGORIES = [
   { id: 'other', label: '자유/기타', emoji: '💼' },
 ];
 
-// 거장 이름 → 사진 (API는 이미지를 주지 않으므로 프론트에서 이름으로 매칭)
+// 거장 이름 → 사진 (DB 이름과 정확히 매핑)
 const GURU_IMAGES: Record<string, string> = {
-  '워렌 버핏': warrenBuffettImg,
-  '워런 버핏': warrenBuffettImg,
-  '켄 피셔': kenFisherImg,
-  '존 보글': johnBogleImg,
-  '레이 달리오': rayDalioImg,
-  '스탠리 드러켄밀러': stanleyDruckenmillerImg,
-  '세스 클라만': sethKlarmanImg,
+  '워런 버핏': warrenBuffettImg,   // SWIMMING
+  '워렌 버핏': warrenBuffettImg,   // 표기 오류 대응
+  '레이 달리오': rayDalioImg,        // ARCHERY
+  '켄 피셔': kenFisherImg,       // JUDO
+  '존 보글': johnBogleImg,       // RHYTHMIC
+  '스탠리 드러켄밀러': stanleyDruckenmillerImg, // FENCING
+  '세스 클라먼': sethKlarmanImg,     // CYCLING
+  '세스 클라만': sethKlarmanImg,     // 표기 오류 대응
 };
 
 type Step = 'intro' | 'question' | 'theme' | 'goal' | 'loading' | 'result';
@@ -461,7 +462,7 @@ export default function PortiSurvey() {
         {/* 상단: 텍스트 + 캐릭터 */}
         <div className="flex items-center justify-between pt-16 mb-10">
           <p className="text-xl font-bold text-gray-800 leading-snug">
-            10개의 질문으로<br />당신을 파악할게요
+            10개의 질문으로<br />파악할게요
           </p>
           <img
             src={portiImg}

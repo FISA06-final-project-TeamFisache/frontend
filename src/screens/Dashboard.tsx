@@ -82,12 +82,17 @@ interface LinkedBank {
 }
 
 const BANK_BADGE_COLORS: Record<string, { bg: string; color: string }> = {
-  '우리은행': { bg: '#DBEAFE', color: '#1E40AF' },
+  '우리은행':   { bg: '#DBEAFE', color: '#1E40AF' },
   '카카오뱅크': { bg: '#FEF3C7', color: '#854D0E' },
-  '토스뱅크': { bg: '#DBEAFE', color: '#1D4ED8' },
-  '신한은행': { bg: '#DBEAFE', color: '#1E40AF' },
-  '국민은행': { bg: '#FEF3C7', color: '#92400E' },
-  '하나은행': { bg: '#D1FAE5', color: '#065F46' },
+  '토스뱅크':   { bg: '#DBEAFE', color: '#1D4ED8' },
+  '토스증권':   { bg: '#DBEAFE', color: '#1D4ED8' },
+  '신한은행':   { bg: '#DBEAFE', color: '#1E40AF' },
+  '국민은행':   { bg: '#FEF3C7', color: '#92400E' },
+  'KB국민은행': { bg: '#FEF3C7', color: '#92400E' },
+  'KB증권':     { bg: '#FEF3C7', color: '#92400E' },
+  '삼성증권':   { bg: '#DBEAFE', color: '#1E40AF' },
+  '하나은행':   { bg: '#D1FAE5', color: '#065F46' },
+  '미래에셋':   { bg: '#FFEDD5', color: '#9A3412' },
   '미래에셋증권': { bg: '#FFEDD5', color: '#9A3412' },
 };
 
