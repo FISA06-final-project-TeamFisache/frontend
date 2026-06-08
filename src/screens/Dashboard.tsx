@@ -325,16 +325,17 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
 
 const CHALLENGE_TYPES = new Set(['CHALLENGE_NAG', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
 
-function NotificationPanel({ onClose, items, setItems, onChallengeClick, userName }: {
+function NotificationPanel({ onClose, items, setItems, onChallengeClick, onReportClick, userName }: {
   onClose: () => void;
   items: NotiItem[];
   setItems: Dispatch<SetStateAction<NotiItem[]>>;
   onChallengeClick: (id: string, type: string) => void;
+  onReportClick: () => void;
   userName: string;
 }) {
   const markRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    markNotificationRead(id).catch(() => { });
+    if (!id.startsWith('dev-')) markNotificationRead(id).catch(() => { });
   };
   const markAll = () => {
     setItems(prev => prev.map(n => ({ ...n, read: true })));
@@ -369,6 +370,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, userNam
         {items.map(n => (
           <div key={n.id} onClick={() => {
             markRead(n.id);
+            if (n.type === 'REPORT_READY') { onReportClick(); return; }
             if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
           }}
             style={{
@@ -756,7 +758,7 @@ export default function Dashboard() {
           {/* [6] 절세 위젯 */}
           <div style={{ gridColumn: '2' }}>
             <TaxSavingWidget
-              taxDeduction={taxSaving!.totalTaxDeduction}
+              taxDeduction={taxSaving?.totalTaxDeduction ?? 0}
               active={anomalyOpen}
               onClick={() => setAnomalyOpen(v => !v)}
             />
@@ -939,6 +941,7 @@ export default function Dashboard() {
               items={notiItems}
               setItems={setNotiItems}
               userName={USER_NAME}
+              onReportClick={() => { setNotiOpen(false); navigate('/monthly-report'); }}
               onChallengeClick={async (id, type) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
                   CHALLENGE_NAG: 'ACTIVE',
