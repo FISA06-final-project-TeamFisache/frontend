@@ -156,34 +156,66 @@ const FALLBACK_PROPOSAL: ChallengeProposal = {
   ticker: '삼성전자',
 };
 
+// 진행 중(IN_PROGRESS) 챌린지 — GET /challenges/active 응답
+export interface ActiveChallenge {
+  challengeId: string;
+  title: string;
+  description: string;
+  category: string;
+  challengeSubType: string;
+  challengeType: 'AMOUNT' | 'COUNT';
+  target: number;
+  currentValue: number;
+  progressPercent: number;   // 0~100
+  estimatedSaving: number;
+  ticker: string;
+}
+
+/** GET /challenges/active — 진행 중인 챌린지 (없으면 null) */
+export async function getActiveChallenge(): Promise<ActiveChallenge | null> {
+  try {
+    const res = await api.get<CommonResponse<ActiveChallenge | null>>('/challenges/active');
+    return res.data;
+  } catch {
+    return null;
+  }
+}
+
+// 백엔드 ChallengeProposalResponseDto 는 snake_case 로 응답 → 프론트 camelCase 로 정규화
+// (서버가 camelCase 로 줘도 동작하도록 둘 다 받음)
+function toProposal(raw: Record<string, unknown>): ChallengeProposal {
+  return {
+    title: raw.title as string,
+    description: raw.description as string,
+    category: raw.category as string,
+    challengeSubType: (raw.challengeSubType ?? raw.challenge_sub_type) as string,
+    challengeType: (raw.challengeType ?? raw.challenge_type) as 'FREQUENCY' | 'AMOUNT',
+    target: (raw.target ?? 0) as number,
+    estimatedSaving: (raw.estimatedSaving ?? raw.estimated_saving ?? 0) as number,
+    ticker: raw.ticker as string,
+  };
+}
+
 /** POST /challenges/recommend — AI가 거래 내역 분석 후 챌린지 제안 */
 export async function recommendChallenge(): Promise<ChallengeProposal> {
   try {
-    const res = await api.post<CommonResponse<ChallengeProposal>>('/challenges/recommend', {});
-    return res.data;
+    const res = await api.post<CommonResponse<Record<string, unknown>>>('/challenges/recommend', {});
+    return toProposal(res.data);
   } catch {
     return FALLBACK_PROPOSAL;
   }
 }
 
-/** POST /challenges/adjust — 이전 제안 + 피드백으로 재생성 */
+/** POST /challenges/adjust?feedback=... — 가장 최근 피드백으로 재생성 */
 export async function adjustChallenge(
   prevProposals: Array<ChallengeProposal & { feedback: string }>,
 ): Promise<ChallengeProposal> {
   try {
-    const res = await api.post<CommonResponse<ChallengeProposal>>('/challenges/adjust', {
-      previousProposals: prevProposals.map(p => ({
-        title: p.title,
-        description: p.description,
-        challengeSubType: p.challengeSubType,
-        challengeType: p.challengeType,
-        category: p.category,
-        estimatedSaving: p.estimatedSaving,
-        ticker: p.ticker,
-        feedback: p.feedback,
-      })),
-    });
-    return res.data;
+    const feedback = prevProposals[prevProposals.length - 1]?.feedback ?? '';
+    const res = await api.post<CommonResponse<Record<string, unknown>>>(
+      `/challenges/adjust?feedback=${encodeURIComponent(feedback)}`, {},
+    );
+    return toProposal(res.data);
   } catch {
     return FALLBACK_PROPOSAL;
   }

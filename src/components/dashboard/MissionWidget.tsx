@@ -12,13 +12,12 @@ interface Props {
   adjusting: boolean;                   // 조정 API 호출 중
   progress: number;                     // 0 = 미시작, >0 = 진행중
   onStart: () => void;
-  onPause: () => void;
   onEasier: () => void;
   onHarder: () => void;
   onChangeTopic: () => void;
 }
 
-export default function MissionWidget({ proposal, loading, adjusting, progress, onStart, onPause, onEasier, onHarder, onChangeTopic }: Props) {
+export default function MissionWidget({ proposal, loading, adjusting, progress, onStart, onEasier, onHarder, onChangeTopic }: Props) {
   const isProgressing = progress > 0;
   const isBusy = loading || adjusting;
   const icon = proposal ? getChallengeIcon(proposal) : '💡';
@@ -63,16 +62,6 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
             벌써 미션에 {progress}%나 도달했어요...
           </span>
           <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>100%</span>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-          <button onClick={onPause} style={{
-            width: '50%', padding: '10px 0', border: '1px solid #E2E8F0',
-            background: '#FFFFFF', borderRadius: 12, fontSize: 12, fontWeight: 700,
-            color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            ⏸ 일시정지
-          </button>
         </div>
       </div>
     );
