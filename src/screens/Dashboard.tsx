@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type Dispatch, type SetStateAction } from 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
-import { getDashboard, type DashboardData } from '../api/dashboardApi';
+import { getDashboard, type DashboardData, type DashboardAllocation } from '../api/dashboardApi';
 import SalaryManagement from './SalaryManagement';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notificationApi';
 import { getAssets, deleteAsset, type Asset } from '../api/assetApi';
@@ -82,17 +82,17 @@ interface LinkedBank {
 }
 
 const BANK_BADGE_COLORS: Record<string, { bg: string; color: string }> = {
-  '우리은행':   { bg: '#DBEAFE', color: '#1E40AF' },
+  '우리은행': { bg: '#DBEAFE', color: '#1E40AF' },
   '카카오뱅크': { bg: '#FEF3C7', color: '#854D0E' },
-  '토스뱅크':   { bg: '#DBEAFE', color: '#1D4ED8' },
-  '토스증권':   { bg: '#DBEAFE', color: '#1D4ED8' },
-  '신한은행':   { bg: '#DBEAFE', color: '#1E40AF' },
-  '국민은행':   { bg: '#FEF3C7', color: '#92400E' },
+  '토스뱅크': { bg: '#DBEAFE', color: '#1D4ED8' },
+  '토스증권': { bg: '#DBEAFE', color: '#1D4ED8' },
+  '신한은행': { bg: '#DBEAFE', color: '#1E40AF' },
+  '국민은행': { bg: '#FEF3C7', color: '#92400E' },
   'KB국민은행': { bg: '#FEF3C7', color: '#92400E' },
-  'KB증권':     { bg: '#FEF3C7', color: '#92400E' },
-  '삼성증권':   { bg: '#DBEAFE', color: '#1E40AF' },
-  '하나은행':   { bg: '#D1FAE5', color: '#065F46' },
-  '미래에셋':   { bg: '#FFEDD5', color: '#9A3412' },
+  'KB증권': { bg: '#FEF3C7', color: '#92400E' },
+  '삼성증권': { bg: '#DBEAFE', color: '#1E40AF' },
+  '하나은행': { bg: '#D1FAE5', color: '#065F46' },
+  '미래에셋': { bg: '#FFEDD5', color: '#9A3412' },
   '미래에셋증권': { bg: '#FFEDD5', color: '#9A3412' },
 };
 
@@ -341,7 +341,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
   items: NotiItem[];
   setItems: Dispatch<SetStateAction<NotiItem[]>>;
   onChallengeClick: (id: string, type: string) => void;
-  onSalaryClick: () => void;
+  onSalaryClick: (id: string) => void;
   onReportClick: () => void;
   userName: string;
 }) {
@@ -387,27 +387,31 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
 
           if (n.type === 'SALARY_REBALANCING') {
             title = '월급';
-            body = '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!';
+            if (n.id === 'dev-salary-change') {
+              body = '월급에 변동이 생겼어요! - 변동된 금액에 맞춰 PorTI 가이드를 다시 세워봐요!';
+            } else {
+              body = '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!';
+            }
           } else if (n.type === 'REPORT_READY') {
             title = '월간리포트';
             body = `${userName}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`;
           } else if (n.type === 'CHALLENGE_NAG') {
-            title = '미니챌린지'; icon = '🟡'; iconBg = '#FEF9C3';
-            if (n.body.includes('50%')) body = '벌써 미션에 50%나 도달했어요...';
-            else if (n.body.includes('80%')) body = '벌써 미션에 80%나 도달했어요...';
-            else if (n.body.includes('90%')) body = '벌써 미션에 90%나 도달했어요...';
+            title = '미니챌린지'; icon = '🚨'; iconBg = '#FEF9C3';
+            if (n.body.includes('50%')) body = '미션에 50% 도달했어요...';
+            else if (n.body.includes('80%')) body = '미션에 80% 도달했어요...';
+            else if (n.body.includes('90%')) body = '미션에 90% 도달했어요...';
           } else if (n.type === 'CHALLENGE_COMPLETE') {
-            title = '미니챌린지'; icon = '🏆'; iconBg = '#E1F5EE';
-            body = '뿌우~축하해요 성공했어요';
+            title = '미니챌린지'; icon = '🎁'; iconBg = '#E1F5EE';
+            body = '뿌우~ 성공했어요. 리워드를 확인하세요!';
           } else if (n.type === 'CHALLENGE_FAILED') {
-            title = '미니챌린지'; icon = '😢'; iconBg = '#FCEBEB';
-            body = '뿌우,,,아쉽게 실패했어요';
+            title = '미니챌린지'; icon = '🥲'; iconBg = '#FCEBEB';
+            body = '뿌우...아쉽게 실패했어요.';
           }
 
           return (
             <div key={n.id} onClick={() => {
               markRead(n.id);
-              if (n.type === 'SALARY_REBALANCING') { onClose(); onSalaryClick(); return; }
+              if (n.type === 'SALARY_REBALANCING') { onClose(); onSalaryClick(n.id); return; }
               if (n.type === 'REPORT_READY') { onReportClick(); return; }
               if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
             }}
@@ -430,6 +434,50 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+function SalaryDetail({ allocations, assets }: { allocations: DashboardAllocation[]; assets: Asset[] }) {
+  return (
+    <div style={{
+      background: '#FFFFFF',
+      border: '1px solid #E0F2FE',
+      borderRadius: 22,
+      padding: '16px',
+      boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
+      animation: 'fadeIn 0.2s ease-out',
+    }}>
+      <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12, marginTop: 0 }}>상세 지출 내역</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {allocations.map((item, idx) => {
+          const matchedAsset = assets.find(a => a.accountPurpose === item.purpose);
+          const bankName = matchedAsset ? matchedAsset.institution : '통장';
+          return (
+            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{bankName}</span>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    background: item.purpose === '소비' || item.purpose === '생활비' ? '#FEF3C7' : '#E6F1FB',
+                    color: item.purpose === '소비' || item.purpose === '생활비' ? '#854D0E' : '#185FA5',
+                    padding: '1px 5px',
+                    borderRadius: 4,
+                  }}>{item.purpose ?? '지출'}</span>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{item.plannedAmount.toLocaleString()}원</p>
+            </div>
+          );
+        })}
+        {allocations.length === 0 && (
+          <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, textAlign: 'center', padding: '10px 0' }}>
+            등록된 지출 계획이 없습니다.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -462,11 +510,10 @@ export default function Dashboard() {
   function notiTypeToIcon(type: string): { icon: string; iconBg: string } {
     const map: Record<string, { icon: string; iconBg: string }> = {
       SALARY_REBALANCING: { icon: '💳', iconBg: '#E6F1FB' },
-      SPENDING_TREND: { icon: '📉', iconBg: '#FCEBEB' },
       REPORT_READY: { icon: '📋', iconBg: '#E1F5EE' },
-      CHALLENGE_NAG: { icon: '⚡', iconBg: '#FEF9C3' },
-      CHALLENGE_COMPLETE: { icon: '🏆', iconBg: '#E1F5EE' },
-      CHALLENGE_FAILED: { icon: '😢', iconBg: '#FCEBEB' },
+      CHALLENGE_NAG: { icon: '🚨', iconBg: '#FEF9C3' },
+      CHALLENGE_COMPLETE: { icon: '🎁', iconBg: '#FEF9C3' },
+      CHALLENGE_FAILED: { icon: '🥲', iconBg: '#FEF9C3' },
     };
     return map[type] ?? { icon: '🔔', iconBg: '#F1F5F9' };
   }
@@ -484,6 +531,7 @@ export default function Dashboard() {
   // ── 대시보드 API 상태 ────────────────────────────────────
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [assets, setAssets] = useState<Asset[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -491,6 +539,9 @@ export default function Dashboard() {
     getDashboard()
       .then(d => { if (!cancelled) setDashboard(d); })
       .catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : '대시보드 조회 실패'); });
+    getAssets()
+      .then(res => { if (!cancelled) setAssets(res); })
+      .catch(() => { });
     return () => { cancelled = true; };
   }, []);
 
@@ -510,13 +561,15 @@ export default function Dashboard() {
   // ── UI 상태 ──────────────────────────────────────────────
   const [anomalyOpen, setAnomalyOpen] = useState(false);
   const [recapOpen, setRecapOpen] = useState(false);
+  const [salaryOpen, setSalaryOpen] = useState(false);
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
   const [notiOpen, setNotiOpen] = useState(false);
   const DEV_NOTI_ITEMS: NotiItem[] = [
-    { id: 'dev-salary', type: 'SALARY_REBALANCING', icon: '💳', iconBg: '#E6F1FB', title: '월급', body: '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!', time: '방금 전', read: false },
-    { id: 'dev-nag-50', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '50% 도달했어요ㅜㅡㅜ', time: '1시간 전', read: false },
-    { id: 'dev-nag-80', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '80% 도달했어요..!', time: '2시간 전', read: false },
-    { id: 'dev-nag-90', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '90% 도달했어요!!!', time: '3시간 전', read: false },
+    { id: 'dev-salary-normal', type: 'SALARY_REBALANCING', icon: '💳', iconBg: '#E6F1FB', title: '월급', body: '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!', time: '방금 전', read: false },
+    { id: 'dev-salary-change', type: 'SALARY_REBALANCING', icon: '💳', iconBg: '#E6F1FB', title: '월급', body: '월급에 변동이 생겼어요! - 변동된 금액에 맞춰 PorTI 가이드를 다시 세워봐요!', time: '방금 전', read: false },
+    { id: 'dev-nag-50', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '50% 도달했어요', time: '1시간 전', read: false },
+    { id: 'dev-nag-80', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '80% 도달했어요', time: '2시간 전', read: false },
+    { id: 'dev-nag-90', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '90% 도달했어요', time: '3시간 전', read: false },
     { id: 'dev-complete', type: 'CHALLENGE_COMPLETE', icon: '🏆', iconBg: '#E1F5EE', title: '이번주 소비 미션', body: '뿌우~축하해요 성공했어요', time: '5시간 전', read: false },
     { id: 'dev-failed', type: 'CHALLENGE_FAILED', icon: '😢', iconBg: '#FCEBEB', title: '이번주 소비 미션', body: '뿌우,,,아쉽게 실패했어요', time: '1일 전', read: false },
     { id: 'dev-report', type: 'REPORT_READY', icon: '📋', iconBg: '#E1F5EE', title: '월간리포트', body: `${USER_NAME}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`, time: '2일 전', read: false },
@@ -737,7 +790,7 @@ export default function Dashboard() {
                 {USER_NAME.charAt(0)}
               </div>
               <div>
-                <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>좋은 아침이에요</p>
+                <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>반가워요!</p>
                 <p style={{ fontSize: 15, fontWeight: 500, color: '#0f172a', margin: 0 }}>{USER_NAME} 님</p>
               </div>
             </div>
@@ -781,7 +834,8 @@ export default function Dashboard() {
             <SalaryGuideWidget
               income={dashboard.salaryPlan.monthlyIncome}
               slices={salarySlices}
-              onClick={() => setSalaryMgmtOpen(true)}
+              active={salaryOpen}
+              onClick={() => setSalaryOpen(v => !v)}
             />
           </div>
 
@@ -791,6 +845,16 @@ export default function Dashboard() {
               <ConsumptionDetail
                 spendingItems={spendingItems}
                 categories={dashboard.consumption.categories}
+              />
+            </div>
+          )}
+
+          {/* 월급 펼침 영역 (salaryOpen) */}
+          {salaryOpen && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <SalaryDetail
+                allocations={dashboard.salaryPlan.allocations}
+                assets={assets}
               />
             </div>
           )}
@@ -1009,7 +1073,7 @@ export default function Dashboard() {
               items={notiItems}
               setItems={setNotiItems}
               userName={USER_NAME}
-              onSalaryClick={() => { setNotiOpen(false); navigate('/salary-management'); }}
+              onSalaryClick={(id) => { setNotiOpen(false); navigate('/salary-management', { state: { mockSalaryDelta: id === 'dev-salary-change' ? 100000 : 0 } }); }}
               onReportClick={() => { setNotiOpen(false); navigate('/monthly-report'); }}
               onChallengeClick={async (id, type) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
@@ -1111,7 +1175,7 @@ export default function Dashboard() {
             {poriStep === 'input' && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <span style={{ fontSize: 28 }}>🐥</span>
+                  <span style={{ fontSize: 28 }}><img src='assets/missionpori.png' alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori에게 물어보세요</p>
                     <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>재무 목표를 자연어로 입력하면 대시보드를 조정해 드려요</p>
@@ -1189,7 +1253,7 @@ export default function Dashboard() {
             {poriStep === 'preview' && poriProposal && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 22 }}>🐥</span>
+                  <span style={{ fontSize: 22 }}><img src="missionpori.png" alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
                   <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori의 제안</p>
                 </div>
                 <p style={{ fontSize: 12, color: '#475569', marginBottom: 16, lineHeight: 1.6 }}>{poriProposal.explanation}</p>

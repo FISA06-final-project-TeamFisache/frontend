@@ -2,10 +2,11 @@
 import { SalaryDonutChart } from './charts';
 import { fmtManwon, type PortfolioSlice } from './shared';
 
-export default function SalaryGuideWidget({ income, slices, onClick }: {
+export default function SalaryGuideWidget({ income, slices, active, onClick }: {
   income: number;
   slices: PortfolioSlice[];
-  onClick: () => void;
+  active?: boolean;
+  onClick?: () => void;
 }) {
   const topSlices = [...slices].sort((a, b) => b.pct - a.pct).slice(0, 2);
 
@@ -14,11 +15,11 @@ export default function SalaryGuideWidget({ income, slices, onClick }: {
       onClick={onClick}
       style={{
         background: '#FFFFFF',
-        border: '1px solid #E0F2FE',
+        border: `1px solid ${active ? '#0095DB' : '#E0F2FE'}`,
         borderRadius: 22,
         padding: '16px',
         boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
-        cursor: 'pointer',
+        cursor: onClick ? 'pointer' : 'default',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -55,7 +56,9 @@ export default function SalaryGuideWidget({ income, slices, onClick }: {
       </div>
 
       {/* 우측 하단 화살표 */}
-      <span style={{ position: 'absolute', bottom: 12, right: 16, fontSize: 14, color: '#94a3b8', fontWeight: 700 }}>›</span>
+      {onClick && (
+        <span style={{ position: 'absolute', bottom: 12, right: 16, fontSize: 14, color: '#94a3b8', fontWeight: 700 }}>›</span>
+      )}
     </div>
   );
 }

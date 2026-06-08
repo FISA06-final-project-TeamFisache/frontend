@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, HelpCircle, Check, X } from 'lucide-react';
 import wooriLogo from '../assets/banks/woori.png';
 import kakaoLogo from '../assets/banks/kakao.png';
@@ -91,10 +91,14 @@ interface Plan {
 
 interface Props {
   onClose?: () => void;
+  mockSalaryDelta?: number;
 }
 
-export default function SalaryManagement({ onClose }: Props) {
+export default function SalaryManagement({ onClose, mockSalaryDelta }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { mockSalaryDelta?: number } | null;
+  const targetMockDelta = mockSalaryDelta ?? state?.mockSalaryDelta;
   
   const handleClose = () => {
     if (onClose) onClose();
@@ -151,7 +155,11 @@ export default function SalaryManagement({ onClose }: Props) {
             logo: BANK_META[salaryAsset.institution]?.imgSrc ?? wooriLogo,
           });
         }
-        setSalaryDelta(planData.salaryDiff ?? 0);
+        let delta = planData.salaryDiff ?? 0;
+        if (typeof targetMockDelta === 'number') {
+          delta = targetMockDelta;
+        }
+        setSalaryDelta(delta);
 
         // 지출 항목 (portfolioItems: CASH/DEPOSIT/EMERGENCY)
         if (planData.portfolioItems.length > 0) {

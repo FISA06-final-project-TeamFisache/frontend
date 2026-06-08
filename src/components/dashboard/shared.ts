@@ -44,23 +44,14 @@ export function buildSalarySlices(salaryPlan: DashboardSalaryPlan): PortfolioSli
   const income = salaryPlan.monthlyIncome;
   if (income <= 0) return [];
 
-  const slices: PortfolioSlice[] = salaryPlan.allocations.map((a, i) => ({
-    label: a.purpose ?? '기타',
-    pct: Math.round(a.plannedAmount / income * 100),
-    color: SALARY_PALETTE[i % (SALARY_PALETTE.length - 2)],
-  }));
-
   const investAmt = salaryPlan.investmentAmount ?? 0;
-  if (investAmt > 0) {
-    slices.push({ label: '투자', pct: Math.round(investAmt / income * 100), color: '#1D9E75' });
-  }
+  const investPct = Math.round(investAmt / income * 100);
+  const spendPct = 100 - investPct;
 
-  const surplus = salaryPlan.surplus ?? 0;
-  if (surplus > 0) {
-    slices.push({ label: '잔여', pct: Math.round(surplus / income * 100), color: '#94a3b8' });
-  }
-
-  return slices;
+  return [
+    { label: '지출', pct: spendPct, color: '#94a3b8' },
+    { label: '투자', pct: investPct, color: '#1D9E75' },
+  ];
 }
 
 // 소비 카테고리 비율 아이템
