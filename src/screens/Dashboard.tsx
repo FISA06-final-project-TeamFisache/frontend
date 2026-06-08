@@ -325,11 +325,12 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
 
 const CHALLENGE_TYPES = new Set(['CHALLENGE_NAG', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
 
-function NotificationPanel({ onClose, items, setItems, onChallengeClick }: {
+function NotificationPanel({ onClose, items, setItems, onChallengeClick, userName }: {
   onClose: () => void;
   items: NotiItem[];
   setItems: Dispatch<SetStateAction<NotiItem[]>>;
   onChallengeClick: (id: string, type: string) => void;
+  userName: string;
 }) {
   const markRead = (id: string) => {
     setItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -392,7 +393,6 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick }: {
     </div>
   );
 }
-
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
@@ -472,9 +472,13 @@ export default function Dashboard() {
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
   const [notiOpen, setNotiOpen] = useState(false);
   const DEV_NOTI_ITEMS: NotiItem[] = [
-    { id: 'dev-nag', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '[DEV] 챌린지 소비 감지', body: '커피 3잔만 마시기 — 결제가 발생했어요', time: '방금 전', read: false },
-    { id: 'dev-complete', type: 'CHALLENGE_COMPLETE', icon: '🏆', iconBg: '#E1F5EE', title: '[DEV] 챌린지 성공!', body: '커피 3잔만 마시기 — 이번 주 미션 성공했어요', time: '1시간 전', read: false },
-    { id: 'dev-failed', type: 'CHALLENGE_FAILED', icon: '😢', iconBg: '#FCEBEB', title: '[DEV] 챌린지 종료', body: '커피 3잔만 마시기 — 다음엔 꼭 성공해봐요', time: '1일 전', read: false },
+    { id: 'dev-salary', type: 'SALARY_REBALANCING', icon: '💳', iconBg: '#E6F1FB', title: '월급', body: '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!', time: '방금 전', read: false },
+    { id: 'dev-nag-50', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '50% 도달했어요ㅜㅡㅜ', time: '1시간 전', read: false },
+    { id: 'dev-nag-80', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '80% 도달했어요..!', time: '2시간 전', read: false },
+    { id: 'dev-nag-90', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '90% 도달했어요!!!', time: '3시간 전', read: false },
+    { id: 'dev-complete', type: 'CHALLENGE_COMPLETE', icon: '🏆', iconBg: '#E1F5EE', title: '이번주 소비 미션', body: '뿌우~축하해요 성공했어요', time: '5시간 전', read: false },
+    { id: 'dev-failed', type: 'CHALLENGE_FAILED', icon: '😢', iconBg: '#FCEBEB', title: '이번주 소비 미션', body: '뿌우,,,아쉽게 실패했어요', time: '1일 전', read: false },
+    { id: 'dev-report', type: 'REPORT_READY', icon: '📋', iconBg: '#E1F5EE', title: '월간리포트', body: `${USER_NAME}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`, time: '2일 전', read: false },
   ];
   const [notiItems, setNotiItems] = useState<NotiItem[]>(DEV_NOTI_ITEMS);
   const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
@@ -859,8 +863,8 @@ export default function Dashboard() {
                 {
                   label: 'PorTI',
                   items: [
-                    { id: 'interest', title: '관심사 재설정', disabled: true, onClick: () => { } },
-                    { id: 'portrait', title: 'AI 자산 초상화', disabled: true, onClick: () => { } },
+                    { id: 'interest', title: '관심사 재설정', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/porti-survey', { state: { mode: 'editGoal' } }); } },
+                    { id: 'portrait', title: 'AI 자산 초상화', disabled: false, onClick: () => { if (!localStorage.getItem('agentProfile')) { alert('아직 AI 자산 초상화가 없어요. 먼저 PorTI 진단을 완료해주세요.'); return; } setSidebarOpen(false); navigate('/porti-survey', { state: { mode: 'viewProfile' } }); } },
                   ],
                 },
                 {
@@ -934,6 +938,7 @@ export default function Dashboard() {
               onClose={() => setNotiOpen(false)}
               items={notiItems}
               setItems={setNotiItems}
+              userName={USER_NAME}
               onChallengeClick={async (id, type) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
                   CHALLENGE_NAG: 'ACTIVE',
