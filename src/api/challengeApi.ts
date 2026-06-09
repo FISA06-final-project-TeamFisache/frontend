@@ -124,7 +124,7 @@ export interface ChallengeProposal {
   description: string;
   category: string;
   challengeSubType: string;
-  challengeType: 'FREQUENCY' | 'AMOUNT';
+  challengeType: 'AMOUNT' | 'COUNT';   // 백엔드 ChallengeType enum 과 일치
   target: number;
   estimatedSaving: number;
   ticker: string;
@@ -150,7 +150,7 @@ const FALLBACK_PROPOSAL: ChallengeProposal = {
   description: '이번주 카페 지출을 줄여 절약 습관을 만들어봐요!',
   category: '카페',
   challengeSubType: 'COFFEE',
-  challengeType: 'FREQUENCY',
+  challengeType: 'COUNT',
   target: 3,
   estimatedSaving: 24000,
   ticker: '삼성전자',
@@ -166,23 +166,12 @@ export async function recommendChallenge(): Promise<ChallengeProposal> {
   }
 }
 
-/** POST /challenges/adjust — 이전 제안 + 피드백으로 재생성 */
-export async function adjustChallenge(
-  prevProposals: Array<ChallengeProposal & { feedback: string }>,
-): Promise<ChallengeProposal> {
+/** POST /challenges/adjust?feedback= — 피드백으로 재생성 (백엔드는 feedback 쿼리 파라미터만 사용) */
+export async function adjustChallenge(feedback: string): Promise<ChallengeProposal> {
   try {
-    const res = await api.post<CommonResponse<ChallengeProposal>>('/challenges/adjust', {
-      previousProposals: prevProposals.map(p => ({
-        title: p.title,
-        description: p.description,
-        challengeSubType: p.challengeSubType,
-        challengeType: p.challengeType,
-        category: p.category,
-        estimatedSaving: p.estimatedSaving,
-        ticker: p.ticker,
-        feedback: p.feedback,
-      })),
-    });
+    const res = await api.post<CommonResponse<ChallengeProposal>>(
+      `/challenges/adjust?feedback=${encodeURIComponent(feedback)}`,
+    );
     return res.data;
   } catch {
     return FALLBACK_PROPOSAL;

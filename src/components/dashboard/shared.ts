@@ -11,18 +11,12 @@ import type {
 } from '../../api/dashboardApi';
 
 // ─── 공용 타입 ───────────────────────────────────────────────
-export interface SpendingItem { label: string; pct: number; color: string; }
+export interface SpendingItem { label: string; pct: number; color: string; amount: number; }
 export interface PortfolioSlice { label: string; pct: number; color: string; rate?: string; }
 
 // ─── 색상 상수 ───────────────────────────────────────────────
-// 소비 카테고리 색상 (API 카테고리명 → 표시 색상, (하드))
-export const SPENDING_COLOR: Record<string, string> = {
-  '식비': '#D85A30',
-  '문화/여가': '#D85A30',
-  '온라인쇼핑': '#A32D2D',
-  '교통': '#D85A30',
-  '기타': '#D85A30',
-};
+// 소비 카테고리 도넛 팔레트 — 카테고리별로 distinct 하게 인덱스 순환
+export const SPENDING_PALETTE = ['#D85A30', '#EF9F27', '#E2B93B', '#1D9E75', '#378ADD', '#7F77DD', '#A32D2D', '#5DCAA5'];
 
 // 포트폴리오 카테고리별 색상 (categoryLabel → 색상)
 export const PORTFOLIO_COLOR: Record<string, string> = {
@@ -56,10 +50,11 @@ export function buildSalarySlices(salaryPlan: DashboardSalaryPlan): PortfolioSli
 
 // 소비 카테고리 비율 아이템
 export function buildSpendingItems(categories: DashboardCategoryExpense[]): SpendingItem[] {
-  return categories.map(c => ({
+  return categories.map((c, i) => ({
     label: c.categoryName,
     pct: c.percentage,
-    color: SPENDING_COLOR[c.categoryName] ?? '#D85A30',
+    color: SPENDING_PALETTE[i % SPENDING_PALETTE.length],
+    amount: c.expenseAmount,
   }));
 }
 

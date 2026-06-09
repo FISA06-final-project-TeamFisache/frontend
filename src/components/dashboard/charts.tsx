@@ -6,18 +6,43 @@ const DONUT_R = 28;
 const CIRC = 2 * Math.PI * DONUT_R;
 
 export function DonutChart({ data }: { data: PortfolioSlice[] }) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const active = activeIdx !== null ? data[activeIdx] : null;
   let offset = 0;
   return (
-    <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
-      {data.map((d, i) => {
-        const dash = (d.pct / 100) * CIRC;
-        const el = (
-          <circle key={i} cx="40" cy="40" r={DONUT_R} fill="none" stroke={d.color} strokeWidth="14" strokeDasharray={`${dash} ${CIRC - dash}`} strokeDashoffset={-offset} />
-        );
-        offset += dash;
-        return el;
-      })}
-    </svg>
+    <div style={{ position: 'relative', width: 80, height: 80, flexShrink: 0 }}>
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        {data.map((d, i) => {
+          const dash = (d.pct / 100) * CIRC;
+          const el = (
+            <circle
+              key={i}
+              cx="40" cy="40" r={DONUT_R}
+              fill="none"
+              stroke={d.color}
+              strokeWidth="14"
+              strokeDasharray={`${dash} ${CIRC - dash}`}
+              strokeDashoffset={-offset}
+              opacity={activeIdx === null || activeIdx === i ? 1 : 0.25}
+              onMouseEnter={() => setActiveIdx(i)}
+              onMouseLeave={() => setActiveIdx(null)}
+              style={{ cursor: 'default', pointerEvents: 'stroke', transition: 'opacity 0.15s' }}
+            />
+          );
+          offset += dash;
+          return el;
+        })}
+      </svg>
+      {active && (
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+          textAlign: 'center', pointerEvents: 'none', width: 46,
+        }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: active.color, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active.label}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{active.pct}%</div>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -421,7 +421,8 @@ function SalaryDetail({ allocations, assets }: { allocations: DashboardAllocatio
       boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
       animation: 'fadeIn 0.2s ease-out',
     }}>
-      <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12, marginTop: 0 }}>상세 지출 내역</p>
+      <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 2, marginTop: 0 }}>계좌별 자동 분배</p>
+      <p style={{ fontSize: 10, color: '#94a3b8', margin: '0 0 12px' }}>Pori와 함께 설정한 월급 분배 계획이에요</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {allocations.map((item, idx) => {
           const matchedAsset = assets.find(a => a.accountPurpose === item.purpose);
@@ -439,7 +440,7 @@ function SalaryDetail({ allocations, assets }: { allocations: DashboardAllocatio
                     color: item.purpose === '소비' || item.purpose === '생활비' ? '#854D0E' : '#185FA5',
                     padding: '1px 5px',
                     borderRadius: 4,
-                  }}>{item.purpose ?? '지출'}</span>
+                  }}>{item.purpose ?? '분배'}</span>
                 </div>
               </div>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{item.plannedAmount.toLocaleString()}원</p>
@@ -448,7 +449,7 @@ function SalaryDetail({ allocations, assets }: { allocations: DashboardAllocatio
         })}
         {allocations.length === 0 && (
           <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, textAlign: 'center', padding: '10px 0' }}>
-            등록된 지출 계획이 없습니다.
+            월급 분배 계획이 없어요.
           </p>
         )}
       </div>
@@ -458,7 +459,7 @@ function SalaryDetail({ allocations, assets }: { allocations: DashboardAllocatio
 // ─── 메인 대시보드 ───
 
 export default function Dashboard() {
-  const { userName: USER_NAME, logout } = useAuth();
+  const { userName: USER_NAME, logout, setUserName } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -510,7 +511,11 @@ export default function Dashboard() {
     let cancelled = false;
     setLoadError(null);
     getDashboard()
-      .then(d => { if (!cancelled) setDashboard(d); })
+      .then(d => {
+        if (cancelled) return;
+        setDashboard(d);
+        if (d.user?.name) setUserName(d.user.name);   // 서버에서 받아온 이름으로 인사 문구 갱신
+      })
       .catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : '대시보드 조회 실패'); });
     getAssets()
       .then(res => { if (!cancelled) setAssets(res); })
@@ -532,10 +537,10 @@ export default function Dashboard() {
   }, []);
 
   // ── UI 상태 ──────────────────────────────────────────────
-  const [anomalyOpen, setAnomalyOpen] = useState(false);
-  const [recapOpen, setRecapOpen] = useState(false);
-  const [salaryOpen, setSalaryOpen] = useState(false);
-  const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
+  // 위젯 상세는 한 번에 하나만 열림 (아코디언) — 다른 걸 누르면 기존 건 닫힘
+  type WidgetKey = 'consumption' | 'salary' | 'investment' | 'tax';
+  const [openWidget, setOpenWidget] = useState<WidgetKey | null>(null);
+  const toggleWidget = (k: WidgetKey) => setOpenWidget(prev => (prev === k ? null : k));
   const [notiOpen, setNotiOpen] = useState(false);
   const [notiItems, setNotiItems] = useState<NotiItem[]>([]);
   const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
@@ -550,7 +555,6 @@ export default function Dashboard() {
   const [challengeProposal, setChallengeProposal] = useState<ChallengeProposal | null>(null);
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [challengeAdjusting, setChallengeAdjusting] = useState(false);
-  const [adjustHistory, setAdjustHistory] = useState<Array<ChallengeProposal & { feedback: string }>>([]);
 
   // ── SSE 구독 ─────────────────────────────────────────────
   useEffect(() => {
@@ -630,9 +634,7 @@ export default function Dashboard() {
   const handleAdjust = async (feedback: string) => {
     if (!challengeProposal) return;
     setChallengeAdjusting(true);
-    const history = [...adjustHistory, { ...challengeProposal, feedback }];
-    setAdjustHistory(history);
-    const next = await adjustChallenge(history);
+    const next = await adjustChallenge(feedback);
     setChallengeProposal(next);
     setChallengeAdjusting(false);
   };
@@ -752,8 +754,8 @@ export default function Dashboard() {
           <div style={{ gridColumn: '1' }}>
             <ConsumptionWidget
               view={consumptionView!}
-              active={recapOpen}
-              onClick={() => setRecapOpen(v => !v)}
+              active={openWidget === 'consumption'}
+              onClick={() => toggleWidget('consumption')}
             />
           </div>
 
@@ -762,13 +764,13 @@ export default function Dashboard() {
             <SalaryGuideWidget
               income={dashboard.salaryPlan.monthlyIncome}
               slices={salarySlices}
-              active={salaryOpen}
-              onClick={() => setSalaryOpen(v => !v)}
+              active={openWidget === 'salary'}
+              onClick={() => toggleWidget('salary')}
             />
           </div>
 
-          {/* 소비 펼침 영역 (recapOpen) */}
-          {recapOpen && (
+          {/* 소비 펼침 영역 */}
+          {openWidget === 'consumption' && (
             <div style={{ gridColumn: '1 / -1' }}>
               <ConsumptionDetail
                 spendingItems={spendingItems}
@@ -776,8 +778,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* 월급 펼침 영역 (salaryOpen) */}
-          {salaryOpen && (
+          {/* 월급 펼침 영역 */}
+          {openWidget === 'salary' && (
             <div style={{ gridColumn: '1 / -1' }}>
               <SalaryDetail
                 allocations={dashboard.salaryPlan.allocations}
@@ -809,8 +811,8 @@ export default function Dashboard() {
             <InvestmentWidget
               investAmt={dashboard.assetsSummary.investmentBalance}
               portfolioItems={dashboard.portfolio.slice(0, 3)}
-              active={portfolioDetailOpen}
-              onClick={() => setPortfolioDetailOpen(v => !v)}
+              active={openWidget === 'investment'}
+              onClick={() => toggleWidget('investment')}
             />
           </div>
 
@@ -818,20 +820,20 @@ export default function Dashboard() {
           <div style={{ gridColumn: '2' }}>
             <TaxSavingWidget
               taxDeduction={taxSaving?.totalTaxDeduction ?? 0}
-              active={anomalyOpen}
-              onClick={() => setAnomalyOpen(v => !v)}
+              active={openWidget === 'tax'}
+              onClick={() => toggleWidget('tax')}
             />
           </div>
 
-          {/* 투자 펼침 영역 (portfolioDetailOpen) */}
-          {portfolioDetailOpen && (
+          {/* 투자 펼침 영역 */}
+          {openWidget === 'investment' && (
             <div style={{ gridColumn: '1 / -1' }}>
               <InvestmentDetail portfolioSlices={portfolioSlices} portfolio={dashboard.portfolio} />
             </div>
           )}
 
-          {/* 절세 펼침 영역 (anomalyOpen) */}
-          {anomalyOpen && taxSaving && (
+          {/* 절세 펼침 영역 */}
+          {openWidget === 'tax' && taxSaving && (
             <div style={{ gridColumn: '1 / -1' }}>
               <TaxSavingDetail view={taxSaving} />
             </div>

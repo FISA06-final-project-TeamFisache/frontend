@@ -33,6 +33,11 @@ const TERM_COLORS: Record<string, { bg: string; text: string }> = {
 const PIE_TERM_COLORS: Record<FlowTerm, string> = { 단기: '#FECACA', 중기: '#FDE68A', 장기: '#BBF7D0' };
 const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
 
+// 흐름 정렬 — 단기 → 중기 → 장기 (같은 term 내 순서는 API 순서 유지: 안정 정렬)
+const TERM_ORDER: Record<FlowTerm, number> = { 단기: 0, 중기: 1, 장기: 2 };
+const sortFlowsByTerm = (flows: Flow[]): Flow[] =>
+  [...flows].sort((a, b) => TERM_ORDER[a.term] - TERM_ORDER[b.term]);
+
 // ─── 편집 모달 상태 타입 ──────────────────────────────────
 type EditorMode =
   | null
@@ -615,7 +620,7 @@ export default function AssetPortfolio() {
     Promise.all([getPortfolioFlows(), getAvailableAssets(), getProducts()])
       .then(([flowsRes, assetsRes, productsRes]) => {
         if (cancelled) return;
-        setFlows(flowsRes.flows.map(apiToFlow));
+        setFlows(sortFlowsByTerm(flowsRes.flows.map(apiToFlow)));
         setMonthlyInvestAmount(Math.round((flowsRes.monthlyInvestAmount ?? 0) / 10000));
         setAvailableAssets(assetsRes.assets);
         assetsRes.assets.forEach(assetToHubItem);
@@ -708,7 +713,7 @@ export default function AssetPortfolio() {
       const updatedList = await Promise.all(
         flows.map(f => updatePortfolioFlow(f.id, buildRequest(f))),
       );
-      setFlows(updatedList.map(apiToFlow));
+      setFlows(sortFlowsByTerm(updatedList.map(apiToFlow)));
       if (opened.length > 0) {
         setOpenedAccounts(opened);   // 개설 완료 오버레이 → 대시보드 이동은 오버레이 버튼에서
         setSaving(false);
