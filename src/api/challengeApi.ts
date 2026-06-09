@@ -61,12 +61,42 @@ const MOCK_CHALLENGE_DETAIL: ChallengeAlarmDetail = {
   weeklyStatus: 'ACTIVE',
 };
 
+/** 백엔드 GET /notifications/nag/{id} 응답 (NagNotificationResponseDto) */
+interface NagNotificationResponse {
+  id: string;
+  type: string;                 // NAG_50 | NAG_80 | NAG_90 | CHALLENGE_COMPLETE | CHALLENGE_FAILED
+  challengeTitle: string | null;
+  stockName: string | null;
+  affordableShares: number | null;
+  content: string;              // 잔소리/결과 메시지
+  isRead: boolean;
+  sentAt: string;
+}
+
 export async function getChallengeAlarmDetail(notificationId: string): Promise<ChallengeAlarmDetail> {
   try {
-    const res = await api.get<CommonResponse<ChallengeAlarmDetail>>(
-      `/notifications/${notificationId}/challenge`
+    const res = await api.get<CommonResponse<NagNotificationResponse>>(
+      `/notifications/nag/${notificationId}`
     );
-    return res.data;
+    const d = res.data;
+    // 백엔드는 NAG 알림 단건 정보만 준다. 모달이 쓰는 형태로 매핑하되,
+    // 백엔드가 제공하지 않는 필드(dailyLogs·weeklyBaseline·category 등)는 안전 기본값.
+    // progressPercent·weeklyStatus 는 호출부(Dashboard)가 알림 타입으로 덮어쓴다.
+    return {
+      challengeId: '',
+      title: d.challengeTitle ?? '미니챌린지',
+      category: '',
+      challengeType: 'FREQUENCY',
+      target: 0,
+      currentCount: 0,
+      estimatedSaving: 0,
+      tickerName: d.stockName ?? '',
+      estimatedShares: d.affordableShares != null ? `${d.affordableShares.toFixed(2)}주` : '-',
+      dailyLogs: [],
+      progressPercent: 0,
+      aiComment: d.content,
+      weeklyStatus: 'ACTIVE',
+    };
   } catch {
     // TODO: 백엔드 연결 후 mock 제거
     return MOCK_CHALLENGE_DETAIL;
@@ -107,10 +137,11 @@ const FALLBACK_STOCK: StockInfo = {
   ],
 };
 
-/** GET /stocks/{ticker} — 최근 1달 주식 시세 + 차트 */
-export async function getStockInfo(ticker: string): Promise<StockInfo> {
+/** GET /stocks — 진행 중인 챌린지의 보상 주식 시세 + 차트 (백엔드가 활성 챌린지에서 ticker를 꺼냄) */
+export async function getStockInfo(): Promise<StockInfo> {
   try {
-    const res = await api.get<CommonResponse<StockInfo>>(`/stocks/${encodeURIComponent(ticker)}`);
+    const res = await api.get<CommonResponse<StockInfo>>('/stocks');
+    if (!res.success || !res.data) return FALLBACK_STOCK;   // 활성 챌린지 없음/시세 조회 실패 → 폴백
     return res.data;
   } catch {
     return FALLBACK_STOCK;

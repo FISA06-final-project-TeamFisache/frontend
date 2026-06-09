@@ -579,19 +579,16 @@ export default function Dashboard() {
         CHALLENGE_FAILED: 'FAILED',
       };
 
+      // 챌린지 알림은 모달을 자동으로 띄우지 않는다(알림창에서 클릭 시에만 표시).
+      // 위젯 진행바 동기화를 위해 진행률만 갱신한다.
       if (payload.type in challengeTypeMap) {
-        try {
-          const detail = await getChallengeAlarmDetail(payload.id);
-          const progressPercent =
-            payload.type === 'CHALLENGE_COMPLETE' ? 100 :
-            payload.type === 'CHALLENGE_FAILED' ? 100 :
-            payload.type === 'NAG_90' ? 90 :
-            payload.type === 'NAG_80' ? 80 : 50;
-          setChallengeAlarmDetail({ ...detail, progressPercent, weeklyStatus: challengeTypeMap[payload.type] });
-          setChallengeProgress(progressPercent);
-          sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
-          setChallengeAlarmOpen(true);
-        } catch { /* ignore */ }
+        const progressPercent =
+          payload.type === 'CHALLENGE_COMPLETE' ? 100 :
+          payload.type === 'CHALLENGE_FAILED' ? 100 :
+          payload.type === 'NAG_90' ? 90 :
+          payload.type === 'NAG_80' ? 80 : 50;
+        setChallengeProgress(progressPercent);
+        sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
       }
     });
 

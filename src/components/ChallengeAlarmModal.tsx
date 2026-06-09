@@ -287,7 +287,7 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
   useEffect(() => {
     if (!showChartDetail || stockInfo || stockLoading) return;
     setStockLoading(true);
-    getStockInfo(detail.tickerName)
+    getStockInfo()
       .then(s => setStockInfo(s))
       .finally(() => setStockLoading(false));
   }, [showChartDetail]); // eslint-disable-line react-hooks/exhaustive-deps
