@@ -605,6 +605,8 @@ export default function AssetPortfolio() {
   const [editor, setEditor] = useState<EditorMode>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // 저장 시 새로 개설된 추천 계좌 — 개설 완료 오버레이 표시용
+  const [openedAccounts, setOpenedAccounts] = useState<HubItem[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -700,12 +702,19 @@ export default function AssetPortfolio() {
 
   const handleSaveAll = async () => {
     setSaving(true);
+    // 저장 전에 추천(미보유) 흐름의 모을 통장을 캡처 — 저장 후엔 보유 계좌로 바뀌어 식별 불가
+    const opened = flows.filter(f => f.isRecommendation).map(f => lookupHub(f.hubId));
     try {
       const updatedList = await Promise.all(
         flows.map(f => updatePortfolioFlow(f.id, buildRequest(f))),
       );
       setFlows(updatedList.map(apiToFlow));
-      navigate('/dashboard');
+      if (opened.length > 0) {
+        setOpenedAccounts(opened);   // 개설 완료 오버레이 → 대시보드 이동은 오버레이 버튼에서
+        setSaving(false);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (e) {
       alert(e instanceof Error ? e.message : '저장 실패');
       setSaving(false);
@@ -873,6 +882,40 @@ export default function AssetPortfolio() {
           onClose={() => setEditor(null)}
           onPick={handleProductPick}
         />
+      )}
+
+      {/* 추천 계좌 개설 완료 오버레이 */}
+      {openedAccounts && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <style>{`@keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }`}</style>
+          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 340, padding: '28px 22px 22px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: 44, marginBottom: 8, animation: 'pop 0.4s ease-out' }}>✨</div>
+            <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>
+              추천 계좌 {openedAccounts.length}개를<br />새로 개설했어요
+            </h3>
+            <p style={{ margin: '0 0 18px', fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+              이제 이 계좌로 매달 자동으로 모을 수 있어요
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+              {openedAccounts.map((h, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#F8FAFC', border: '1px solid #e2e8f0', borderRadius: 12, textAlign: 'left' }}>
+                  <Logo letter={h.logo} bg={h.logoBg} color={h.logoColor} size={34} imgSrc={h.imgSrc} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{h.name}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{h.hubLabel}</div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '3px 8px', borderRadius: 99, flexShrink: 0 }}>개설 완료</span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate('/dashboard')}
+              style={{ width: '100%', padding: '14px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}
+            >
+              대시보드로 가기
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
