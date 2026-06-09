@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Check } from 'lucide-react';
-import { getMyDataPreview, syncAssets, getAssetSummary, getAssets, type Asset, type PreviewAccount, type AssetSummary } from '../api/assetApi';
+import { getMyDataPreview, syncAssets, getAssetSummary, type Asset, type PreviewAccount, type AssetSummary } from '../api/assetApi';
 import wooriLogo   from '../assets/banks/woori.png';
 import kbLogo      from '../assets/banks/kb.png';
 import kakaoLogo   from '../assets/banks/kakao.png';
@@ -73,7 +73,6 @@ export default function Linking() {
   const [linkStatus, setLinkStatus] = useState<Record<string, LinkStatus>>({});
   const [pickedAccounts, setPickedAccounts] = useState<string[]>([]);
   const [previewAccounts, setPreviewAccounts] = useState<PreviewAccount[]>([]);
-  const [linkedNumbers, setLinkedNumbers] = useState<Set<string>>(new Set());  // 이미 연동된 계좌번호
   const [syncLoading, setSyncLoading] = useState(false);
   const [summary, setSummary] = useState<AssetSummary | null>(null);
   const [syncedAssets, setSyncedAssets] = useState<Asset[]>([]);
@@ -103,15 +102,10 @@ export default function Linking() {
         setTimeout(() => {
           setLinkStatus(prev => ({ ...prev, [id]: 'done' }));
           if (i === selected.length - 1) {
-            // 마지막 은행 완료 후: 마이데이터 전체 계좌 + 이미 연동된 계좌를 함께 조회
-            Promise.all([getMyDataPreview([]), getAssets().catch(() => [] as Asset[])])
-              .then(([accounts, linkedAssets]) => {
-                setPreviewAccounts(accounts);
-                const linked = new Set(linkedAssets.map(a => a.assetNumber));
-                setLinkedNumbers(linked);
-                // 이미 연동된 계좌는 기본 선택 (재연동 시 해제 방지)
-                setPickedAccounts(accounts.filter(a => linked.has(a.assetNumber)).map(a => a.assetNumber));
-              })
+            // 마지막 은행 완료 후: 선택한 기관의 마이데이터 계좌 조회
+            const institutions = selected.map(id => BANK_LIST.find(b => b.id === id)!.name);
+            getMyDataPreview(institutions)
+              .then(accounts => setPreviewAccounts(accounts))
               .catch(() => { setPreviewAccounts([]); })
               .finally(() => { setTimeout(() => setStep('account-pick'), 600); });
           }
@@ -330,9 +324,9 @@ export default function Linking() {
         가져온 계좌 중 사용할 계좌를 선택해주세요
       </p>
 
-      {/* 전체 선택 (연동된 계좌는 항상 유지) */}
+      {/* 전체 선택 */}
       <button
-        onClick={() => setPickedAccounts(isAll ? allAssetNumbers.filter(n => linkedNumbers.has(n)) : allAssetNumbers)}
+        onClick={() => setPickedAccounts(isAll ? [] : allAssetNumbers)}
         className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-4 active:scale-[0.99] transition"
       >
         <span className="text-sm font-bold text-blue-700">전체 선택</span>
@@ -357,15 +351,12 @@ export default function Linking() {
                 </div>
                 <div className="space-y-2">
                   {accs.map(acc => {
-                    const isLinked = linkedNumbers.has(acc.assetNumber);
-                    const checked = isLinked || pickedAccounts.includes(acc.assetNumber);
+                    const checked = pickedAccounts.includes(acc.assetNumber);
                     return (
                       <button
                         key={acc.assetNumber}
-                        onClick={() => { if (!isLinked) togglePickedAccount(acc.assetNumber); }}
-                        disabled={isLinked}
+                        onClick={() => togglePickedAccount(acc.assetNumber)}
                         className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition ${
-                          isLinked ? 'border-green-200 bg-green-50 cursor-default' :
                           checked  ? 'border-blue-400 bg-blue-50 active:scale-[0.98]' :
                                      'border-gray-100 bg-white hover:border-gray-200 active:scale-[0.98]'
                         }`}
@@ -376,9 +367,6 @@ export default function Linking() {
                               {assetTypeLabel(acc.assetType)}
                             </span>
                             <span className="text-sm font-bold text-gray-800 truncate">{acc.accountName}</span>
-                            {isLinked && (
-                              <span className="text-[10px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded shrink-0">연결됨</span>
-                            )}
                           </div>
                           <p className="text-xs text-gray-500">{acc.balance.toLocaleString()}원</p>
                         </div>
@@ -397,9 +385,7 @@ export default function Linking() {
         onClick={async () => {
           setSyncLoading(true);
           try {
-            // 이미 연동된 계좌는 항상 포함 (sync가 미선택 계좌를 해제하므로)
-            const finalSelection = Array.from(new Set([...pickedAccounts, ...linkedNumbers]));
-            const assets = await syncAssets(finalSelection);
+            const assets = await syncAssets(pickedAccounts);
             setSyncedAssets(assets);
             const s = await getAssetSummary().catch(() => null);
             setSummary(s);
