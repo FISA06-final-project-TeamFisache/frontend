@@ -31,34 +31,7 @@ import { InvestmentWidget, InvestmentDetail } from '../components/dashboard/Inve
 import { TaxSavingWidget, TaxSavingDetail } from '../components/dashboard/TaxSavingWidget';
 
 
-interface Goal {
-  id: number | string;
-  icon: string;
-  label: string;
-  target: string;
-  progress: number;
-  dday: number;
-  color: { bg: string; bar: string; text: string; badge: string; badgeText: string };
-}
-
 interface NotiItem { id: string; type: string; icon: string; iconBg: string; title: string; body: string; time: string; read: boolean; }
-
-const GOAL_COLORS: Goal['color'][] = [
-  { bg: '#EEEDFE', bar: '#7F77DD', text: '#534AB7', badge: '#EEEDFE', badgeText: '#534AB7' },
-  { bg: '#E1F5EE', bar: '#1D9E75', text: '#0F6E56', badge: '#E1F5EE', badgeText: '#0F6E56' },
-  { bg: '#FAEEDA', bar: '#EF9F27', text: '#854F0B', badge: '#FAEEDA', badgeText: '#854F0B' },
-  { bg: '#FCEBEB', bar: '#E24B4A', text: '#A32D2D', badge: '#FCEBEB', badgeText: '#A32D2D' },
-];
-
-function pickGoalIcon(text: string): string {
-  if (/여행|해외|비행|유럽|제주|일본/.test(text)) return '✈';
-  if (/집|주택|전세|매매|부동산/.test(text)) return '🏠';
-  if (/차|자동차/.test(text)) return '🚗';
-  if (/결혼|웨딩/.test(text)) return '💍';
-  if (/공부|학위|자격증|교육/.test(text)) return '📚';
-  return '🎯';
-}
-
 
 // ─── 알림 패널 ───
 
@@ -340,7 +313,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
   onClose: () => void;
   items: NotiItem[];
   setItems: Dispatch<SetStateAction<NotiItem[]>>;
-  onChallengeClick: (id: string, type: string) => void;
+  onChallengeClick: (id: string, type: string, body: string) => void;
   onSalaryClick: (id: string) => void;
   onReportClick: () => void;
   userName: string;
@@ -387,7 +360,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
 
           if (n.type === 'SALARY_REBALANCING') {
             title = '월급';
-            if (n.id === 'dev-salary-change') {
+            if (n.body.includes('변동') || n.body.includes('변경')) {
               body = '월급에 변동이 생겼어요! - 변동된 금액에 맞춰 PorTI 가이드를 다시 세워봐요!';
             } else {
               body = '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!';
@@ -413,7 +386,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
               markRead(n.id);
               if (n.type === 'SALARY_REBALANCING') { onClose(); onSalaryClick(n.id); return; }
               if (n.type === 'REPORT_READY') { onReportClick(); return; }
-              if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type);
+              if (CHALLENGE_TYPES.has(n.type)) onChallengeClick(n.id, n.type, n.body);
             }}
               style={{
                 background: '#fff', border: '0.5px solid #f1f5f9', borderRadius: 14, padding: 14,
@@ -552,7 +525,7 @@ export default function Dashboard() {
           const { icon, iconBg } = notiTypeToIcon(n.type);
           return { id: n.id, type: n.type, icon, iconBg, title: n.title, body: n.content, time: formatRelativeTime(n.sentAt), read: n.isRead };
         });
-        setNotiItems(prev => [...fetched, ...prev.filter(n => n.id.startsWith('dev-'))]);
+        setNotiItems(fetched);
       })
       .catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -564,26 +537,10 @@ export default function Dashboard() {
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false);
   const [notiOpen, setNotiOpen] = useState(false);
-  const DEV_NOTI_ITEMS: NotiItem[] = [
-    { id: 'dev-salary-normal', type: 'SALARY_REBALANCING', icon: '💳', iconBg: '#E6F1FB', title: '월급', body: '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!', time: '방금 전', read: false },
-    { id: 'dev-salary-change', type: 'SALARY_REBALANCING', icon: '💳', iconBg: '#E6F1FB', title: '월급', body: '월급에 변동이 생겼어요! - 변동된 금액에 맞춰 PorTI 가이드를 다시 세워봐요!', time: '방금 전', read: false },
-    { id: 'dev-nag-50', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '50% 도달했어요', time: '1시간 전', read: false },
-    { id: 'dev-nag-80', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '80% 도달했어요', time: '2시간 전', read: false },
-    { id: 'dev-nag-90', type: 'CHALLENGE_NAG', icon: '⚡', iconBg: '#FEF9C3', title: '이번주 소비 미션', body: '90% 도달했어요', time: '3시간 전', read: false },
-    { id: 'dev-complete', type: 'CHALLENGE_COMPLETE', icon: '🏆', iconBg: '#E1F5EE', title: '이번주 소비 미션', body: '뿌우~축하해요 성공했어요', time: '5시간 전', read: false },
-    { id: 'dev-failed', type: 'CHALLENGE_FAILED', icon: '😢', iconBg: '#FCEBEB', title: '이번주 소비 미션', body: '뿌우,,,아쉽게 실패했어요', time: '1일 전', read: false },
-    { id: 'dev-report', type: 'REPORT_READY', icon: '📋', iconBg: '#E1F5EE', title: '월간리포트', body: `${USER_NAME}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`, time: '2일 전', read: false },
-  ];
-  const [notiItems, setNotiItems] = useState<NotiItem[]>(DEV_NOTI_ITEMS);
+  const [notiItems, setNotiItems] = useState<NotiItem[]>([]);
   const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [salaryMgmtOpen, setSalaryMgmtOpen] = useState(false);
-  const [peerTab, setPeerTab] = useState<'asset' | 'product'>('asset');
-  const [goals, setGoals] = useState<Goal[]>(() => {
-    try { return JSON.parse(sessionStorage.getItem('user:goals') ?? '[]'); } catch { return []; }
-  });
-  const [goalModalOpen, setGoalModalOpen] = useState(false);
-  const [goalText, setGoalText] = useState('');
   const [challengeProgress, setChallengeProgress] = useState<number>(() => {
     try { return parseInt(sessionStorage.getItem(`challenge:progress:${new Date().getMonth()}`) ?? '0', 10); }
     catch { return 0; }
@@ -625,7 +582,14 @@ export default function Dashboard() {
       if (payload.type in challengeTypeMap) {
         try {
           const detail = await getChallengeAlarmDetail(payload.id);
-          setChallengeAlarmDetail({ ...detail, weeklyStatus: challengeTypeMap[payload.type] });
+          const progressPercent =
+            payload.type === 'CHALLENGE_COMPLETE' ? 100 :
+            payload.type === 'CHALLENGE_FAILED' ? 100 :
+            payload.content.includes('90') ? 90 :
+            payload.content.includes('80') ? 80 : 50;
+          setChallengeAlarmDetail({ ...detail, progressPercent, weeklyStatus: challengeTypeMap[payload.type] });
+          setChallengeProgress(progressPercent);
+          sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
           setChallengeAlarmOpen(true);
         } catch { /* ignore */ }
       }
@@ -645,21 +609,6 @@ export default function Dashboard() {
   const [poriProposal, setPoriProposal] = useState<Proposal | null>(null);
   const [poriError, setPoriError] = useState<string | null>(null);
   const poriInputRef = useRef<HTMLTextAreaElement>(null);
-
-  // 대시보드 fetch 결과로 목표 카드 채우기 (events[0] 우선)
-  useEffect(() => {
-    if (!dashboard || dashboard.events.length === 0) return;
-    const e = dashboard.events[0];
-    setGoals([{
-      id: e.id,
-      icon: pickGoalIcon(e.title),
-      label: e.title,
-      target: `${e.currentAmount.toLocaleString()} / ${e.targetAmount.toLocaleString()}원`,
-      progress: e.progressRate,
-      dday: e.dday,
-      color: GOAL_COLORS[0],
-    }]);
-  }, [dashboard]);
 
   // ── 위젯 표시용 파생 데이터 (API → props 매핑) ──────────
   // 매핑/계산 로직은 components/dashboard/shared.ts 에 모아둠.
@@ -693,27 +642,6 @@ export default function Dashboard() {
     try { await createChallenge(challengeProposal); } catch { /* ignore */ }
     setChallengeProgress(1);
     sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '1');
-  };
-
-  const handleGoalSubmit = () => {
-    const text = goalText.trim();
-    if (!text) return;
-    const newGoal: Goal = {
-      id: Date.now(),
-      icon: pickGoalIcon(text),
-      label: text,
-      target: '목표 설정 중',
-      progress: 0,
-      dday: 365,
-      color: GOAL_COLORS[goals.length % GOAL_COLORS.length],
-    };
-    const updated = [newGoal]; // 단일 목표
-    setGoals(updated);
-    sessionStorage.setItem('user:goals', JSON.stringify(updated));
-    sessionStorage.setItem('user:goal', text);
-    setGoalText('');
-    setGoalModalOpen(false);
-    navigate('/prescription-loading');
   };
 
   const unreadCount = notiItems.filter(n => !n.read).length;
@@ -844,7 +772,6 @@ export default function Dashboard() {
             <div style={{ gridColumn: '1 / -1' }}>
               <ConsumptionDetail
                 spendingItems={spendingItems}
-                categories={dashboard.consumption.categories}
               />
             </div>
           )}
@@ -914,59 +841,6 @@ export default function Dashboard() {
 
 
       </div>
-
-      {/* 목표 추가 모달 */}
-      {goalModalOpen && (
-        <div
-          onClick={() => setGoalModalOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
-            animation: 'fadeIn 0.2s ease-out',
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: 375, background: '#fff',
-              borderRadius: '20px 20px 0 0', padding: '20px 20px 36px',
-              animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>새 목표 추가</span>
-              <button onClick={() => setGoalModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#64748b' }}>✕</button>
-            </div>
-            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px' }}>어떤 목표를 이루고 싶으세요?</p>
-            <input
-              value={goalText}
-              onChange={e => setGoalText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleGoalSubmit(); }}
-              placeholder="예: 내년 5월에 유럽 여행 가고 싶어요"
-              autoFocus
-              style={{
-                width: '100%', boxSizing: 'border-box', marginBottom: 12,
-                fontSize: 14, padding: '12px 14px',
-                border: '1px solid #e2e8f0', borderRadius: 12,
-                background: '#EFF8FF', color: '#0f172a', outline: 'none',
-              }}
-            />
-            <button
-              onClick={handleGoalSubmit}
-              disabled={!goalText.trim()}
-              style={{
-                width: '100%', padding: '14px 0', fontSize: 14, fontWeight: 700,
-                background: goalText.trim() ? '#0f172a' : '#cbd5e1',
-                color: '#fff', border: 'none', borderRadius: 12,
-                cursor: goalText.trim() ? 'pointer' : 'not-allowed',
-              }}
-            >
-              Pori가 목표 설정해드릴게요 →
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* 사이드바 */}
       {sidebarOpen && (
@@ -1075,14 +949,21 @@ export default function Dashboard() {
               userName={USER_NAME}
               onSalaryClick={(id) => { setNotiOpen(false); navigate('/salary-management', { state: { mockSalaryDelta: id === 'dev-salary-change' ? 100000 : 0 } }); }}
               onReportClick={() => { setNotiOpen(false); navigate('/monthly-report'); }}
-              onChallengeClick={async (id, type) => {
+              onChallengeClick={async (id, type, body) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
                   CHALLENGE_NAG: 'ACTIVE',
                   CHALLENGE_COMPLETE: 'SUCCESS',
                   CHALLENGE_FAILED: 'FAILED',
                 };
                 const detail = await getChallengeAlarmDetail(id);
-                setChallengeAlarmDetail({ ...detail, weeklyStatus: challengeTypeMap[type] });
+                const progressPercent =
+                  type === 'CHALLENGE_COMPLETE' ? 100 :
+                  type === 'CHALLENGE_FAILED' ? 100 :
+                  body.includes('90') ? 90 :
+                  body.includes('80') ? 80 : 50;
+                setChallengeAlarmDetail({ ...detail, progressPercent, weeklyStatus: challengeTypeMap[type] });
+                setChallengeProgress(progressPercent);
+                sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
                 setNotiOpen(false);
                 setChallengeAlarmOpen(true);
               }}

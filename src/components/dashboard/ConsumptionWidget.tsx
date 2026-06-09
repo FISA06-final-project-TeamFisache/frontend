@@ -1,5 +1,4 @@
 // 소비 위젯 — 세로 연료게이지로 예산 잔여 비율 표시 (+ 펼침 상세)
-import type { DashboardCategoryExpense } from '../../api/dashboardApi';
 import { fmtManwon, type ConsumptionView, type SpendingItem } from './shared';
 
 export function ConsumptionWidget({ view, active, onClick }: {
@@ -77,9 +76,8 @@ export function ConsumptionWidget({ view, active, onClick }: {
   );
 }
 
-export function ConsumptionDetail({ spendingItems, categories }: {
+export function ConsumptionDetail({ spendingItems }: {
   spendingItems: SpendingItem[];
-  categories: DashboardCategoryExpense[];
 }) {
   return (
     <div style={{
@@ -92,7 +90,7 @@ export function ConsumptionDetail({ spendingItems, categories }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', margin: 0 }}>지출 카테고리 비율</p>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
         {spendingItems.map(s => (
           <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 11, color: '#64748b', width: 60, flexShrink: 0 }}>{s.label}</span>
@@ -100,21 +98,6 @@ export function ConsumptionDetail({ spendingItems, categories }: {
               <div style={{ width: `${s.pct}%`, height: '100%', background: s.color, borderRadius: 99 }} />
             </div>
             <span style={{ fontSize: 11, fontWeight: 500, color: '#0f172a', width: 32, textAlign: 'right', flexShrink: 0 }}>{s.pct}%</span>
-          </div>
-        ))}
-      </div>
-      <p style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>상세 지출 내역</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {categories.map((item, idx) => (
-          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#cbd5e1' }} />
-              <div>
-                <p style={{ fontSize: 12, fontWeight: 500, color: '#0f172a', margin: 0 }}>{item.categoryName}</p>
-                <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>{item.sub ?? '-'}</p>
-              </div>
-            </div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>{item.expenseAmount.toLocaleString()}원</p>
           </div>
         ))}
       </div>
