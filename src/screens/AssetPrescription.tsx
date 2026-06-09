@@ -124,16 +124,17 @@ export default function AssetPrescription() {
   const [toast, setToast] = useState<{ top: number; left: number } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const applyRecommend = (data: AgentRecommend) => {
+  const applyRecommend = (data: AgentRecommend, assets: Asset[] = []) => {
     setTotalSalary(data.salary);
     setInvestmentAmount(data.investAmount);
+    const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
     setAccounts(data.rebalancingPlans.map((plan, i) => ({
       id: i,
       assetId: plan.assetId,
       assetType: plan.assetType,
-      bank: plan.nickname || plan.assetType,
+      bank: assetMap[plan.assetId]?.accountName || plan.institution,   // 왼쪽 = 통장이름
       bankName: plan.institution,
-      tag: plan.assetType,
+      tag: plan.nickname || plan.assetType,                            // 파란칸 = nickname(생활비/비상금/적금)
       amount: plan.amount,
       percent: data.salary > 0 ? Math.round((plan.amount / data.salary) * 100) : 0,
       isPinned: false,
@@ -147,8 +148,12 @@ export default function AssetPrescription() {
     const now = new Date();
 
     if (recommend) {
-      getAssets().then(assets => setLinkedAccounts(assets.map(assetToLinked))).catch(() => { });
-      applyRecommend(recommend);
+      getAssets()
+        .then(assets => {
+          setLinkedAccounts(assets.map(assetToLinked));
+          applyRecommend(recommend, assets);   // 통장이름 조인 위해 assets 전달
+        })
+        .catch(() => applyRecommend(recommend));
     } else {
       // assets + (agentRecommend or transferPlans) 동시 로드
       Promise.all([
@@ -157,7 +162,7 @@ export default function AssetPrescription() {
       ]).then(([assets, rec]) => {
         setLinkedAccounts(assets.map(assetToLinked));
         if (rec) {
-          applyRecommend(rec);
+          applyRecommend(rec, assets);
         } else {
           // Flask 장애 fallback: transfer-plans + assets로 분배 구성
           const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
@@ -168,19 +173,19 @@ export default function AssetPrescription() {
                 const salary = plan.currentSalary ?? 0;
                 setAccounts(plan.portfolioItems.map((p, i) => {
                   const asset = assetMap[p.assetId];
-                  // tag = 통장 별명 (accountName), bank = 기관명
+                  // bank = 통장이름, tag = nickname(accountPurpose) — applyRecommend 와 동일 규칙
                   const ASSET_TYPE_LABEL: Record<string, string> = {
                     CASH: '생활비', DEPOSIT: '저축', EMERGENCY: '비상금',
                     SAVING: '저축', FIXED: '고정지출', STOCK: '투자',
                   };
-                  const nickname = asset?.accountName ?? p.institution ?? p.assetType;
+                  const accountName = asset?.accountName ?? p.accountName ?? p.institution ?? p.assetType;
                   return {
                     id: i,
                     assetId: p.assetId,
                     assetType: p.assetType,
-                    bank: nickname,
+                    bank: accountName,
                     bankName: p.institution ?? '',
-                    tag: ASSET_TYPE_LABEL[p.assetType] ?? p.assetType,
+                    tag: p.accountPurpose ?? ASSET_TYPE_LABEL[p.assetType] ?? p.assetType,
                     amount: p.plannedAmount,
                     percent: salary > 0 ? Math.round((p.plannedAmount / salary) * 100) : 0,
                     isPinned: false,

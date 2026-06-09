@@ -307,7 +307,7 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
   );
 }
 
-const CHALLENGE_TYPES = new Set(['CHALLENGE_NAG', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
+const CHALLENGE_TYPES = new Set(['NAG_50', 'NAG_80', 'NAG_90', 'CHALLENGE_COMPLETE', 'CHALLENGE_FAILED']);
 
 function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalaryClick, onReportClick, userName }: {
   onClose: () => void;
@@ -368,11 +368,9 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
           } else if (n.type === 'REPORT_READY') {
             title = '월간리포트';
             body = `${userName}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`;
-          } else if (n.type === 'CHALLENGE_NAG') {
+          } else if (n.type === 'NAG_50' || n.type === 'NAG_80' || n.type === 'NAG_90') {
             title = '미니챌린지'; icon = '🚨'; iconBg = '#FEF9C3';
-            if (n.body.includes('50%')) body = '미션에 50% 도달했어요...';
-            else if (n.body.includes('80%')) body = '미션에 80% 도달했어요...';
-            else if (n.body.includes('90%')) body = '미션에 90% 도달했어요...';
+            body = `미션에 ${n.type.split('_')[1]}% 도달했어요...`;
           } else if (n.type === 'CHALLENGE_COMPLETE') {
             title = '미니챌린지'; icon = '🎁'; iconBg = '#E1F5EE';
             body = '뿌우~ 성공했어요. 리워드를 확인하세요!';
@@ -485,7 +483,9 @@ export default function Dashboard() {
     const map: Record<string, { icon: string; iconBg: string }> = {
       SALARY_REBALANCING: { icon: '💳', iconBg: '#E6F1FB' },
       REPORT_READY: { icon: '📋', iconBg: '#E1F5EE' },
-      CHALLENGE_NAG: { icon: '🚨', iconBg: '#FEF9C3' },
+      NAG_50: { icon: '🚨', iconBg: '#FEF9C3' },
+      NAG_80: { icon: '🚨', iconBg: '#FEF9C3' },
+      NAG_90: { icon: '🚨', iconBg: '#FEF9C3' },
       CHALLENGE_COMPLETE: { icon: '🎁', iconBg: '#FEF9C3' },
       CHALLENGE_FAILED: { icon: '🥲', iconBg: '#FEF9C3' },
     };
@@ -524,6 +524,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    // 알림은 백엔드(GET /notifications)에서 조회 — Kafka 파이프라인으로 생성된 실제 알림
     getNotifications()
       .then(notifications => {
         const fetched = (notifications ?? []).map(n => {
@@ -578,7 +579,9 @@ export default function Dashboard() {
       }, ...prev]);
 
       const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
-        CHALLENGE_NAG: 'ACTIVE',
+        NAG_50: 'ACTIVE',
+        NAG_80: 'ACTIVE',
+        NAG_90: 'ACTIVE',
         CHALLENGE_COMPLETE: 'SUCCESS',
         CHALLENGE_FAILED: 'FAILED',
       };
@@ -589,8 +592,8 @@ export default function Dashboard() {
           const progressPercent =
             payload.type === 'CHALLENGE_COMPLETE' ? 100 :
             payload.type === 'CHALLENGE_FAILED' ? 100 :
-            payload.content.includes('90') ? 90 :
-            payload.content.includes('80') ? 80 : 50;
+            payload.type === 'NAG_90' ? 90 :
+            payload.type === 'NAG_80' ? 80 : 50;
           setChallengeAlarmDetail({ ...detail, progressPercent, weeklyStatus: challengeTypeMap[payload.type] });
           setChallengeProgress(progressPercent);
           sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
@@ -949,11 +952,13 @@ export default function Dashboard() {
               items={notiItems}
               setItems={setNotiItems}
               userName={USER_NAME}
-              onSalaryClick={(id) => { setNotiOpen(false); navigate('/salary-management', { state: { mockSalaryDelta: id === 'dev-salary-change' ? 100000 : 0 } }); }}
+              onSalaryClick={() => { setNotiOpen(false); navigate('/salary-management'); }}
               onReportClick={() => { setNotiOpen(false); navigate('/monthly-report'); }}
               onChallengeClick={async (id, type, body) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
-                  CHALLENGE_NAG: 'ACTIVE',
+                  NAG_50: 'ACTIVE',
+                  NAG_80: 'ACTIVE',
+                  NAG_90: 'ACTIVE',
                   CHALLENGE_COMPLETE: 'SUCCESS',
                   CHALLENGE_FAILED: 'FAILED',
                 };
@@ -961,8 +966,8 @@ export default function Dashboard() {
                 const progressPercent =
                   type === 'CHALLENGE_COMPLETE' ? 100 :
                   type === 'CHALLENGE_FAILED' ? 100 :
-                  body.includes('90') ? 90 :
-                  body.includes('80') ? 80 : 50;
+                  type === 'NAG_90' ? 90 :
+                  type === 'NAG_80' ? 80 : 50;
                 setChallengeAlarmDetail({ ...detail, progressPercent, weeklyStatus: challengeTypeMap[type] });
                 setChallengeProgress(progressPercent);
                 sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
