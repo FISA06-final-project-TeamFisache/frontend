@@ -52,7 +52,7 @@ function Connector() {
   );
 }
 
-function StepCard({ num, title, sub, children, action }: { num: number; title: string; sub: string; children: ReactNode; action?: ReactNode }) {
+function StepCard({ num, title, sub, children, action }: { num: number; title: string; sub: ReactNode; children: ReactNode; action?: ReactNode }) {
   const c = STEP_COLORS[num - 1];
   return (
     <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: '14px 14px 12px' }}>
@@ -88,7 +88,13 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
       <StepCard
         num={1}
         title="모으기"
-        sub={flow.kind === '일반' ? '여기에 일단 넣어둬요' : `${flow.kind} 목적에 맞는 특수 계좌에 넣어요`}
+        sub={
+          <>
+            <span style={{ fontWeight: 700, color: '#0f172a' }}>{flow.title}</span>
+            <br />
+            {flow.summary}
+          </>
+        }
         action={
           <button
             onClick={() => onEdit({ type: 'hub-pick', flowId: flow.id })}
@@ -236,7 +242,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
 
         {/* 타입별 추가 정보 */}
         {!investable && (() => {
-          const months = parseInt(flow.projectedPeriod) || 6;
+          const months = flow.projectedMonths || 6;
           const principal = flow.amount * months; // 만원
           const annualRate = parseRatePct(flow.rate) / 100;
           // 정기적립식 단리 이자: 매월 납입액 × 잔여기간 합산
@@ -285,7 +291,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
           );
         })()}
         {flow.kind === 'IRP' && (() => {
-          const months = parseInt(flow.projectedPeriod) || 48;
+          const months = flow.projectedMonths || 48;
           const annualPayment = flow.amount * 12; // 만원/년
           // 세액공제: 연 900만 한도, 16.5%(종소세 5500만 이하) or 13.2%(초과)
           const deductibleBase = Math.min(annualPayment, 900); // 만원
@@ -336,7 +342,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
           );
         })()}
         {flow.kind === 'ISA' && (() => {
-          const months = parseInt(flow.projectedPeriod) || 48;
+          const months = flow.projectedMonths || 48;
           const totalYears = Math.floor(months / 12);
           const annualPayment = flow.amount * 12; // 만원/년
           // 비과세 한도: 일반형 200만원/년, 서민형 400만원/년
@@ -359,7 +365,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
               <div style={{ padding: '4px 12px 6px' }}>
                 <Row label="상품 유형" value="개인종합자산관리계좌 (ISA)" />
                 <Row label="월 납입액" value={`${flow.amount}만원`} />
-                <Row label="의무 가입 기간" value="3년 (최대 5년)" />
+                <Row label="의무 가입 기간" value="3년" />
                 <Row label="예상 수익률" value={`연 ${flow.rate}`} />
               </div>
               <div style={{ background: '#f8fafc', padding: '6px 12px', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>

@@ -61,6 +61,7 @@ export interface Flow {
   rate: string;
   projected: string;
   projectedPeriod: string;
+  projectedMonths: number;
   badgeBg: string;
   badgeColor: string;
   amount: number;
@@ -69,6 +70,16 @@ export interface Flow {
   accountComment?: string;
   rrComment?: string;
   products: FlowProduct[];
+}
+
+// ─── 유틸 ─────────────────────────────────────────────────
+
+// 개월 수를 "N년 M개월" 형태로 변환 (12개월 미만은 "N개월")
+export function formatMonths(months: number): string {
+  if (months < 12) return `${months}개월`;
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  return rest === 0 ? `${years}년` : `${years}년 ${rest}개월`;
 }
 
 // ─── 상수 ─────────────────────────────────────────────────
@@ -240,7 +251,8 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
   const rate = dto.expectedRrPct != null
     ? `${dto.expectedRrPct >= 0 ? '+' : ''}${dto.expectedRrPct}%`
     : '+0.0%';
-  const projectedPeriod = dto.investmentMonths != null ? `${dto.investmentMonths}개월` : '1년';
+  const projectedMonths = dto.investmentMonths ?? 12;
+  const projectedPeriod = formatMonths(projectedMonths);
   const projected = dto.expectedAmount != null
     ? `${Math.round(dto.expectedAmount / 10000)}만 원`
     : '-';
@@ -250,7 +262,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
     title: dto.title ?? '',
     summary: dto.summary ?? '',
     term, termRaw, kind, hubId,
-    rate, projected, projectedPeriod,
+    rate, projected, projectedPeriod, projectedMonths,
     badgeBg: kind === 'IRP' ? '#F1F5F9' : kind === 'ISA' ? '#F8FAFC' : '#EEEDFE',
     badgeColor: kind === 'IRP' ? '#475569' : kind === 'ISA' ? '#64748B' : '#534AB7',
     amount: Math.round((dto.amount ?? 0) / 10000),
