@@ -358,14 +358,7 @@ function NotificationPanel({ onClose, items, setItems, onChallengeClick, onSalar
           let icon = n.icon;
           let iconBg = n.iconBg;
 
-          if (n.type === 'SALARY_REBALANCING') {
-            title = '월급';
-            if (n.body.includes('변동') || n.body.includes('변경')) {
-              body = '월급에 변동이 생겼어요! - 변동된 금액에 맞춰 PorTI 가이드를 다시 세워봐요!';
-            } else {
-              body = '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!';
-            }
-          } else if (n.type === 'REPORT_READY') {
+          if (n.type === 'REPORT_READY') {
             title = '월간리포트';
             body = `${userName}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`;
           } else if (n.type === 'NAG_50' || n.type === 'NAG_80' || n.type === 'NAG_90') {

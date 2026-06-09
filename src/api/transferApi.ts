@@ -45,6 +45,7 @@ export interface TransferPlanResponse {
   flowItems: FlowItem[];            // 투자 계획 (portfolio_flows 기반)
   remaining: number;
   remainingDiff: number | null;
+  rebalanceComment: string | null;   // Pori 분배 가이드 문구 (급여 변동 시 AI 코멘트)
 }
 
 /**

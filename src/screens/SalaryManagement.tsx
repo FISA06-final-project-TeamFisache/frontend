@@ -12,7 +12,6 @@ import samsungLogo from '../assets/banks/samsung.png';
 import heroImg from '../assets/hero.png';
 import { getTransferPlans, updateTransferPlans, generateTransferPlans } from '../api/transferApi';
 import { getAssets } from '../api/assetApi';
-import { getAgentRecommend } from '../api/agentApi';
 
 type View = 'summary' | 'detail' | 'success';
 type Tab = 'spend' | 'invest';
@@ -115,7 +114,6 @@ export default function SalaryManagement({ onClose }: Props) {
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
   const [newTag, setNewTag] = useState('');
   const [agentReasons, setAgentReasons] = useState<string[]>(REASONS);
-  const [agentPlanComments, setAgentPlanComments] = useState<Record<string, string>>({});
   // StrictMode 이중 마운트로 자동 generate 가 두 번 호출돼 플랜이 중복 생성되는 것 방지
   const didLoadRef = useRef(false);
 
@@ -124,23 +122,6 @@ export default function SalaryManagement({ onClose }: Props) {
     didLoadRef.current = true;
 
     const now = new Date();
-    // agent 추천 (실패해도 하드코딩 fallback 유지)
-    getAgentRecommend()
-      .then(rec => {
-        const reasons: string[] = [];
-        if (rec.fixedExpenseComment) reasons.push(rec.fixedExpenseComment);
-        rec.rebalancingPlans?.forEach(p => {
-          if (p.comment) reasons.push(p.comment);
-        });
-        if (reasons.length > 0) setAgentReasons(reasons);
-        const comments: Record<string, string> = {};
-        rec.rebalancingPlans?.forEach(p => {
-          if (p.assetId && p.comment) comments[p.assetId] = p.comment;
-        });
-        setAgentPlanComments(comments);
-      })
-      .catch(() => { /* fallback: hardcoded REASONS already set */ });
-
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
 
@@ -168,6 +149,8 @@ export default function SalaryManagement({ onClose }: Props) {
           });
         }
         setSalaryDelta(planData.salaryDiff ?? 0);
+        // Pori 분배 가이드: /transfer-plans 의 rebalanceComment 사용 (없으면 하드코딩 fallback 유지)
+        if (planData.rebalanceComment) setAgentReasons([planData.rebalanceComment]);
 
         // 지출 항목 (portfolioItems: CASH/DEPOSIT/EMERGENCY)
         if (planData.portfolioItems.length > 0) {
@@ -273,6 +256,26 @@ export default function SalaryManagement({ onClose }: Props) {
   // Case2: salaryDiff ≥ 5만 또는 음수(감소) → 빨간색, "월급에 변동이 있어요", salaryDiff 표시
   const isCase2 = salaryDelta >= 50000 || salaryDelta < 0;
 
+  // Case2: 백엔드 리밸런싱으로 실제 바뀐 항목만 변동분(diff)을 +/-로 강조,
+  //        안 바뀐 항목은 전체 배분액을 회색으로. Case1: 전체 배분액(회색).
+  const renderPlanAmount = (p: { editedDelta: number; amount: number }) => {
+    if (isCase2) {
+      const inc = p.editedDelta - p.amount;   // plannedAmount − baselineAmount = 이번 변동분
+      if (inc !== 0) {
+        return (
+          <span className={`text-xs font-extrabold shrink-0 ${inc < 0 ? 'text-blue-500' : 'text-red-500'}`}>
+            {inc >= 0 ? '+' : ''}{fmt(inc)}원
+          </span>
+        );
+      }
+    }
+    return (
+      <span className="text-xs font-extrabold shrink-0 text-slate-600">
+        {fmt(p.editedDelta)}원
+      </span>
+    );
+  };
+
   if (view === 'summary') {
     return (
       <div className="min-h-screen bg-[#f8fafc] flex justify-center">
@@ -301,7 +304,7 @@ export default function SalaryManagement({ onClose }: Props) {
                 <p className="text-xs text-slate-400">{salaryAccount?.institution ?? '급여'} 급여통장</p>
               </div>
               {isCase2 ? (
-                <p className="text-3xl font-extrabold text-red-500">
+                <p className={`text-3xl font-extrabold ${salaryDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
                   {salaryDelta >= 0 ? '+' : ''}{fmt(salaryDelta)}원
                 </p>
               ) : (
@@ -336,10 +339,8 @@ export default function SalaryManagement({ onClose }: Props) {
                         <span className="text-xs font-bold text-slate-800 truncate">{p.name}</span>
                         <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">{p.tag}</span>
                       </div>
-                      {/* Case2에만 +/- 표시 */}
-                      <span className={`text-xs font-extrabold shrink-0 ${isCase2 ? 'text-red-500' : 'text-slate-600'}`}>
-                        {isCase2 && p.editedDelta >= 0 ? '+' : ''}{fmt(p.editedDelta)}원
-                      </span>
+                      {/* Case2: 변동된 항목만 +/- 강조 / Case1: 전체금액 */}
+                      {renderPlanAmount(p)}
                     </div>
                   ))}
                 </div>
@@ -366,9 +367,7 @@ export default function SalaryManagement({ onClose }: Props) {
                             <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">{p.tag}</span>
                           )}
                         </div>
-                        <span className={`text-xs font-extrabold shrink-0 ${isCase2 ? 'text-red-500' : 'text-slate-600'}`}>
-                          {isCase2 && p.editedDelta >= 0 ? '+' : ''}{fmt(p.editedDelta)}원
-                        </span>
+                        {renderPlanAmount(p)}
                       </div>
                     );
                   })}
@@ -434,7 +433,7 @@ export default function SalaryManagement({ onClose }: Props) {
             <div className="border-2 border-slate-700 rounded-2xl px-6 py-2.5 shadow-sm bg-white text-center">
               <p className="text-xs text-slate-400">{fmt(salary)}<span className="ml-0.5">원</span></p>
               {salaryDelta !== 0 && (
-                <p className="text-sm font-bold text-red-500 mt-0.5">
+                <p className={`text-sm font-bold mt-0.5 ${salaryDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
                   {salaryDelta > 0 ? '+' : ''}{fmt(salaryDelta)}원
                 </p>
               )}
@@ -599,7 +598,7 @@ export default function SalaryManagement({ onClose }: Props) {
                                 const clamped = Math.min(Math.max(0, nextEdited), safeMax);
                                 setActivePlans(prev => prev.map(p => p.id === plan.id ? { ...p, editedDelta: clamped } : p));
                               }}
-                              className={`w-24 text-center bg-transparent outline-none ${isCase2 ? (increment !== 0 ? 'text-red-500' : 'text-slate-500') : 'text-slate-700'} ${locked ? 'cursor-not-allowed' : ''}`}
+                              className={`w-24 text-center bg-transparent outline-none ${isCase2 ? (increment !== 0 ? (increment < 0 ? 'text-blue-500' : 'text-red-500') : 'text-slate-500') : 'text-slate-700'} ${locked ? 'cursor-not-allowed' : ''}`}
                             />
                             <span className="text-[10px] text-slate-400 font-normal">원</span>
 
@@ -640,7 +639,7 @@ export default function SalaryManagement({ onClose }: Props) {
                           {tooltip === plan.id && (
                             <div className="absolute right-0 bottom-8 w-60 bg-slate-800 text-white text-[11px] px-3 py-2.5 rounded-xl shadow-xl z-50 leading-relaxed pointer-events-none">
                               <div className="absolute -bottom-1 right-3.5 w-2 h-2 bg-slate-800 rotate-45" />
-                              💡 {agentPlanComments[plan.id] ?? (isInvest ? INVEST_REASONS : SPEND_REASONS)[idx] ?? 'AI 추천 조정 금액이에요'}
+                              💡 {(isInvest ? INVEST_REASONS : SPEND_REASONS)[idx] ?? 'AI 추천 조정 금액이에요'}
                             </div>
                           )}
                         </div>
