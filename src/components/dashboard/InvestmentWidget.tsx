@@ -39,6 +39,9 @@ export function InvestmentWidget({ investAmt, portfolioItems, active, onClick }:
 
       {/* 중앙 포트폴리오 리스트 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0' }}>
+        {portfolioItems.length === 0 && (
+          <span style={{ fontSize: 11, color: '#94a3b8' }}>아직 담은 상품이 없어요</span>
+        )}
         {portfolioItems.map((p, idx) => {
           const catColor = PORTFOLIO_COLOR[p.categoryLabel] ?? '#94a3b8';
           const rateInfo = rateDisplay(p.rate);
@@ -82,6 +85,13 @@ export function InvestmentDetail({ portfolioSlices, portfolio }: {
       padding: '16px',
       boxShadow: '0 2px 12px rgba(0,149,219,0.06)'
     }}>
+      {portfolio.length === 0 ? (
+        <div style={{ padding: '24px 8px', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#475569', margin: 0 }}>아직 담은 상품이 없어요</p>
+          <p style={{ fontSize: 12, color: '#94a3b8', margin: '6px 0 0' }}>포트폴리오에서 상품을 구성하면 비중이 표시돼요</p>
+        </div>
+      ) : (
+      <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <DonutChart data={portfolioSlices} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -135,6 +145,8 @@ export function InvestmentDetail({ portfolioSlices, portfolio }: {
           })}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
