@@ -158,7 +158,8 @@ export interface ChallengeProposal {
   challengeType: 'AMOUNT' | 'COUNT';   // 백엔드 ChallengeType enum 과 일치
   target: number;
   estimatedSaving: number;
-  ticker: string;
+  ticker: string;        // 원시 티커 (예: 005930.KS) — 챌린지 생성 시 사용
+  tickerName: string;    // 한글 종목명 (예: 삼성전자) — 화면 표시용
 }
 
 // 카테고리/서브타입 → 아이콘 이모지
@@ -185,6 +186,7 @@ const FALLBACK_PROPOSAL: ChallengeProposal = {
   target: 3,
   estimatedSaving: 24000,
   ticker: '삼성전자',
+  tickerName: '삼성전자',
 };
 
 // 진행 중(IN_PROGRESS) 챌린지 — GET /challenges/active 응답
@@ -224,6 +226,11 @@ function toProposal(raw: Record<string, unknown>): ChallengeProposal {
     target: (raw.target ?? 0) as number,
     estimatedSaving: (raw.estimatedSaving ?? raw.estimated_saving ?? 0) as number,
     ticker: raw.ticker as string,
+    // 종목명이 null/빈값이면 헷갈리지 않게 '문제있음' 표시 (raw ticker 로 폴백하지 않음)
+    tickerName: (() => {
+      const tn = (raw.tickerName ?? raw.ticker_name) as string | null | undefined;
+      return tn && tn.trim() ? tn : '문제있음';
+    })(),
   };
 }
 

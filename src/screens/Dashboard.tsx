@@ -633,6 +633,7 @@ export default function Dashboard() {
             target: active.target,
             estimatedSaving: active.estimatedSaving,
             ticker: active.ticker,
+            tickerName: active.ticker,
           });
           setChallengeProgress(active.progressPercent > 0 ? active.progressPercent : 1);
           return;

@@ -106,6 +106,7 @@ export default function AssetPrescription() {
   const recommend = location.state?.recommend as AgentRecommend | undefined;
 
   const [totalSalary, setTotalSalary] = useState(recommend?.salary ?? 0);
+  const [fixedExpenseComment, setFixedExpenseComment] = useState(recommend?.fixedExpenseComment ?? '');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [showFixedInfo, setShowFixedInfo] = useState(false);
@@ -127,6 +128,7 @@ export default function AssetPrescription() {
   const applyRecommend = (data: AgentRecommend, assets: Asset[] = []) => {
     setTotalSalary(data.salary);
     setInvestmentAmount(data.investAmount);
+    setFixedExpenseComment(data.fixedExpenseComment ?? '');
     const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
     setAccounts(data.rebalancingPlans.map((plan, i) => ({
       id: i,
@@ -375,7 +377,9 @@ export default function AssetPrescription() {
                     <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[240px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 transform rotate-45" />
                       <p className="font-bold text-blue-300 mb-1">고정지출은?</p>
-                      보험료·통신비·구독료처럼 매달 주계좌에서 자동으로 빠져나가던 돈을 Pori가 계산해서 <span className="font-bold text-yellow-300">'생활비'</span> 통장에 먼저 배분해뒀어요. 금액은 자유롭게 조정 가능해요.
+                      {fixedExpenseComment.trim() || (
+                        <>보험료·통신비·구독료처럼 매달 주계좌에서 자동으로 빠져나가던 돈을 Pori가 계산해서 <span className="font-bold text-yellow-300">'생활비'</span> 통장에 먼저 배분해뒀어요. 금액은 자유롭게 조정 가능해요.</>
+                      )}
                     </div>
                   )}
                 </span>
