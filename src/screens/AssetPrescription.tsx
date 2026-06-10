@@ -1,34 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
-import kakaoLogo from '../assets/banks/kakao.png';
-import tossLogo from '../assets/banks/toss.png';
-import shinhanLogo from '../assets/banks/shinhan.png';
-import wooriLogo from '../assets/banks/woori.png';
-import kbLogo from '../assets/banks/kb.png';
-import hanaLogo from '../assets/banks/hana.png';
-import miraeLogo from '../assets/banks/mirae.png';
-import samsungLogo from '../assets/banks/samsung.png';
+import { getBankImgSrc } from '../constants/banks';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 import { createPortfolios } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';
 import { getTransferPlans } from '../api/transferApi';
 
-const BANK_LOGOS: Record<string, string> = {
-  '카카오뱅크': kakaoLogo,
-  '토스뱅크': tossLogo,
-  '토스증권': tossLogo,
-  '신한은행': shinhanLogo,
-  '우리은행': wooriLogo,
-  '국민은행': kbLogo,
-  'KB국민은행': kbLogo,
-  'KB증권': kbLogo,
-  '삼성증권': samsungLogo,
-  '하나은행': hanaLogo,
-  '미래에셋': miraeLogo,
-  '미래에셋증권': miraeLogo,
-};
 
 interface Account {
   id: number;
@@ -330,7 +309,7 @@ export default function AssetPrescription() {
           {/* Row 1: 급여통장 (중앙 정렬) */}
           <div className="flex flex-col items-center justify-center relative z-10 pt-2">
             <p className="text-xs font-semibold text-slate-500 mb-1.5 flex items-center justify-center gap-1">
-              <img src={wooriLogo} alt="우리은행" className="w-4 h-4 rounded-full object-contain" />
+              <img src={getBankImgSrc('우리은행')} alt="우리은행" className="w-4 h-4 rounded-full object-contain" />
               우리은행 급여통장
             </p>
 
@@ -427,9 +406,9 @@ export default function AssetPrescription() {
                     <div className="flex justify-between items-center mb-3 gap-2">
                       {/* 왼쪽: 로고 + 통장명 */}
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {BANK_LOGOS[acc.bankName] ? (
+                        {getBankImgSrc(acc.bankName) ? (
                           <img
-                            src={BANK_LOGOS[acc.bankName]}
+                            src={getBankImgSrc(acc.bankName)}
                             alt={acc.bankName}
                             className="w-7 h-7 rounded-full object-contain border border-slate-100 bg-white shrink-0"
                           />
@@ -663,9 +642,9 @@ export default function AssetPrescription() {
                           }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {BANK_LOGOS[acc.bank] ? (
+                          {getBankImgSrc(acc.bank) ? (
                             <img
-                              src={BANK_LOGOS[acc.bank]}
+                              src={getBankImgSrc(acc.bank)}
                               alt={acc.bank}
                               className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0"
                             />
@@ -707,7 +686,7 @@ export default function AssetPrescription() {
                   ) : (
                     <div className="p-3 rounded-xl border-2 border-blue-300 bg-blue-50/60 space-y-3">
                       <div className="flex items-center gap-2.5">
-                        <img src={wooriLogo} alt="우리은행" className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0" />
+                        <img src={getBankImgSrc('우리은행')} alt="우리은행" className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0" />
                         <div className="min-w-0">
                           <p className="text-[10px] text-slate-500 font-medium">우리은행 · 신규 통장</p>
                           <p className="text-xs text-slate-600">월급을 나눠 담을 통장을 만들어요</p>
@@ -805,9 +784,9 @@ export default function AssetPrescription() {
                         }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        {BANK_LOGOS[acc.bank] ? (
+                        {getBankImgSrc(acc.bank) ? (
                           <img
-                            src={BANK_LOGOS[acc.bank]}
+                            src={getBankImgSrc(acc.bank)}
                             alt={acc.bank}
                             className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0"
                           />

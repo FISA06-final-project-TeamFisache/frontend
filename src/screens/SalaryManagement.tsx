@@ -1,14 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, HelpCircle, Check, X } from 'lucide-react';
-import wooriLogo from '../assets/banks/woori.png';
-import kakaoLogo from '../assets/banks/kakao.png';
-import tossLogo from '../assets/banks/toss.png';
-import shinhanLogo from '../assets/banks/shinhan.png';
-import hanaLogo from '../assets/banks/hana.png';
-import kbLogo from '../assets/banks/kb.png';
-import miraeLogo from '../assets/banks/mirae.png';
-import samsungLogo from '../assets/banks/samsung.png';
+import { getBankMeta } from '../constants/banks';
 import heroImg from '../assets/hero.png';
 import { getTransferPlans, updateTransferPlans, generateTransferPlans } from '../api/transferApi';
 import { getAssets } from '../api/assetApi';
@@ -28,20 +21,6 @@ const SPEND_TYPE_META: Record<string, { tag: string; color: string }> = {
 };
 
 
-const BANK_META: Record<string, { bg: string; imgSrc: string }> = {
-  '카카오뱅크': { bg: '#FEE500', imgSrc: kakaoLogo },
-  '토스뱅크':   { bg: '#3182F6', imgSrc: tossLogo },
-  '토스증권':   { bg: '#3182F6', imgSrc: tossLogo },
-  '신한은행':   { bg: '#0046FF', imgSrc: shinhanLogo },
-  '하나은행':   { bg: '#009F6B', imgSrc: hanaLogo },
-  '우리은행':   { bg: '#0067AC', imgSrc: wooriLogo },
-  'KB국민은행': { bg: '#FFBC00', imgSrc: kbLogo },
-  '국민은행':   { bg: '#FFBC00', imgSrc: kbLogo },   // DB 기관명 매핑
-  'KB증권':     { bg: '#FFBC00', imgSrc: kbLogo },
-  '삼성증권':   { bg: '#034EA2', imgSrc: samsungLogo },
-  '미래에셋':   { bg: '#F05928', imgSrc: miraeLogo },
-  '미래에셋증권': { bg: '#F05928', imgSrc: miraeLogo },
-};
 
 const TERM_META: Record<string, { label: string; bg: string; text: string }> = {
   '단': { label: '단기', bg: 'bg-red-100', text: 'text-red-700' },
@@ -143,7 +122,7 @@ export default function SalaryManagement({ onClose }: Props) {
           setSalary(planData.currentSalary ?? salaryAsset.balance);
           setSalaryAccount({
             institution: salaryAsset.institution,
-            logo: BANK_META[salaryAsset.institution]?.imgSrc ?? wooriLogo,
+            logo: getBankMeta(salaryAsset.institution).imgSrc,
           });
         }
         setSalaryDelta(planData.salaryDiff ?? 0);
@@ -164,7 +143,7 @@ export default function SalaryManagement({ onClose }: Props) {
               delta: p.plannedAmount,
               editedDelta: p.plannedAmount,
               color: typeMeta.color,
-              logo: p.institution ? (BANK_META[p.institution]?.imgSrc ?? wooriLogo) : wooriLogo,
+              logo: getBankMeta(p.institution ?? '').imgSrc,
               readOnly: p.planId == null,   // 출발 계좌(우리은행에 남기는 몫) — 조정/이체 제외
             };
           }));
@@ -183,7 +162,7 @@ export default function SalaryManagement({ onClose }: Props) {
               delta: p.plannedAmount,
               editedDelta: p.plannedAmount,
               color: '#3b82f6',
-              logo: p.institution ? (BANK_META[p.institution]?.imgSrc ?? wooriLogo) : wooriLogo,
+              logo: getBankMeta(p.institution ?? '').imgSrc,
               term: meta.term ?? null,
               institution: p.institution,
               interestRate: null,
@@ -197,7 +176,7 @@ export default function SalaryManagement({ onClose }: Props) {
             id: a.id,
             name: a.accountName,
             bank: a.institution,
-            logo: BANK_META[a.institution]?.imgSrc ?? wooriLogo,
+            logo: getBankMeta(a.institution).imgSrc,
           })),
         );
       } catch (err) {
@@ -426,7 +405,7 @@ export default function SalaryManagement({ onClose }: Props) {
           {/* 급여통장 노드 */}
           <div className="flex flex-col items-center mb-1">
             <p className="text-xs font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
-              <img src={salaryAccount?.logo ?? wooriLogo} alt="" className="w-4 h-4 rounded-full object-contain" />
+              <img src={salaryAccount?.logo ?? getBankMeta('우리은행').imgSrc} alt="" className="w-4 h-4 rounded-full object-contain" />
               {salaryAccount?.institution ?? '급여'} 급여통장
             </p>
             <div className="border-2 border-slate-700 rounded-2xl px-6 py-2.5 shadow-sm bg-white text-center">
@@ -496,7 +475,7 @@ export default function SalaryManagement({ onClose }: Props) {
                 const isNeg = plan.editedDelta < 0;
                 const abs = Math.abs(plan.editedDelta);
                 const termInfo = plan.term ? TERM_META[plan.term] : null;
-                const meta = isInvest && plan.institution ? BANK_META[plan.institution] : null;
+                const meta = isInvest && plan.institution ? getBankMeta(plan.institution) : null;
                 const isLast = idx === activePlans.length - 1;
 
                 // 💡 동적 안전 조절 한도 계산 (마이너스 차단 & 전체 월급 인상분(10만원) 한도 내 배분 가능)

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, type Dispatch, type SetStateAction } from 'react';
+import { getBankBadge } from '../constants/banks';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
@@ -55,20 +56,6 @@ interface LinkedBank {
   accounts: LinkedAccount[];
 }
 
-const BANK_BADGE_COLORS: Record<string, { bg: string; color: string }> = {
-  '우리은행': { bg: '#DBEAFE', color: '#1E40AF' },
-  '카카오뱅크': { bg: '#FEF3C7', color: '#854D0E' },
-  '토스뱅크': { bg: '#DBEAFE', color: '#1D4ED8' },
-  '토스증권': { bg: '#DBEAFE', color: '#1D4ED8' },
-  '신한은행': { bg: '#DBEAFE', color: '#1E40AF' },
-  '국민은행': { bg: '#FEF3C7', color: '#92400E' },
-  'KB국민은행': { bg: '#FEF3C7', color: '#92400E' },
-  'KB증권': { bg: '#FEF3C7', color: '#92400E' },
-  '삼성증권': { bg: '#DBEAFE', color: '#1E40AF' },
-  '하나은행': { bg: '#D1FAE5', color: '#065F46' },
-  '미래에셋': { bg: '#FFEDD5', color: '#9A3412' },
-  '미래에셋증권': { bg: '#FFEDD5', color: '#9A3412' },
-};
 
 function assetTypeToLabel(type: string): '입출금' | '예·적금' | '증권' | '카드' {
   if (['CHECKING', 'PARKING', 'CMA'].includes(type)) return '입출금';
@@ -83,7 +70,7 @@ function assetsToLinkedBanks(assets: Asset[]): LinkedBank[] {
     .filter(a => a.assetType !== 'CREDIT_CARD' && a.assetType !== 'DEBIT_CARD')
     .forEach(a => {
       if (!map.has(a.institution)) {
-        const badge = BANK_BADGE_COLORS[a.institution] ?? { bg: '#F1F5F9', color: '#475569' };
+        const badge = getBankBadge(a.institution);
         map.set(a.institution, {
           id: a.institution,
           name: a.institution,

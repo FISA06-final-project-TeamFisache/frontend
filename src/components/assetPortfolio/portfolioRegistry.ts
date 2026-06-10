@@ -1,11 +1,6 @@
-import kakaoImg from '../../assets/banks/kakao.png';
-import tossImg from '../../assets/banks/toss.png';
-import shinhanImg from '../../assets/banks/shinhan.png';
-import hanaImg from '../../assets/banks/hana.png';
-import wooriImg from '../../assets/banks/woori.png';
-import kbImg from '../../assets/banks/kb.png';
-import miraeImg from '../../assets/banks/mirae.png';
-import samsungImg from '../../assets/banks/samsung.png';
+import { getBankMeta as bankMeta } from '../../constants/banks';
+export { bankMeta };
+export type { BankMeta } from '../../constants/banks';
 import type { PortfolioFlow, AvailableAsset } from '../../api/portfolioFlowApi';
 import type { Product } from '../../api/productApi';
 
@@ -137,26 +132,6 @@ export const lookupHub = (id: string): HubItem =>
 
 export const lookupProduct = (id: string): ProductItem =>
   dynamicProducts.get(id) ?? PLACEHOLDER_PRODUCT;
-
-// ─── 뱅크 메타 ────────────────────────────────────────────
-
-interface BankMeta { logo: string; bg: string; color: string; imgSrc?: string }
-
-const BANK_META: Record<string, BankMeta> = {
-  '카카오뱅크': { logo: 'K', bg: '#FEE500', color: '#3C1E1E', imgSrc: kakaoImg },
-  '토스뱅크':   { logo: 'T', bg: '#3182F6', color: '#fff',    imgSrc: tossImg  },
-  '토스증권':   { logo: 'T', bg: '#3182F6', color: '#fff',    imgSrc: tossImg  },
-  '신한은행':   { logo: 'S', bg: '#0046FF', color: '#fff',    imgSrc: shinhanImg },
-  '하나은행':   { logo: 'H', bg: '#009F6B', color: '#fff',    imgSrc: hanaImg  },
-  '우리은행':   { logo: 'W', bg: '#0067AC', color: '#fff',    imgSrc: wooriImg },
-  '국민은행':   { logo: 'K', bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg    },
-  'KB증권':     { logo: 'K', bg: '#FFCD00', color: '#3C1E1E', imgSrc: kbImg    },
-  '미래에셋':   { logo: '미래', bg: '#FF8200', color: '#fff', imgSrc: miraeImg  },
-  '삼성증권':   { logo: 'S',   bg: '#1428A0', color: '#fff', imgSrc: samsungImg },
-};
-
-export const bankMeta = (inst: string): BankMeta =>
-  BANK_META[inst] ?? { logo: (inst || '?')[0], bg: '#94a3b8', color: '#fff' };
 
 // ─── 상품 타입 메타 ───────────────────────────────────────
 
