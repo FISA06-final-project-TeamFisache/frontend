@@ -13,7 +13,7 @@ import {
   dynamicHubs, dynamicProducts, productApiTypeById,
   lookupHub, lookupProduct,
   isInvestableHub, assetToHubItem, productToCatalogItem,
-  apiToFlow, buildFlowTabLabels,
+  apiToFlow, buildFlowTabLabels, formatKrw,
 } from '../components/assetPortfolio/portfolioRegistry';
 import {
   Logo, ProductIcon,
@@ -32,6 +32,12 @@ const TERM_COLORS: Record<string, { bg: string; text: string }> = {
 
 const PIE_TERM_COLORS: Record<FlowTerm, string> = { 단기: '#FECACA', 중기: '#FDE68A', 장기: '#BBF7D0' };
 const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
+
+const ASSET_TYPE_BADGE: Record<string, { label: string; bg: string; color: string }> = {
+  IRP:              { label: 'IRP',   bg: '#FFF4E6', color: '#9A4D00' },
+  ISA:              { label: 'ISA',   bg: '#FEF3C7', color: '#92400E' },
+  PENSION_SAVINGS:  { label: '연금저축', bg: '#EEEDFE', color: '#534AB7' },
+};
 
 // 흐름 정렬 — 단기 → 중기 → 장기 (같은 term 내 순서는 API 순서 유지: 안정 정렬)
 const TERM_ORDER: Record<FlowTerm, number> = { 단기: 0, 중기: 1, 장기: 2 };
@@ -269,7 +275,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
               </div>
               <div style={{ padding: '4px 12px 6px' }}>
                 <Row label="납입 방식" value="정기적립식" />
-                <Row label="월 납입액" value={`${flow.amount}만원`} />
+                <Row label="월 납입액" value={formatKrw(flow.amount)} />
                 <Row label="납입 기간" value={flow.projectedPeriod} />
                 <Row label="적용 금리" value={`연 ${flow.rate}`} />
               </div>
@@ -278,7 +284,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>예상 수익</span>
               </div>
               <div style={{ padding: '4px 12px 6px' }}>
-                <Row label="납입 원금" value={`${fmt(principal)}만원`} />
+                <Row label="납입 원금" value={formatKrw(principal)} />
                 <Row label="세전 이자" value={`${fmt(grossInterest)}원`} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
                   <span style={{ fontSize: 11, color: '#64748b' }}>세후 이자 <span style={{ fontSize: 9, color: '#94a3b8' }}>(이자소득세 15.4%)</span></span>
@@ -317,7 +323,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
               </div>
               <div style={{ padding: '4px 12px 6px' }}>
                 <Row label="상품 유형" value="개인형 퇴직연금 (IRP)" />
-                <Row label="월 납입액" value={`${flow.amount}만원`} />
+                <Row label="월 납입액" value={formatKrw(flow.amount)} />
                 <Row label="운용 기간" value={flow.projectedPeriod} />
                 <Row label="예상 수익률" value={`연 ${flow.rate}`} />
               </div>
@@ -369,7 +375,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
               </div>
               <div style={{ padding: '4px 12px 6px' }}>
                 <Row label="상품 유형" value="개인종합자산관리계좌 (ISA)" />
-                <Row label="월 납입액" value={`${flow.amount}만원`} />
+                <Row label="월 납입액" value={formatKrw(flow.amount)} />
                 <Row label="의무 가입 기간" value="3년" />
                 <Row label="예상 수익률" value={`연 ${flow.rate}`} />
               </div>
@@ -501,12 +507,12 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
               <div>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>월 총 투자액</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{totalFlowAmount}만 원</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{formatKrw(totalFlowAmount)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 1 }}>예상 1년 수익</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', lineHeight: 1.2 }}>+{weightedRate.toFixed(1)}%</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {Math.round(totalFlowAmount * weightedRate / 100)}만 원</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>약 {formatKrw(Math.round(totalFlowAmount * weightedRate / 100))}</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -536,11 +542,14 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
                 <span style={{ fontSize: 11, fontWeight: 700, background: tc.bg, color: tc.text, padding: '3px 9px', borderRadius: 99 }}>
                   {termLabel}
                 </span>
-                {f.kind !== '일반' && (
-                  <span style={{ fontSize: 10, fontWeight: 700, background: f.badgeBg, color: f.badgeColor, padding: '2px 7px', borderRadius: 99 }}>
-                    {f.kind}
-                  </span>
-                )}
+                {(() => {
+                  const badge = ASSET_TYPE_BADGE[f.hubAssetType ?? ''];
+                  return badge ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: badge.bg, color: badge.color, padding: '2px 7px', borderRadius: 99 }}>
+                      {badge.label}
+                    </span>
+                  ) : null;
+                })()}
               </div>
               <span style={{ fontSize: 11, color: '#94a3b8' }}>자세히 보기 ›</span>
             </div>
@@ -553,7 +562,7 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
                   <span style={{ fontSize: 9, fontWeight: 700, background: '#EFF6FF', color: '#3182F6', padding: '1px 6px', borderRadius: 99 }}>추천</span>
                 )}
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {f.amount}만 원</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {formatKrw(f.amount)}</span>
             </div>
 
             {f.products.length === 0 ? (
