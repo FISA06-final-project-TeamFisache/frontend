@@ -91,17 +91,6 @@ export function SalaryDonutChart({ data, total, totalAmt, size = 128 }: {
             style={{ cursor: 'default', transition: 'opacity 0.15s' }}
           />
         ))}
-        {segments.map((seg, i) => (
-          <text
-            key={`l${i}`}
-            x={seg.labelPos.x} y={seg.labelPos.y}
-            textAnchor="middle" dominantBaseline="middle"
-            fontSize={9} fontWeight={700} fill="white"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {data[i].pct}
-          </text>
-        ))}
       </svg>
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
@@ -110,7 +99,7 @@ export function SalaryDonutChart({ data, total, totalAmt, size = 128 }: {
       }}>
         {active ? (
           <>
-            <div style={{ fontSize: size < 100 ? 8 : 9, fontWeight: 700, color: active.color, lineHeight: 1.4 }}>{active.label}</div>
+            <div style={{ fontSize: size < 100 ? 8 : 9, fontWeight: 700, color: active.color, lineHeight: 1.4 }}>{active.label} {active.pct}%</div>
             <div style={{ fontSize: size < 100 ? 10 : 12, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{fmtAmt(totalAmt * active.pct / 100)}</div>
           </>
         ) : (
