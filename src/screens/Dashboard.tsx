@@ -613,6 +613,8 @@ export default function Dashboard() {
   const salarySlices = dashboard ? buildSalarySlices(dashboard.salaryPlan) : [];
   const spendingItems = dashboard ? buildSpendingItems(dashboard.consumption.categories) : [];
   const portfolioSlices = dashboard ? buildPortfolioSlices(dashboard.portfolio) : [];
+  // 총 투자금액 = 포트폴리오 items 금액 합산 (assetAmount = 잔액×비율/100)
+  const portfolioTotal = dashboard ? dashboard.portfolio.reduce((s, p) => s + p.assetAmount, 0) : 0;
   const consumptionView = dashboard ? computeConsumption(dashboard.consumption) : null;
   const taxSaving = dashboard?.taxSaving ?? null;
 
@@ -818,7 +820,7 @@ export default function Dashboard() {
           {/* [5] 투자 위젯 */}
           <div style={{ gridColumn: '1' }}>
             <InvestmentWidget
-              investAmt={dashboard.assetsSummary.investmentBalance}
+              investAmt={portfolioTotal}
               portfolioItems={dashboard.portfolio.slice(0, 3)}
               active={openWidget === 'investment'}
               onClick={() => toggleWidget('investment')}
