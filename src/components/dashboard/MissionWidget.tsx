@@ -112,17 +112,22 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
       }}>
         <img src="/src/assets/missionpori.png" alt="Pori" style={{ width: 36, height: 36, objectFit: 'contain', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 11, color: '#0095DB', fontWeight: 600 }}>
-            "{proposal.description}"
-          </p>
-          <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
             {icon} {proposal.title}
+          </p>
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#475569', fontWeight: 500, lineHeight: 1.5 }}>
+            {proposal.description}
           </p>
         </div>
       </div>
 
-      {/* 삼색 바 */}
-      <div style={{ height: 10, background: THREE_COLOR_BAR_BG, borderRadius: 99, marginTop: 12 }} />
+      {/* 삼색 바 + 끝에 목표 금액 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+        <div style={{ flex: 1, height: 10, background: THREE_COLOR_BAR_BG, borderRadius: 99 }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#EF4444', whiteSpace: 'nowrap' }}>
+          목표 {fmt(proposal.target)}원
+        </span>
+      </div>
 
       {/* 보상 + 변경 버튼 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
