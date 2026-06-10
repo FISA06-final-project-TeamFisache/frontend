@@ -12,6 +12,7 @@ import {
   recommendChallenge,
   adjustChallenge,
   createChallenge,
+  getActiveChallenge,
   type ChallengeAlarmDetail,
   type ChallengeProposal,
 } from '../api/challengeApi';
@@ -556,7 +557,7 @@ export default function Dashboard() {
     if (!token) return;
 
     const es = new EventSource(
-      `http://localhost:8080/api/v1/notifications/subscribe?token=${token}`
+      `${import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'}/api/v1/notifications/subscribe?token=${token}`
     );
 
     es.addEventListener('notification', async (e: MessageEvent) => {
@@ -615,12 +616,30 @@ export default function Dashboard() {
   const consumptionView = dashboard ? computeConsumption(dashboard.consumption) : null;
   const taxSaving = dashboard?.taxSaving ?? null;
 
-  // AI 챌린지 추천 — 대시보드 로드 후 1회 실행
+  // 챌린지 — 대시보드 로드 후 1회: 진행 중이면 현황 표시, 없으면 AI 추천
   useEffect(() => {
     if (!dashboard || challengeProposal || challengeLoading) return;
     setChallengeLoading(true);
-    recommendChallenge()
-      .then(p => setChallengeProposal(p))
+    getActiveChallenge()
+      .then(active => {
+        if (active) {
+          // 이미 진행 중인 챌린지 → 추천 대신 현황(진행 바) 표시
+          setChallengeProposal({
+            title: active.title,
+            description: active.description,
+            category: active.category,
+            challengeSubType: active.challengeSubType,
+            challengeType: active.challengeType === 'AMOUNT' ? 'AMOUNT' : 'FREQUENCY',
+            target: active.target,
+            estimatedSaving: active.estimatedSaving,
+            ticker: active.ticker,
+          });
+          setChallengeProgress(active.progressPercent > 0 ? active.progressPercent : 1);
+          return;
+        }
+        // 활성 챌린지 없음 → AI 추천
+        return recommendChallenge().then(p => setChallengeProposal(p));
+      })
       .finally(() => setChallengeLoading(false));
   }, [dashboard]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -789,10 +808,6 @@ export default function Dashboard() {
               adjusting={challengeAdjusting}
               progress={challengeProgress}
               onStart={handleChallengeStart}
-              onPause={() => {
-                setChallengeProgress(0);
-                sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '0');
-              }}
               onEasier={() => handleAdjust('더 쉽게 조정해주세요')}
               onHarder={() => handleAdjust('더 어렵게 조정해주세요')}
               onChangeTopic={() => handleAdjust('주제를 바꿔주세요')}
