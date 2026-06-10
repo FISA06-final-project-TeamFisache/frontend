@@ -13,8 +13,22 @@ const TODAY = new Date();
 
 // ─── 유틸 ─────────────────────────────────────────────────────────────────────
 
+// 금액(원)을 천원 단위까지만 표기. 백원 이하는 반올림하지 않고 버림(신뢰도).
+//   335,000 → "33.5만원" / 4,800,000 → "480만원" / 260,000,000 → "2억6000만원"
+// 부호는 호출부에서 처리 (항상 양수 크기를 반환).
 function fmtMan(n: number) {
-  return `${Math.round(Math.abs(n) / 10000).toLocaleString()}만 원`;
+  const won = Math.floor(Math.abs(n) / 1000) * 1000; // 백원 이하 버림
+  const EOK = 100_000_000, MAN = 10_000;
+  if (won >= EOK) {
+    const eok = Math.floor(won / EOK);
+    const man = Math.floor((won % EOK) / MAN); // 억 아래 만 (천원 버림)
+    return man > 0 ? `${eok}억${man}만원` : `${eok}억원`;
+  }
+  if (won >= MAN) {
+    const man = Math.floor(won / 1000) / 10; // 천원 → 만 단위 소수 1자리, .0 자동 제거
+    return `${man}만원`;
+  }
+  return `${won.toLocaleString()}원`;
 }
 function pctToXY(cx: number, cy: number, r: number, pct: number) {
   const rad = (pct / 100) * 2 * Math.PI - Math.PI / 2;
@@ -204,7 +218,7 @@ function SpendingDonut({ categories, hints }: { categories: { category: string; 
             ) : (
               <>
                 <div style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1.4 }}>이번달</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{Math.round(total / 10000)}만 원</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{fmtMan(total)}</div>
               </>
             )}
           </div>
@@ -247,7 +261,12 @@ function MissionSummarySection({ missions, comment }: { missions: MiniChallenge[
     <div style={{ marginTop: 8 }}>
       <SpringDecorator />
       <Card style={{ borderTop: 'none', borderRadius: '0 0 14px 14px', paddingTop: 18 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, textAlign: 'center' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 11, textAlign: 'center' }}>
+          <colgroup>
+            <col style={{ width: '53%' }} />
+            <col style={{ width: '32%' }} />
+            <col style={{ width: '15%' }} />
+          </colgroup>
           <thead>
             <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', height: 28 }}>
               <th style={{ padding: '4px', fontWeight: 600, textAlign: 'left' }}>미션</th>
@@ -258,13 +277,13 @@ function MissionSummarySection({ missions, comment }: { missions: MiniChallenge[
           <tbody>
             {missions.map((m, i) => {
               const result = m.status === 'COMPLETED' ? '성공' : m.status === 'FAILED' ? '실패' : '진행중';
-              const period = m.completedAt
-                ? `${fmtDate(m.startedAt)} ~ ${fmtDate(m.completedAt)}`
-                : fmtDate(m.startedAt);
               return (
                 <tr key={i} style={{ borderBottom: i < missions.length - 1 ? '1px solid #f1f5f9' : 'none', height: 36 }}>
-                  <td style={{ padding: '6px 4px', fontWeight: 600, color: '#0f172a', textAlign: 'left' }}>{m.title}</td>
-                  <td style={{ padding: '6px 4px', color: '#64748b' }}>{period}</td>
+                  <td style={{ padding: '6px 6px 6px 4px', fontWeight: 600, color: '#0f172a', textAlign: 'left', wordBreak: 'keep-all', lineHeight: 1.4 }}>{m.title}</td>
+                  <td style={{ padding: '6px 4px', color: '#64748b', wordBreak: 'keep-all', lineHeight: 1.4 }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.startedAt)}</span>
+                    {m.completedAt && <> ~ <span style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.completedAt)}</span></>}
+                  </td>
                   <td style={{ padding: '6px 4px' }}>
                     <span style={{
                       padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
@@ -376,14 +395,15 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
     (report?.categoryExpenses ?? []).map(c => [c.category, c.hoverComment])
   );
 
-  const lastWeek = cumulativeData[cumulativeData.length - 1];
-  const thisMonthTotal = lastWeek?.thisMonth ?? 0;
-  const lastMonthTotal = lastWeek?.lastMonth ?? 0;
+  // 표시는 원 단위 원본으로 (fmtMan 이 천원까지 버림 처리). 차트는 위의 만 단위(cumulativeData)를 계속 사용.
+  const lastWeekRaw = report?.weeklyExpenses[report.weeklyExpenses.length - 1];
+  const thisMonthTotal = lastWeekRaw?.currCumulative ?? 0;
+  const lastMonthTotal = lastWeekRaw?.prevCumulative ?? 0;
   const cumulDiff = thisMonthTotal - lastMonthTotal;
 
   const firstSnap = report?.assetSnapshots[0]?.totalAmount ?? 0;
   const lastSnap = report?.assetSnapshots[report?.assetSnapshots.length - 1]?.totalAmount ?? 0;
-  const assetChangeAmt = Math.round((lastSnap - firstSnap) / 10000);
+  const assetChangeAmt = lastSnap - firstSnap;
 
   return (
     <div style={{ minHeight: onClose ? 'auto' : '100vh', background: '#f8fafc', display: 'flex', justifyContent: 'center', fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif", width: '100%' }}>
@@ -443,7 +463,7 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
                 <span style={{ fontSize: 12, color: '#64748b' }}>전월 대비</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                    {assetChangeAmt >= 0 ? '+' : ''}{assetChangeAmt}만 원
+                    {assetChangeAmt > 0 ? '+' : assetChangeAmt < 0 ? '-' : ''}{fmtMan(assetChangeAmt)}
                   </span>
                   <ChangeBadge value={report.assetChangeRate} />
                 </div>
@@ -490,16 +510,16 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
               <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 2px' }}>이번달</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: '#EF9F27', margin: 0 }}>{thisMonthTotal}만 원</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#EF9F27', margin: 0 }}>{fmtMan(thisMonthTotal)}</p>
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 2px' }}>저번달</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8', margin: 0 }}>{lastMonthTotal}만 원</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8', margin: 0 }}>{fmtMan(lastMonthTotal)}</p>
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 2px' }}>변동</p>
                   <p style={{ fontSize: 14, fontWeight: 700, color: cumulDiff <= 0 ? '#0F6E56' : '#A32D2D', margin: 0 }}>
-                    {cumulDiff > 0 ? '+' : ''}{cumulDiff}만 원
+                    {cumulDiff > 0 ? '+' : cumulDiff < 0 ? '-' : ''}{fmtMan(cumulDiff)}
                   </p>
                 </div>
               </div>
