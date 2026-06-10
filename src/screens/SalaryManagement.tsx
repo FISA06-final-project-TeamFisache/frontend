@@ -56,11 +56,9 @@ const PRODUCT_TYPE_META: Record<string, { tag: string; term: string }> = {
 };
 
 
-const REASONS = [
-  '생활비 카테고리 지난달 32,000원 초과',
-  '비상금 최근 3개월 미인출',
-  '투자 비율 20% 유지 기준 충족',
-];
+// 월급 변동이 없을 때(rebalanceComment 없음) 보여줄 안내 — AI 리밸런싱이 없으므로
+// "기존 계획대로 분배" 라는 정확한 문구를 노출한다.
+const NO_CHANGE_GUIDE = '이번 달은 월급 변동이 없어, 기존 계획대로 분배해 드릴게요.';
 
 const SPEND_REASONS = [
   '생활비 카테고리 지난달 32,000원 초과',
@@ -113,7 +111,7 @@ export default function SalaryManagement({ onClose }: Props) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
   const [newTag, setNewTag] = useState('');
-  const [agentReasons, setAgentReasons] = useState<string[]>(REASONS);
+  const [agentReasons, setAgentReasons] = useState<string[]>([NO_CHANGE_GUIDE]);
   // StrictMode 이중 마운트로 자동 generate 가 두 번 호출돼 플랜이 중복 생성되는 것 방지
   const didLoadRef = useRef(false);
 
@@ -149,8 +147,9 @@ export default function SalaryManagement({ onClose }: Props) {
           });
         }
         setSalaryDelta(planData.salaryDiff ?? 0);
-        // Pori 분배 가이드: /transfer-plans 의 rebalanceComment 사용 (없으면 하드코딩 fallback 유지)
-        if (planData.rebalanceComment) setAgentReasons([planData.rebalanceComment]);
+        // Pori 분배 가이드: 월급 변동이 있어 AI 코멘트(rebalanceComment)가 오면 그걸,
+        // 변동이 없어 null 이면 "기존 계획대로 분배" 안내를 보여준다.
+        setAgentReasons(planData.rebalanceComment ? [planData.rebalanceComment] : [NO_CHANGE_GUIDE]);
 
         // 지출 항목 (portfolioItems: CASH/DEPOSIT/EMERGENCY)
         if (planData.portfolioItems.length > 0) {

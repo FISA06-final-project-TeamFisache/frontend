@@ -497,7 +497,7 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
                   <p style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8', margin: 0 }}>{lastMonthTotal}만 원</p>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 2px' }}>전감</p>
+                  <p style={{ fontSize: 10, color: '#64748b', margin: '0 0 2px' }}>변동</p>
                   <p style={{ fontSize: 14, fontWeight: 700, color: cumulDiff <= 0 ? '#0F6E56' : '#A32D2D', margin: 0 }}>
                     {cumulDiff > 0 ? '+' : ''}{cumulDiff}만 원
                   </p>

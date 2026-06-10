@@ -122,27 +122,33 @@ export default function Linking() {
   useEffect(() => {
     if (step !== 'linking') return;
 
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // 모든 기관을 '연결 중'으로 두고, 진입과 동시에 실제 백엔드 조회를 시작한다.
     const initial: Record<string, LinkStatus> = {};
-    selected.forEach(name => { initial[name] = 'waiting'; });
+    selected.forEach(name => { initial[name] = 'linking'; });
     setLinkStatus(initial);
 
-    let delay = 0;
-    selected.forEach((name, i) => {
-      setTimeout(() => {
-        setLinkStatus(prev => ({ ...prev, [name]: 'linking' }));
-        setTimeout(() => {
-          setLinkStatus(prev => ({ ...prev, [name]: 'done' }));
-          if (i === selected.length - 1) {
-            // 마지막 기관 완료 후: 선택한 기관의 마이데이터 계좌 조회 (selected = 기관명)
-            getMyDataPreview(selected)
-              .then(accounts => setPreviewAccounts(accounts))
-              .catch(() => { setPreviewAccounts([]); })
-              .finally(() => { setTimeout(() => setStep('account-pick'), 600); });
-          }
-        }, 1200);
-      }, delay);
-      delay += 1500;
-    });
+    // 백엔드 응답이 끝나는 즉시 다음 단계로 넘어간다 (고정 대기 시간 없음).
+    getMyDataPreview(selected)
+      .then(accounts => { if (!cancelled) setPreviewAccounts(accounts); })
+      .catch(() => { if (!cancelled) setPreviewAccounts([]); })
+      .finally(() => {
+        if (cancelled) return;
+        // 완료 표시를 잠깐 보여준 뒤 전환 (체감용 짧은 딜레이)
+        setLinkStatus(prev => {
+          const done = { ...prev };
+          selected.forEach(name => { done[name] = 'done'; });
+          return done;
+        });
+        timers.push(setTimeout(() => { if (!cancelled) setStep('account-pick'); }, 400));
+      });
+
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
