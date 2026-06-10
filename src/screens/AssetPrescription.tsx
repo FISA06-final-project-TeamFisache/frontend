@@ -295,6 +295,7 @@ export default function AssetPrescription() {
     const portfolios = accounts.map(a => ({
       assetType: toAssetCategory(a.assetType),
       assetAmount: a.amount,
+      accountPurpose: a.tag,   // 파란칸 nickname → assets.account_purpose
       ...(a.assetId ? { assetId: a.assetId } : {}),
     }));
     try {

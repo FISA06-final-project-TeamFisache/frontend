@@ -10,6 +10,7 @@ export interface PortfolioItem {
   assetType: string;
   assetAmount: number;
   assetId?: string;
+  accountPurpose?: string;   // nickname/목적 레이블 → assets.account_purpose 저장
 }
 
 export interface PortfolioList {
