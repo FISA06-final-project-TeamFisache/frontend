@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import heroImg from '../assets/hero.png';
 import portiImg from '../assets/porti.png';
 import swimporiImg from '../assets/Swimpori.png';
@@ -11,6 +11,13 @@ import fencingporiImg from '../assets/FencingPori.png';
 import archeryporiImg from '../assets/Archerypori.png';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAgentProfile, type AgentProfile } from '../api/agentApi';
+import { getGoal, updateGoal } from '../api/userApi';
+import warrenBuffettImg from '../assets/Warren Buffett.png';
+import kenFisherImg from '../assets/Ken Fisher.png';
+import johnBogleImg from '../assets/John Bogle.png';
+import rayDalioImg from '../assets/Ray Dalio.png';
+import stanleyDruckenmillerImg from '../assets/Stanley Druckenmiller.png';
+import sethKlarmanImg from '../assets/Seth Klarman.png';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -79,8 +86,8 @@ const QUESTIONS: Question[] = [
   {
     id: 5,
     emoji: '📉',
-    context: '큰맘 먹고 산 주식이 다음 날 -15% 됐어.' + '\n' + '어떡해?',
-    optionA: '스트레스!!! 일단 팔거나, 앱 지우고 안 보려고 해',
+    context: '마음 먹고 산 주식이 다음 날 -15%...' + '\n' + '어떻게 할거야?',
+    optionA: '스트레스 받으니까' + '\n' + '일단 팔거나, 앱 지우고 안 보려고 해',
     optionB: '오히려 기회! 여유 자금으로 더 살까 고민해',
   },
   {
@@ -125,19 +132,7 @@ interface ResultType {
   img: string;
   subtitle: string;
   quote: string;
-  traits: { label: string; pct: number; color: string }[];
   description: string;
-  spending: string;
-  investment: string;
-  saving: string;
-  investor: { name: string; role: string; quote: string; reason: string; emoji: string };
-  portfolio: {
-    name: string;
-    allocations: { label: string; pct: number; color: string }[];
-    stats: { return: string; maxDrawdown: string; volatility: string; sharpe: string };
-    commentary: string;
-    etfs: { name: string; code: string; pct: number }[];
-  };
   strengths: string[];
   weaknesses: string[];
 }
@@ -149,38 +144,7 @@ const RESULT_TYPES: ResultType[] = [
     img: swimporiImg,
     subtitle: '기본기에 충실한, 레인을 벗어나지 않는 타입',
     quote: '흔들리지 않아, 내 레인을 지킬 뿐',
-    traits: [
-      { label: '안전형', pct: 90, color: '#3b82f6' },
-      { label: '계획형', pct: 82, color: '#8b5cf6' },
-      { label: '신중형', pct: 86, color: '#10b981' },
-      { label: '단기형', pct: 74, color: '#f59e0b' },
-    ],
     description: '변동성이 낮은 안전 자산을 선호해요.' + '\n' + '원금 보장이 최우선이고, 꾸준한 적금으로 자산을 착실히 쌓아가는 타입이에요.' + '\n' + '시장 뉴스에 흔들리지 않고 내 계획대로 가는 것이 최고의 전략이라고 믿어요.',
-    spending: '식비·교통비 위주의 안정적인 지출 패턴이에요.' + '\n' + '충동 소비 흔적이 거의 없고, 꼭 필요한 곳에만 쓰는 편이에요.',
-    investment: '안전한 예적금을 선호하고, 원금 손실에 예민해요.' + '\n' + '작더라도 확실한 수익이 심리적으로 잘 맞아요.',
-    saving: '꾸준한 적금 납입을 통해 자산을 착실히 쌓고 있어요.' + '\n' + '계획한 금액을 빠짐없이 모으는 타입이에요.',
-    investor: {
-      name: '워렌 버핏', emoji: '🦁',
-      role: '버크셔 해서웨이 / 가치 투자의 아버지',
-      quote: '가장 중요한 투자 규칙은 절대 잃지 않는 것이다.',
-      reason: '"이해할 수 있는 것에만 투자한다"는 버핏의 원칙이 딱 맞아요. 화려한 수익보다 리스크 관리를 먼저 생각하고, 복잡한 상품보다 단순하고 검증된 투자처를 선호하는 점이 닮았어요.',
-    },
-    portfolio: {
-      name: '안전 우선 예적금 포트폴리오',
-      allocations: [
-        { label: '예금·적금', pct: 60, color: '#3b82f6' },
-        { label: '채권 ETF', pct: 30, color: '#8b5cf6' },
-        { label: 'CMA·파킹통장', pct: 10, color: '#10b981' },
-      ],
-      stats: { return: '3.8%', maxDrawdown: '-2%', volatility: '2.1%', sharpe: '1.81' },
-      commentary: '예금·채권 중심으로 원금 보호를 최우선으로 해요. 금리 상승기에 유리하며, 잠을 편하게 자는 포트폴리오예요.',
-      etfs: [
-        { name: 'KODEX 단기채권PLUS', code: '214980', pct: 30 },
-        { name: 'TIGER 단기통안채', code: '157450', pct: 30 },
-        { name: 'KOSEF 국고채10년', code: '148070', pct: 30 },
-        { name: '예금·적금 직접 가입', code: '—', pct: 10 },
-      ],
-    },
     strengths: ['감정적 손절 없이 안정적 보유', '꾸준한 적립으로 복리 극대화', '시장 폭락 때도 멘탈 흔들림 없음'],
     weaknesses: ['인플레이션 대비 낮은 실질 수익률', '고수익 기회를 놓치는 경향', '리스크 회피로 자산 증식 속도 더딤'],
   },
@@ -189,39 +153,7 @@ const RESULT_TYPES: ResultType[] = [
     img: golfporiImg,
     subtitle: '전략적으로 즐기는, 삶의 질을 고려하는 타입',
     quote: '즐기면서도 버는 거, 그게 나야',
-    traits: [
-      { label: '균형형', pct: 76, color: '#10b981' },
-      { label: '전략형', pct: 81, color: '#3b82f6' },
-      { label: '분석형', pct: 68, color: '#8b5cf6' },
-      { label: '중기형', pct: 72, color: '#f59e0b' },
-    ],
     description: '소비와 투자의 균형을 잘 잡는 타입이에요.\n삶의 질을 포기하지 않으면서 자산도 꾸준히 늘리고 싶어해요.\n가치 있다고 판단한 소비에는 과감하고, 투자는 전략적으로 접근해요.',
-    spending: '경험·여가에 아낌없이 쓰는 편이에요. 단, 가치 있다고 판단한 소비에만 집중하는 선택형 지출 스타일이에요.',
-    investment: '수익과 리스크 사이에서 전략적으로 접근해요. 무턱대고 뛰어들기보단 타이밍을 잡는 편이에요.',
-    saving: '목돈 마련 계획을 세우고, 지출과 저축을 균형 있게 배분하는 포트폴리오형 관리가 잘 맞아요.',
-    investor: {
-      name: '피터 린치', emoji: '🎯',
-      role: '피델리티 마젤란 펀드 / 전설의 펀드매니저',
-      quote: '자신이 이해하는 것에 투자하라.',
-      reason: '피터 린치는 일상에서 투자 아이디어를 발굴하고 성장과 가치를 균형 있게 추구했어요. 삶의 질을 즐기면서 자산을 불리는 스타일이 딱 맞아요.',
-    },
-    portfolio: {
-      name: '밸런스 성장 포트폴리오',
-      allocations: [
-        { label: '국내 주식', pct: 30, color: '#3b82f6' },
-        { label: '해외 주식', pct: 30, color: '#f59e0b' },
-        { label: '채권 ETF', pct: 25, color: '#8b5cf6' },
-        { label: '예금·현금', pct: 15, color: '#10b981' },
-      ],
-      stats: { return: '6.2%', maxDrawdown: '-18%', volatility: '8.5%', sharpe: '0.73' },
-      commentary: '국내외 주식과 채권을 균형 있게 담아요. 위기 때는 채권이 완충재 역할을 하고, 상승장엔 주식이 수익을 이끌어요.',
-      etfs: [
-        { name: 'TIGER 코스피200', code: '102110', pct: 30 },
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 30 },
-        { name: 'KODEX 국채10년', code: '148070', pct: 25 },
-        { name: '예금·CMA', code: '—', pct: 15 },
-      ],
-    },
     strengths: ['소비와 투자의 균형 감각', '전략적 타이밍 포착 능력', '다양한 자산으로 리스크 분산'],
     weaknesses: ['결정 시 지나치게 고민하는 경향', '수익률 극대화보다 안정을 택해 아쉬울 때 있음', '시장 급락 시 포트폴리오 리밸런싱 지연'],
   },
@@ -230,39 +162,7 @@ const RESULT_TYPES: ResultType[] = [
     img: cycleporiImg,
     subtitle: '묵묵히 자신의 페달 밟는, 장거리 레이서 타입',
     quote: '오르막이 있어야 내리막도 있지, 나는 계속 달린다',
-    traits: [
-      { label: '성장형', pct: 85, color: '#f59e0b' },
-      { label: '장기형', pct: 91, color: '#3b82f6' },
-      { label: '분산형', pct: 76, color: '#10b981' },
-      { label: '규율형', pct: 82, color: '#8b5cf6' },
-    ],
     description: '장기 복리의 힘을 믿는 타입이에요.\n단기 등락에 흔들리지 않고 꾸준히 인덱스를 적립하는 전략이 딱 맞아요.\n목적 통장을 분산 운영하며 목표별로 체계적으로 관리해요.',
-    spending: '지금 당장보다 미래를 위해 소비를 절제하는 편이에요. 장기 목표를 향해 꾸준히 달리는 스타일이에요.',
-    investment: '성장형 자산에 관심이 높고, 장기 우상향을 믿으며 시장 변동에 흔들리지 않아요.',
-    saving: '여러 목적 통장을 분산 운영하며 목표별로 저축을 관리해요. 복리의 힘을 믿는 타입이에요.',
-    investor: {
-      name: '존 보글', emoji: '📈',
-      role: '뱅가드 / 인덱스 투자의 창시자',
-      quote: '시장을 이기려 하지 마라. 시장이 되어라.',
-      reason: '저비용 인덱스 펀드를 오래 보유하는 보글의 전략이 딱 맞아요. 단기 수익에 흔들리지 않고 장기 복리를 믿는 묵묵한 스타일이 닮았어요.',
-    },
-    portfolio: {
-      name: '장기 복리 인덱스 포트폴리오',
-      allocations: [
-        { label: '미국 S&P500', pct: 50, color: '#f59e0b' },
-        { label: '글로벌 주식', pct: 25, color: '#3b82f6' },
-        { label: '미국 채권', pct: 20, color: '#8b5cf6' },
-        { label: '금', pct: 5, color: '#fbbf24' },
-      ],
-      stats: { return: '9.1%', maxDrawdown: '-35%', volatility: '14%', sharpe: '0.65' },
-      commentary: '미국 주식 + 글로벌 분산 + 채권으로 구성된 장기 성장형이에요. 20년 이상 보유 시 복리 효과가 극대화돼요.',
-      etfs: [
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 50 },
-        { name: 'TIGER 선진국MSCI World', code: '195930', pct: 25 },
-        { name: 'KODEX 미국채10년선물', code: '308620', pct: 20 },
-        { name: 'KODEX 골드선물(H)', code: '132030', pct: 5 },
-      ],
-    },
     strengths: ['장기 복리 효과 극대화', '단기 등락에 휘둘리지 않는 멘탈', '목표별 분산으로 체계적 자산 관리'],
     weaknesses: ['단기 수익 기회에 무감각할 수 있음', '너무 긴 시계로 유동성 부족', '시장 급변 시 리밸런싱 타이밍 놓침'],
   },
@@ -271,39 +171,7 @@ const RESULT_TYPES: ResultType[] = [
     img: judoporiImg,
     subtitle: '자산을 안전하게 지킬 줄 아는, 수비형 재테크 타입',
     quote: '지키는 것도 실력이야',
-    traits: [
-      { label: '안전형', pct: 94, color: '#3b82f6' },
-      { label: '방어형', pct: 89, color: '#10b981' },
-      { label: '현금선호', pct: 84, color: '#f59e0b' },
-      { label: '신중형', pct: 88, color: '#8b5cf6' },
-    ],
     description: '리스크보다 안전을 최우선으로 해요.\n원금 보장 상품과 비상금을 두둑이 쌓아두는 것이 최고의 재테크라고 생각해요.\n불필요한 지출을 잘 참고 한 번 더 생각하는 신중한 소비자예요.',
-    spending: '불필요한 지출을 잘 참는 편이에요. 무언가 사기 전에 한 번 더 생각하는 신중한 소비자예요.',
-    investment: '리스크보다 안전을 최우선으로 해요. 원금 보장 상품과 예금 위주로 자산을 지키는 타입이에요.',
-    saving: '비상금을 두둑이 쌓아두는 걸 좋아하고, 언제든 꺼낼 수 있는 유동성을 중요하게 여겨요.',
-    investor: {
-      name: '레이 달리오', emoji: '🛡️',
-      role: '브리지워터 / 올웨더 포트폴리오 창시자',
-      quote: '내가 틀릴 수 있다는 걸 항상 염두에 둔다.',
-      reason: '"올웨더 전략"처럼 어떤 경제 상황에서도 손실을 최소화하는 방어적 분산 투자가 잘 맞아요. 리스크를 먼저 생각하는 스타일이 닮았어요.',
-    },
-    portfolio: {
-      name: '올웨더 방어 포트폴리오',
-      allocations: [
-        { label: '채권 ETF', pct: 40, color: '#3b82f6' },
-        { label: '예금·현금', pct: 30, color: '#10b981' },
-        { label: '국내 주식', pct: 15, color: '#f59e0b' },
-        { label: '원자재·금', pct: 15, color: '#fbbf24' },
-      ],
-      stats: { return: '4.5%', maxDrawdown: '-8%', volatility: '5%', sharpe: '0.90' },
-      commentary: '어떤 경기 국면에서도 일정 이상의 수익을 유지하는 올웨더 구조예요. 폭락장에서도 자산을 지켜주는 방어형이에요.',
-      etfs: [
-        { name: 'KODEX 국채10년', code: '148070', pct: 40 },
-        { name: '예금·CMA', code: '—', pct: 30 },
-        { name: 'TIGER 코스피200', code: '102110', pct: 15 },
-        { name: 'KODEX 골드선물(H)', code: '132030', pct: 15 },
-      ],
-    },
     strengths: ['위기 때도 흔들리지 않는 수비 능력', '비상금 확보로 기회비용 항상 준비', '불필요한 손실 거의 없음'],
     weaknesses: ['자산 성장 속도가 느린 편', '인플레이션에 취약할 수 있음', '안전 추구로 투자 기회 종종 포기'],
   },
@@ -312,39 +180,7 @@ const RESULT_TYPES: ResultType[] = [
     img: fencingporiImg,
     subtitle: '빠른 판단으로 과감하게, 선제 공격형 투자 타입',
     quote: '남들이 망설일 때, 나는 이미 찔렀다',
-    traits: [
-      { label: '공격형', pct: 86, color: '#ef4444' },
-      { label: '고수익형', pct: 91, color: '#f59e0b' },
-      { label: '즉흥형', pct: 79, color: '#8b5cf6' },
-      { label: '단기형', pct: 73, color: '#3b82f6' },
-    ],
     description: '높은 수익을 위해 리스크를 기꺼이 감수해요.\n시장 기회를 빠르게 포착하고 과감하게 진입하는 공격형 투자자예요.\n빠른 결정이 특기지만 가끔 충동 소비로 이어지기도 해요.',
-    spending: '소비도 투자도 빠른 결정이 특기예요. 직관을 믿고 행동하는 편이라 가끔 충동 소비도 나타나요.',
-    investment: '리스크를 감수하더라도 높은 수익을 추구해요. 시장 기회를 빠르게 포착하는 공격형 투자자예요.',
-    saving: '저축보다 투자 비중이 높은 편이에요. 목돈을 만들면 곧바로 굴리고 싶어 하는 타입이에요.',
-    investor: {
-      name: '조지 소로스', emoji: '⚡',
-      role: '소로스 펀드 / 퀀텀 펀드 창시자',
-      quote: '시장이 틀렸을 때 과감하게 배팅하라.',
-      reason: '빠른 판단과 대담한 실행이 특기인 소로스와 닮았어요. 기회를 포착하면 망설이지 않고 큰 배팅을 하는 공격적인 스타일이에요.',
-    },
-    portfolio: {
-      name: '공격 성장 집중 포트폴리오',
-      allocations: [
-        { label: '미국 나스닥', pct: 40, color: '#ef4444' },
-        { label: '미국 S&P500', pct: 25, color: '#f59e0b' },
-        { label: '테마 ETF', pct: 20, color: '#8b5cf6' },
-        { label: '채권·현금', pct: 15, color: '#3b82f6' },
-      ],
-      stats: { return: '14.2%', maxDrawdown: '-42%', volatility: '22%', sharpe: '0.65' },
-      commentary: '나스닥 + 테마 ETF 중심의 고성장 포트폴리오예요. 강세장에서 강력하지만 변동성이 크므로 장기 보유가 핵심이에요.',
-      etfs: [
-        { name: 'TIGER 미국나스닥100', code: '133690', pct: 40 },
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 25 },
-        { name: 'KODEX 반도체', code: '091160', pct: 20 },
-        { name: 'KODEX 미국채10년선물', code: '308620', pct: 15 },
-      ],
-    },
     strengths: ['시장 기회 빠른 포착', '고수익 추구로 자산 성장 속도 빠름', '새로운 투자 트렌드 선도'],
     weaknesses: ['충동적 결정으로 손실 날 수 있음', '변동성 큰 자산으로 심리 불안정', '포트폴리오 집중 리스크'],
   },
@@ -353,39 +189,7 @@ const RESULT_TYPES: ResultType[] = [
     img: archeryporiImg,
     subtitle: '한 발 한 발 신중하게 겨냥하는, 정밀 조준 타입',
     quote: '데이터가 맞다고 할 때만 쏜다',
-    traits: [
-      { label: '분석형', pct: 95, color: '#8b5cf6' },
-      { label: '전략형', pct: 88, color: '#3b82f6' },
-      { label: '계획형', pct: 92, color: '#10b981' },
-      { label: '중장기형', pct: 80, color: '#f59e0b' },
-    ],
     description: '투자 전 철저히 분석하고 근거를 확인한 뒤에야 결정해요.\n목표 금액과 기간을 정해두고 역산으로 저축 계획을 세우는 정밀한 타입이에요.\n가성비와 효율을 중시하며 즉흥적 지출은 거의 없어요.',
-    spending: '목표에 필요한 것만 정밀하게 소비해요. 즉흥적인 지출은 거의 없고, 가성비와 효율을 중요시해요.',
-    investment: '투자 전 철저히 분석하고, 리스크 대비 수익률을 계산한 뒤 결정해요. 감이 아닌 근거로 투자해요.',
-    saving: '구체적인 목표 금액과 기간을 정해두고 역산으로 저축 계획을 세워요. 목표 달성률이 높은 타입이에요.',
-    investor: {
-      name: '벤저민 그레이엄', emoji: '📐',
-      role: '컬럼비아 대학 / 가치 투자의 아버지',
-      quote: '투자는 철저한 분석 후에 원금 안전과 적절한 수익을 확보하는 것이다.',
-      reason: '내재 가치 분석과 안전 마진 확보 후에만 투자를 결정하는 그레이엄과 닮았어요. 감이 아닌 데이터로 움직이는 정밀한 스타일이에요.',
-    },
-    portfolio: {
-      name: '가치·성장 정밀 포트폴리오',
-      allocations: [
-        { label: '가치주 ETF', pct: 40, color: '#8b5cf6' },
-        { label: '성장주 ETF', pct: 30, color: '#3b82f6' },
-        { label: '채권 ETF', pct: 20, color: '#10b981' },
-        { label: '금', pct: 10, color: '#fbbf24' },
-      ],
-      stats: { return: '8.5%', maxDrawdown: '-25%', volatility: '12%', sharpe: '0.71' },
-      commentary: '가치와 성장의 균형을 데이터 기반으로 구성했어요. 철저한 분석 후 보유하는 정밀 전략으로 중장기 목표에 최적화됐어요.',
-      etfs: [
-        { name: 'KODEX 배당성장', code: '211560', pct: 40 },
-        { name: 'TIGER 미국S&P500', code: '360750', pct: 30 },
-        { name: 'KODEX 국채10년', code: '148070', pct: 20 },
-        { name: 'KODEX 골드선물(H)', code: '132030', pct: 10 },
-      ],
-    },
     strengths: ['데이터 기반 리스크 최소화', '목표 달성률 높은 계획 실행력', '가성비 높은 정밀 포트폴리오'],
     weaknesses: ['분석에 너무 오래 걸려 기회 놓침', '지나친 신중함으로 결단 지연', '직관적 기회에 느린 반응'],
   },
@@ -412,6 +216,16 @@ function calcResult(answers: Record<number, 'A' | 'B'>): ResultType {
   return RESULT_TYPES[2];                          // 사이클 (장기성장)
 }
 
+// 백엔드 portiType → RESULT_TYPES 인덱스 (히어로 타입은 백엔드 판정을 우선)
+const PORTI_TYPE_TO_INDEX: Record<string, number> = {
+  SWIMMING: 0,  // 수영
+  RHYTHMIC: 1,  // 골프 (백엔드 리듬체조 → 프론트 골프)
+  CYCLING: 2,   // 사이클
+  JUDO: 3,      // 유도
+  FENCING: 4,   // 펜싱
+  ARCHERY: 5,   // 양궁
+};
+
 const THEME_CATEGORIES = [
   { id: 'etf_domestic', label: '국내 ETF', emoji: '🇰🇷' },
   { id: 'etf_global', label: '해외 ETF', emoji: '🌏' },
@@ -436,33 +250,102 @@ const GOAL_CATEGORIES = [
   { id: 'other', label: '자유/기타', emoji: '💼' },
 ];
 
+// 거장 이름 → 사진 (DB 이름과 정확히 매핑)
+const GURU_IMAGES: Record<string, string> = {
+  '워런 버핏': warrenBuffettImg,   // SWIMMING
+  '워렌 버핏': warrenBuffettImg,   // 표기 오류 대응
+  '레이 달리오': rayDalioImg,        // ARCHERY
+  '켄 피셔': kenFisherImg,       // JUDO
+  '존 보글': johnBogleImg,       // RHYTHMIC
+  '스탠리 드러켄밀러': stanleyDruckenmillerImg, // FENCING
+  '세스 클라먼': sethKlarmanImg,     // CYCLING
+  '세스 클라만': sethKlarmanImg,     // 표기 오류 대응
+};
+
 type Step = 'intro' | 'question' | 'theme' | 'goal' | 'loading' | 'result';
 
 
 export default function PortiSurvey() {
   const { userName: USER_NAME } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ?dev=N (0~5) → 해당 결과 타입으로 바로 진입 (개발용, 백엔드 영향 없음)
-  const devParam = new URLSearchParams(window.location.search).get('dev');
-  const devResult = devParam !== null ? RESULT_TYPES[Number(devParam) % RESULT_TYPES.length] : null;
+  // 사이드바 "관심사 재설정" 진입: 테마·목표만 다시 고르고 PATCH /me/goal 로 저장
+  const editMode = location.state?.mode === 'editGoal';
+  // 사이드바 "AI 자산 초상화" 진입: 저장된 결과를 읽기 전용으로 다시 보기
+  const viewMode = location.state?.mode === 'viewProfile';
 
-  const [step, setStep] = useState<Step>(devResult ? 'result' : 'intro');
+  const [step, setStep] = useState<Step>(editMode ? 'theme' : 'intro');
+
+  useEffect(() => {
+    if (editMode) return;   // 편집 모드는 저장된 진단 복원/result 점프 생략
+    const saved = localStorage.getItem('agentProfile');
+    if (saved && !location.state?.forceIntro) {
+      try {
+        const profile = JSON.parse(saved);
+        const idx = PORTI_TYPE_TO_INDEX[profile.portiType];
+        if (idx !== undefined) {
+          setAgentProfile(profile);
+          setResult(RESULT_TYPES[idx]);
+          setStep('result');
+        }
+      } catch (e) {
+        console.error('[PortiSurvey] Failed to restore profile:', e);
+      }
+    }
+  }, [location.state]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({});
   const [completing, setCompleting] = useState(false);
-  const [result, setResult] = useState<ResultType | null>(devResult);
+  const [result, setResult] = useState<ResultType | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [openDetail, setOpenDetail] = useState<Record<string, boolean>>({
-    spending: false, investment: false, saving: false,
-    profile: false, investor: false, portfolio: false, strengths: false,
+    spending: false, investment: false, portfolio: false,
   });
   const [hoveredCat, setHoveredCat] = useState<number | null>(null);
   const [hoveredRisk, setHoveredRisk] = useState<string | null>(null);
-  const [hoveredTerm, setHoveredTerm] = useState<string | null>(null);
   const [agentProfile, setAgentProfile] = useState<AgentProfile | null>(null);
   const [priorities, setPriorities] = useState<(string | null)[]>([null, null, null]);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const [savingGoal, setSavingGoal] = useState(false);
+
+  // 편집 모드: 기존 관심 테마·목표(라벨)를 불러와 id로 변환해 프리필
+  useEffect(() => {
+    if (!editMode) return;
+    getGoal()
+      .then(goal => {
+        const ids = (goal.stockThemes ?? [])
+          .map(label => THEME_CATEGORIES.find(c => c.label === label)?.id)
+          .filter((id): id is string => !!id)
+          .slice(0, 3);
+        const padded: (string | null)[] = [...ids];
+        while (padded.length < 3) padded.push(null);
+        setPriorities(padded);
+        setSelectedGoal(
+          goal.lifeGoal ? (GOAL_CATEGORIES.find(g => g.label === goal.lifeGoal)?.id ?? null) : null,
+        );
+      })
+      .catch(e => console.error('[PortiSurvey] 관심사 불러오기 실패:', e));
+  }, [editMode]);
+
+  // 편집 모드 저장: 선택한 테마·목표 id → 라벨로 변환해 PATCH /me/goal
+  const handleSaveGoal = async () => {
+    const stockThemes = priorities
+      .filter((id): id is string => id !== null)
+      .map(id => THEME_CATEGORIES.find(c => c.id === id)?.label ?? id);
+    const lifeGoal = selectedGoal
+      ? (GOAL_CATEGORIES.find(g => g.id === selectedGoal)?.label ?? selectedGoal)
+      : null;
+    try {
+      setSavingGoal(true);
+      await updateGoal({ stockThemes, lifeGoal });
+      navigate('/dashboard');
+    } catch (e) {
+      console.error('[PortiSurvey] 관심사 저장 실패:', e);
+      alert('관심사 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+      setSavingGoal(false);
+    }
+  };
 
   const toggleDetail = (key: string) =>
     setOpenDetail(prev => ({ ...prev, [key]: !prev[key] }));
@@ -530,21 +413,33 @@ export default function PortiSurvey() {
     const localResult = calcResult(answers);
     const answersArray = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => answers[i + 1] ?? 'A');
 
+    // 선택한 테마·목표 id → 한글 라벨로 변환해 함께 전송 (AI 진단에 활용)
+    const stockThemes = priorities
+      .filter((id): id is string => id !== null)
+      .map(id => THEME_CATEGORIES.find(c => c.id === id)?.label ?? id);
+    const lifeGoal = selectedGoal
+      ? (GOAL_CATEGORIES.find(g => g.id === selectedGoal)?.label ?? selectedGoal)
+      : null;
+
     const minDelay = new Promise<void>(resolve => setTimeout(resolve, 2800));
-    const apiCall = generateAgentProfile(answersArray)
+    const apiCall = generateAgentProfile(answersArray, stockThemes, lifeGoal)
       .then(profile => {
         setAgentProfile(profile);
         localStorage.setItem('agentProfile', JSON.stringify(profile));
+        return profile;
       })
       .catch((err: unknown) => {
         console.error('[PortiSurvey] agent profile 생성 실패:', err);
+        return null;
       });
 
-    Promise.all([minDelay, apiCall]).then(() => {
-      setResult(localResult);
+    Promise.all([minDelay, apiCall]).then(([, profile]) => {
+      // 히어로 타입은 백엔드 portiType 우선, 실패 시 로컬 calcResult 폴백
+      const idx = profile ? PORTI_TYPE_TO_INDEX[profile.portiType] : undefined;
+      setResult(idx !== undefined ? RESULT_TYPES[idx] : localResult);
       setStep('result');
     });
-  }, [step, answers]);
+  }, [step, answers, priorities, selectedGoal]);
 
   const handleAnswer = (choice: 'A' | 'B') => {
     const newAnswers = { ...answers, [currentQ.id]: choice };
@@ -567,7 +462,7 @@ export default function PortiSurvey() {
         {/* 상단: 텍스트 + 캐릭터 */}
         <div className="flex items-center justify-between pt-16 mb-10">
           <p className="text-xl font-bold text-gray-800 leading-snug">
-            10개의 질문으로<br />당신을 파악할게요
+            10개의 질문으로<br />파악할게요
           </p>
           <img
             src={portiImg}
@@ -765,12 +660,13 @@ export default function PortiSurvey() {
             })}
           </div>
 
-          {/* 분석 시작 버튼 */}
+          {/* 분석 시작 / (편집 모드) 저장 버튼 */}
           <button
-            onClick={() => setStep('loading')}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-2xl text-lg transition active:scale-95 mt-auto"
+            onClick={() => (editMode ? handleSaveGoal() : setStep('loading'))}
+            disabled={savingGoal}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-2xl text-lg transition active:scale-95 mt-auto disabled:opacity-60"
           >
-            분석 시작 →
+            {editMode ? (savingGoal ? '저장 중...' : '저장하기') : '분석 시작 →'}
           </button>
         </div>
       </div>
@@ -803,7 +699,17 @@ export default function PortiSurvey() {
 
           {/* 헤더 */}
           <header className="flex items-center justify-between px-4 py-3 bg-white sticky top-0 z-10 border-b border-gray-100 shrink-0">
-            <div className="w-10" />
+            {viewMode ? (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-10 h-10 flex items-center justify-center -ml-2 text-gray-600 active:scale-90 transition"
+                aria-label="대시보드로"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            ) : (
+              <div className="w-10" />
+            )}
             <h1 className="font-semibold text-base font-wooridaum">AI 자산 초상화</h1>
             <div className="w-10" />
           </header>
@@ -839,7 +745,7 @@ export default function PortiSurvey() {
 
               {showProfile && (
                 <div className="bg-[#FFFDF0] border border-yellow-200 rounded-xl p-4 text-left mx-2 mb-3 shadow-sm animate-in fade-in slide-in-from-top-1">
-                  <p className="text-xs font-bold text-yellow-700 mb-2">🐳 {result.typeName}이란?</p>
+                  <p className="text-xs font-bold text-yellow-700 mb-2">🐳 요약</p>
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{result.description}</p>
                 </div>
               )}
@@ -1014,81 +920,36 @@ export default function PortiSurvey() {
                 {(() => {
                   const safe = agentProfile?.investTendency?.safeRatio ?? 31;
                   const risk = agentProfile?.investTendency?.riskRatio ?? 29;
-                  const moderate = Math.max(0, 100 - safe - risk);
+                  const moderate = agentProfile?.investTendency?.moderateRatio ?? Math.max(0, 100 - safe - risk);
 
-                  const savings = agentProfile?.savingsList ?? [
-                    { type: '입출금/CMA', amount: 0, ratio: 8 },
-                    { type: '예금/적금', amount: 0, ratio: 72 },
-                    { type: '주택청약', amount: 0, ratio: 20 },
-                  ];
-                  const totalAmt = savings.reduce((s, x) => s + x.amount, 0);
-                  const shortRatio = savings.find(s => s.type.includes('입출금') || s.type.includes('CMA'))?.ratio ?? 8;
-                  const longRatio = 100 - shortRatio;
-
-                  const fmtAmt = (pct: number) => totalAmt > 0
-                    ? ` ${Math.round(totalAmt * pct / 100 / 10000)}만 원` : '';
-
-                  const safeAssets = agentProfile?.investTendency?.safeAssets ?? '예적금, 채권';
-                  const riskAssets = agentProfile?.investTendency?.riskAssets ?? '국내외 주식, 코인';
-                  const riskHoverMap: Record<string, string> = {
-                    '안정': safeAssets,
-                    '중도': `${safeAssets} · ${riskAssets}`,
-                    '공격': riskAssets,
-                  };
-                  const termHoverMap: Record<string, string> = {
-                    '단기': savings.filter(s => s.type.includes('입출금') || s.type.includes('CMA')).map(s => s.type).join(', ') || '입출금·CMA 계좌',
-                    '중/장기': savings.filter(s => !s.type.includes('입출금') && !s.type.includes('CMA')).map(s => s.type).join(', ') || '예금·적금·청약',
-                  };
+                  // 백엔드 미제공 — 툴팁 설명용 고정 라벨
+                  const safeAssets = '예적금, 채권';
+                  const riskAssets = '국내외 주식, 코인';
 
                   const riskSegs = [
-                    { label: '안정', pct: safe, bg: '#D1FAE5', text: '#065F46', tip: riskHoverMap['안정'] },
-                    { label: '중도', pct: moderate, bg: '#FEF9C3', text: '#854D0E', tip: riskHoverMap['중도'] },
-                    { label: '공격', pct: risk, bg: '#FFE4E6', text: '#9F1239', tip: riskHoverMap['공격'] },
-                  ];
-                  const termSegs = [
-                    { label: '단기', pct: shortRatio, bg: '#FFE4E6', text: '#9F1239', tip: termHoverMap['단기'] },
-                    { label: '중/장기', pct: longRatio, bg: '#D1FAE5', text: '#065F46', tip: termHoverMap['중/장기'] },
+                    { label: '안정', pct: safe, bg: '#D1FAE5', text: '#065F46', tip: safeAssets },
+                    { label: '중도', pct: moderate, bg: '#FEF9C3', text: '#854D0E', tip: `${safeAssets} · ${riskAssets}` },
+                    { label: '공격', pct: risk, bg: '#FFE4E6', text: '#9F1239', tip: riskAssets },
                   ];
 
                   return (
-                    <>
-                      {/* 안정/중도/공격 바 */}
-                      <div className="flex h-12 rounded-xl overflow-hidden">
-                        {riskSegs.map((s, i) => (
-                          <div key={s.label} className="flex flex-col items-center justify-center relative cursor-default select-none"
-                            style={{ flex: s.pct, background: s.bg, borderRight: i < riskSegs.length - 1 ? '2px solid white' : undefined }}
-                            onMouseEnter={() => setHoveredRisk(s.label)} onMouseLeave={() => setHoveredRisk(null)}
-                          >
-                            <span className="text-xs font-bold leading-tight" style={{ color: s.text }}>{s.label}</span>
-                            <span className="text-[10px] font-semibold leading-tight" style={{ color: s.text }}>{s.pct}%{fmtAmt(s.pct)}</span>
-                            {hoveredRisk === s.label && (
-                              <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                                <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 shadow-lg text-[11px] text-gray-700 whitespace-nowrap font-medium">{s.tip}</div>
-                                <div className="flex justify-center"><div className="w-2.5 h-2.5 bg-white border-r border-b border-gray-200 rotate-45 -mt-1.5" /></div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      {/* 단기/중장기 바 */}
-                      <div className="flex h-12 rounded-xl overflow-hidden">
-                        {termSegs.map((s, i) => (
-                          <div key={s.label} className="flex flex-col items-center justify-center relative cursor-default select-none"
-                            style={{ flex: s.pct, background: s.bg, borderRight: i < termSegs.length - 1 ? '2px solid white' : undefined }}
-                            onMouseEnter={() => setHoveredTerm(s.label)} onMouseLeave={() => setHoveredTerm(null)}
-                          >
-                            <span className="text-xs font-bold leading-tight" style={{ color: s.text }}>{s.label}</span>
-                            <span className="text-[10px] font-semibold leading-tight" style={{ color: s.text }}>{s.pct}%{fmtAmt(s.pct)}</span>
-                            {hoveredTerm === s.label && (
-                              <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                                <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 shadow-lg text-[11px] text-gray-700 whitespace-nowrap font-medium">{s.tip}</div>
-                                <div className="flex justify-center"><div className="w-2.5 h-2.5 bg-white border-r border-b border-gray-200 rotate-45 -mt-1.5" /></div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                    <div className="flex h-12 rounded-xl overflow-hidden">
+                      {riskSegs.map((s, i) => (
+                        <div key={s.label} className="flex flex-col items-center justify-center relative cursor-default select-none"
+                          style={{ flex: s.pct, background: s.bg, borderRight: i < riskSegs.length - 1 ? '2px solid white' : undefined }}
+                          onMouseEnter={() => setHoveredRisk(s.label)} onMouseLeave={() => setHoveredRisk(null)}
+                        >
+                          <span className="text-xs font-bold leading-tight" style={{ color: s.text }}>{s.label}</span>
+                          <span className="text-[10px] font-semibold leading-tight" style={{ color: s.text }}>{s.pct}%</span>
+                          {hoveredRisk === s.label && (
+                            <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                              <div className="bg-white border border-gray-200 rounded-2xl px-3 py-1.5 shadow-lg text-[11px] text-gray-700 whitespace-nowrap font-medium">{s.tip}</div>
+                              <div className="flex justify-center"><div className="w-2.5 h-2.5 bg-white border-r border-b border-gray-200 rotate-45 -mt-1.5" /></div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   );
                 })()}
 
@@ -1126,25 +987,101 @@ export default function PortiSurvey() {
                 </div>
               </section>
 
-              {/* 나와 닮은 투자 거장 */}
-              <section className="space-y-3">
-                <h3 className="font-bold text-lg font-wooridaum">나와 닮은 투자 거장</h3>
-                <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                  <div className="flex flex-col items-center text-center shrink-0 w-20">
-                    <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-3xl shadow-inner border border-blue-100 mb-2">
-                      {result.investor.emoji}
+              {/* 나와 닮은 투자 거장 (API agentProfile.investor 있을 때만) */}
+              {agentProfile?.investor && (() => {
+                const inv = agentProfile.investor;
+                const investorName = inv.name;
+                // 이름 매칭되는 거장 사진(없으면 이니셜 플레이스홀더)
+                const investorImg = GURU_IMAGES[investorName];
+                const investorQuote = inv.investmentStyle;   // 말풍선 인용구(거장 명언)
+                const investorDesc = inv.description;         // 말풍선 본문
+                const hashtags = [inv.hashtag1, inv.hashtag2].filter((t): t is string => !!t);
+
+                return (
+                  <section className="space-y-3">
+                    <h3 className="font-bold text-lg font-wooridaum">나와 닮은 투자 거장</h3>
+                    <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                      <div className="flex flex-col items-center text-center shrink-0 w-20">
+                        <div className="w-14 h-14 rounded-full overflow-hidden shadow-inner border border-blue-100 mb-2">
+                          {investorImg ? (
+                            <img src={investorImg} alt={investorName} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-blue-50 flex items-center justify-center text-lg font-bold text-blue-400">{investorName.charAt(0)}</div>
+                          )}
+                        </div>
+                        <p className="font-bold text-sm text-gray-900 leading-tight">{investorName}</p>
+                      </div>
+                      <div className="flex-1">
+                        {/* 해시태그 */}
+                        {hashtags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {hashtags.map(tag => (
+                              <span key={tag} className="text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1 leading-none">
+                                #{tag.replace(/^#/, '')}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {/* 노란 말풍선 박스 */}
+                        <div className="bg-[#FFFDF0] border border-yellow-200 rounded-2xl rounded-tl-none p-3.5 relative shadow-sm">
+                          <div className="absolute top-4 -left-2 border-[6px] border-transparent border-r-[#FFFDF0] z-10" />
+                          <div className="absolute top-4 -left-[9px] border-[6px] border-transparent border-r-yellow-200 z-0" />
+                          {investorQuote && (
+                            <p className="text-xs text-gray-400 italic mb-1.5">"{investorQuote}"</p>
+                          )}
+                          <p className="text-xs text-gray-700 leading-relaxed font-semibold">{investorDesc}</p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="font-bold text-sm text-gray-900 leading-tight">{result.investor.name}</p>
-                    <p className="text-[10px] text-blue-500 font-semibold mt-0.5 leading-tight">{result.investor.role.split('/')[0].trim()}</p>
-                  </div>
-                  <div className="flex-1 bg-[#FFFDF0] border border-yellow-200 rounded-2xl rounded-tl-none p-3.5 relative shadow-sm">
-                    <div className="absolute top-4 -left-2 border-[6px] border-transparent border-r-[#FFFDF0] z-10" />
-                    <div className="absolute top-4 -left-[9px] border-[6px] border-transparent border-r-yellow-200 z-0" />
-                    <p className="text-xs text-gray-400 italic mb-1.5">"{result.investor.quote}"</p>
-                    <p className="text-xs text-gray-700 leading-relaxed font-semibold">{result.investor.reason}</p>
-                  </div>
-                </div>
-              </section>
+
+                    {/* 큰손 포트폴리오 (거장 보유 종목) */}
+                    {inv?.items && inv.items.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => toggleDetail('portfolio')}
+                          className="w-full flex justify-between items-center px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 transition active:scale-[0.98]"
+                        >
+                          <span>💰 {investorName}의 포트폴리오</span>
+                          {openDetail.portfolio ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {openDetail.portfolio && (
+                          <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                            {inv.items.map(item => {
+                              const delta = item.currentRatio - item.prevQuarterRatio;
+                              const up = item.changeRate >= 0;
+                              return (
+                                <div key={item.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-sm text-gray-900 truncate">{item.stockName}</p>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">
+                                      보유 {item.holdingMonths}개월 · {item.sharesHeld.toLocaleString()}주
+                                    </p>
+                                  </div>
+                                  <div className="text-right shrink-0 ml-3">
+                                    <p className="text-sm font-bold text-gray-800">
+                                      비중 {item.currentRatio}%
+                                      {delta !== 0 && (
+                                        <span className={`ml-1 text-[11px] font-semibold ${delta > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                                          {delta > 0 ? '+' : ''}{delta.toFixed(1)}%p
+                                        </span>
+                                      )}
+                                    </p>
+                                    <p className={`text-[11px] font-semibold ${up ? 'text-red-500' : 'text-blue-500'}`}>
+                                      {up ? '▲' : '▼'} {Math.abs(item.changeRate)}%
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            <p className="text-[10px] text-gray-400 text-center pt-0.5">전분기 대비 비중 변화 · 최근 등락률 기준</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </section>
+                );
+              })()}
 
             </div>{/* /마이데이터 섹션 px-5 */}
 
@@ -1153,10 +1090,10 @@ export default function PortiSurvey() {
           {/* 하단 고정 버튼 */}
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-5 pt-4 pb-6 z-20 shrink-0">
             <button
-              onClick={() => navigate('/prescription-intro')}
+              onClick={() => navigate(viewMode ? '/dashboard' : '/prescription-intro')}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition shadow-lg flex justify-center items-center gap-2 active:scale-95"
             >
-              맞춤형 월급 가이드 받기 <ArrowRight className="w-5 h-5" />
+              {viewMode ? '대시보드로' : '맞춤형 월급 가이드 받기'} <ArrowRight className="w-5 h-5" />
             </button>
           </div>
 

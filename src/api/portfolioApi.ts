@@ -10,6 +10,7 @@ export interface PortfolioItem {
   assetType: string;
   assetAmount: number;
   assetId?: string;
+  accountPurpose?: string;   // nickname/목적 레이블 → assets.account_purpose 저장
 }
 
 export interface PortfolioList {
@@ -51,6 +52,25 @@ export interface PortfolioItemList {
 export async function getPortfolioItems(): Promise<PortfolioItemList> {
   const response = await api.get<CommonResponse<PortfolioItemList>>('/portfolios-items');
   if (!response.success) throw new Error(response.message || '포트폴리오 항목 조회 중 오류가 발생했습니다.');
+  return response.data;
+}
+
+/**
+ * POST /portfolios
+ * 포트폴리오 최초 생성 (자산 처방전 저장)
+ */
+export async function createPortfolios(
+  portfolios: PortfolioItem[],
+  monthlyInvestAmount: number,
+  salary?: number,
+): Promise<PortfolioList> {
+  const body: { portfolios: PortfolioItem[]; monthlyInvestAmount: number; salary?: number } = {
+    portfolios,
+    monthlyInvestAmount,
+  };
+  if (salary !== undefined) body.salary = salary;
+  const response = await api.post<CommonResponse<PortfolioList>>('/portfolios', body);
+  if (!response.success) throw new Error(response.message || '포트폴리오 생성 중 오류가 발생했습니다.');
   return response.data;
 }
 

@@ -19,15 +19,28 @@ export interface FixedExpenseItem {
 
 export interface InvestTendency {
   safeRatio: number;
+  moderateRatio: number;
   riskRatio: number;
-  safeAssets: string;
-  riskAssets: string;
 }
 
-export interface SavingsItem {
-  type: string;
-  amount: number;
-  ratio: number;
+export interface InvestorPortfolioItem {
+  id: string;
+  stockName: string;
+  changeRate: number;
+  sharesHeld: number;
+  prevQuarterRatio: number;
+  currentRatio: number;
+  holdingMonths: number;
+}
+
+export interface InvestorMaster {
+  id: string;
+  name: string;
+  description: string;
+  hashtag1: string;
+  hashtag2: string;
+  investmentStyle: string;
+  items: InvestorPortfolioItem[];
 }
 
 export interface AgentProfile {
@@ -39,19 +52,28 @@ export interface AgentProfile {
   fixedExpense: FixedExpenseItem[];
   totalFixedExpense: number;
   investTendency: InvestTendency;
-  savingsList: SavingsItem[];
   expenseComment: string;
   investComment: string;
-  savingsComment: string;
+  investor: InvestorMaster;
 }
 
 /**
  * POST /agent/profile
  * porTI 설문 답변 전송 → 유형 계산·저장 + AI 진단 리포트 생성
  * @param answers 10개 문항 답변 배열 (e.g. ["A","B","A",...])
+ * @param stockThemes 관심 투자 테마 (선호 순서대로 최대 3개, e.g. ["국내 ETF","반도체"])
+ * @param lifeGoal 자산 형성 목표 (e.g. "결혼 자금"), 미선택 시 null
  */
-export async function generateAgentProfile(answers: string[]): Promise<AgentProfile> {
-  const response = await api.post<CommonResponse<AgentProfile>>('/agent/profile', { answers });
+export async function generateAgentProfile(
+  answers: string[],
+  stockThemes: string[] = [],
+  lifeGoal: string | null = null,
+): Promise<AgentProfile> {
+  const response = await api.post<CommonResponse<AgentProfile>>('/agent/profile', {
+    answers,
+    stockThemes,
+    lifeGoal,
+  });
   if (!response.success) throw new Error(response.message || 'AI 진단 리포트 생성 중 오류가 발생했습니다.');
   return response.data;
 }
@@ -63,6 +85,7 @@ export interface RebalancingPlan {
   assetNumber: string;
   amount: number;
   nickname: string;
+  comment: string | null;
 }
 
 export interface AgentRecommend {

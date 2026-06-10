@@ -1,27 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
-import kakaoLogo from '../assets/banks/kakao.png';
-import tossLogo from '../assets/banks/toss.png';
-import shinhanLogo from '../assets/banks/shinhan.png';
-import wooriLogo from '../assets/banks/woori.png';
-import kbLogo from '../assets/banks/kb.png';
-import hanaLogo from '../assets/banks/hana.png';
-import miraeLogo from '../assets/banks/mirae.png';
+import { getBankImgSrc } from '../constants/banks';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
-import { updatePortfolios } from '../api/portfolioApi';
+import { createPortfolios } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';
+import { getTransferPlans } from '../api/transferApi';
 
-const BANK_LOGOS: Record<string, string> = {
-  '카카오뱅크': kakaoLogo,
-  '토스뱅크': tossLogo,
-  '신한은행': shinhanLogo,
-  '우리은행': wooriLogo,
-  '국민은행': kbLogo,
-  '하나은행': hanaLogo,
-  '미래에셋증권': miraeLogo,
-};
 
 interface Account {
   id: number;
@@ -34,6 +20,7 @@ interface Account {
   percent: number;
   isPinned: boolean;
   color: string;
+  comment?: string;   // AI가 이 계좌에 이 금액을 배분한 이유
 }
 
 const TAG_COLORS = [
@@ -98,7 +85,7 @@ export default function AssetPrescription() {
   const recommend = location.state?.recommend as AgentRecommend | undefined;
 
   const [totalSalary, setTotalSalary] = useState(recommend?.salary ?? 0);
-  const [fixedExpense, setFixedExpense] = useState(recommend?.totalFixedExpense ?? 0);
+  const [fixedExpenseComment, setFixedExpenseComment] = useState(recommend?.fixedExpenseComment ?? '');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [showFixedInfo, setShowFixedInfo] = useState(false);
@@ -108,6 +95,7 @@ export default function AssetPrescription() {
   const [newTag, setNewTag] = useState('');
   const [deleteTargetIdx, setDeleteTargetIdx] = useState<number | null>(null);
   const [bankPickerForIdx, setBankPickerForIdx] = useState<number | null>(null);
+  const [commentTooltip, setCommentTooltip] = useState<number | null>(null);
   const [customLinkedAccounts, setCustomLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [isCreatingNewWoori, setIsCreatingNewWoori] = useState(false);
   const [newWooriName, setNewWooriName] = useState('');
@@ -116,38 +104,82 @@ export default function AssetPrescription() {
   const [toast, setToast] = useState<{ top: number; left: number } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const applyRecommend = (data: AgentRecommend) => {
+  const applyRecommend = (data: AgentRecommend, assets: Asset[] = []) => {
     setTotalSalary(data.salary);
-    setFixedExpense(data.totalFixedExpense);
     setInvestmentAmount(data.investAmount);
+    setFixedExpenseComment(data.fixedExpenseComment ?? '');
+    const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
     setAccounts(data.rebalancingPlans.map((plan, i) => ({
       id: i,
       assetId: plan.assetId,
       assetType: plan.assetType,
-      bank: plan.nickname || plan.assetType,
+      bank: assetMap[plan.assetId]?.accountName || plan.institution,   // 왼쪽 = 통장이름
       bankName: plan.institution,
-      tag: plan.assetType,
+      tag: plan.nickname || plan.assetType,                            // 파란칸 = nickname(생활비/비상금/적금)
       amount: plan.amount,
       percent: data.salary > 0 ? Math.round((plan.amount / data.salary) * 100) : 0,
       isPinned: false,
       color: TAG_COLORS[i % TAG_COLORS.length],
+      comment: plan.comment ?? undefined,
     })));
   };
 
   // 자산 목록 로드 + 추천 데이터로 초기화
   useEffect(() => {
-    getAssets().then(assets => {
-      setLinkedAccounts(assets.map(assetToLinked));
-    }).catch(() => {});
+    const now = new Date();
 
     if (recommend) {
-      applyRecommend(recommend);
+      getAssets()
+        .then(assets => {
+          setLinkedAccounts(assets.map(assetToLinked));
+          applyRecommend(recommend, assets);   // 통장이름 조인 위해 assets 전달
+        })
+        .catch(() => applyRecommend(recommend));
     } else {
-      getAgentRecommend()
-        .then(applyRecommend)
-        .catch(err => console.error('[AssetPrescription] recommend 실패:', err));
+      // assets + (agentRecommend or transferPlans) 동시 로드
+      Promise.all([
+        getAssets(),
+        getAgentRecommend().catch(() => null), // Flask 장애 시 null
+      ]).then(([assets, rec]) => {
+        setLinkedAccounts(assets.map(assetToLinked));
+        if (rec) {
+          applyRecommend(rec, assets);
+        } else {
+          // Flask 장애 fallback: transfer-plans + assets로 분배 구성
+          const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
+          getTransferPlans(now.getFullYear(), now.getMonth() + 1)
+            .then(plan => {
+              if (plan.currentSalary) setTotalSalary(plan.currentSalary);
+              if (plan.portfolioItems.length > 0) {
+                const salary = plan.currentSalary ?? 0;
+                setAccounts(plan.portfolioItems.map((p, i) => {
+                  const asset = assetMap[p.assetId];
+                  // bank = 통장이름, tag = nickname(accountPurpose) — applyRecommend 와 동일 규칙
+                  const ASSET_TYPE_LABEL: Record<string, string> = {
+                    CASH: '생활비', DEPOSIT: '저축', EMERGENCY: '비상금',
+                    SAVING: '저축', FIXED: '고정지출', STOCK: '투자',
+                  };
+                  const accountName = asset?.accountName ?? p.accountName ?? p.institution ?? p.assetType;
+                  return {
+                    id: i,
+                    assetId: p.assetId,
+                    assetType: p.assetType,
+                    bank: accountName,
+                    bankName: p.institution ?? '',
+                    tag: p.accountPurpose ?? ASSET_TYPE_LABEL[p.assetType] ?? p.assetType,
+                    amount: p.plannedAmount,
+                    percent: salary > 0 ? Math.round((p.plannedAmount / salary) * 100) : 0,
+                    isPinned: false,
+                    color: TAG_COLORS[i % TAG_COLORS.length],
+                  };
+                }));
+              }
+            })
+            .catch(() => { });
+        }
+      }).catch(() => { });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => () => {
@@ -244,12 +276,13 @@ export default function AssetPrescription() {
     const portfolios = accounts.map(a => ({
       assetType: toAssetCategory(a.assetType),
       assetAmount: a.amount,
+      accountPurpose: a.tag,   // 파란칸 nickname → assets.account_purpose
       ...(a.assetId ? { assetId: a.assetId } : {}),
     }));
     try {
-      await updatePortfolios(portfolios, investmentAmount);
+      await createPortfolios(portfolios, investmentAmount, totalSalary);
     } catch (err) {
-      console.error('[AssetPrescription] PATCH /portfolios 실패:', err);
+      console.error('[AssetPrescription] POST /portfolios 실패:', err);
     }
     navigate('/prescription-complete');
   };
@@ -276,10 +309,10 @@ export default function AssetPrescription() {
           {/* Row 1: 급여통장 (중앙 정렬) */}
           <div className="flex flex-col items-center justify-center relative z-10 pt-2">
             <p className="text-xs font-semibold text-slate-500 mb-1.5 flex items-center justify-center gap-1">
-              <img src={wooriLogo} alt="우리은행" className="w-4 h-4 rounded-full object-contain" />
+              <img src={getBankImgSrc('우리은행')} alt="우리은행" className="w-4 h-4 rounded-full object-contain" />
               우리은행 급여통장
             </p>
-            
+
             <div className="border-2 border-slate-700 rounded-2xl px-5 py-2.5 shadow-sm bg-white min-w-[140px] text-center">
               <span className="text-base font-extrabold tracking-tight">
                 {formatNumber(totalSalary)}<span className="text-xs font-bold text-slate-600 ml-0.5">원</span>
@@ -320,9 +353,12 @@ export default function AssetPrescription() {
                     <Info className="w-3 h-3" />
                   </button>
                   {showFixedInfo && (
-                    <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[220px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
+                    <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[240px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 transform rotate-45" />
-                      고정 지출(월세, 보험, 통신비) <span className="font-bold text-blue-300">{formatNumber(fixedExpense)}원</span>은 신한 고정지출 통장에 먼저 빼놨어요.
+                      <p className="font-bold text-blue-300 mb-1">고정지출은?</p>
+                      {fixedExpenseComment.trim() || (
+                        <>보험료·통신비·구독료처럼 매달 주계좌에서 자동으로 빠져나가던 돈을 Pori가 계산해서 <span className="font-bold text-yellow-300">'생활비'</span> 통장에 먼저 배분해뒀어요. 금액은 자유롭게 조정 가능해요.</>
+                      )}
                     </div>
                   )}
                 </span>
@@ -370,9 +406,9 @@ export default function AssetPrescription() {
                     <div className="flex justify-between items-center mb-3 gap-2">
                       {/* 왼쪽: 로고 + 통장명 */}
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {BANK_LOGOS[acc.bankName] ? (
+                        {getBankImgSrc(acc.bankName) ? (
                           <img
-                            src={BANK_LOGOS[acc.bankName]}
+                            src={getBankImgSrc(acc.bankName)}
                             alt={acc.bankName}
                             className="w-7 h-7 rounded-full object-contain border border-slate-100 bg-white shrink-0"
                           />
@@ -389,7 +425,7 @@ export default function AssetPrescription() {
                           {acc.bank}
                         </button>
                       </div>
-                      {/* 오른쪽: 태그 + 잠금 + 삭제 */}
+                      {/* 오른쪽: 태그 + ? + 잠금 + 삭제 */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <input
                           type="text"
@@ -398,6 +434,24 @@ export default function AssetPrescription() {
                           placeholder="태그"
                           className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-xs font-medium outline-none focus:ring-2 focus:ring-blue-300 w-16 text-center"
                         />
+                        {/* AI 배분 이유 툴팁 (항상 표시, comment 없으면 기본 멘트) */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onMouseEnter={() => setCommentTooltip(index)}
+                            onMouseLeave={() => setCommentTooltip(null)}
+                            className="p-1.5 rounded-full hover:bg-blue-50 transition-colors"
+                            aria-label="배분 이유 보기"
+                          >
+                            <HelpCircle className="w-5 h-5 text-blue-400" />
+                          </button>
+                          {commentTooltip === index && (
+                            <div className="absolute right-0 bottom-9 w-64 bg-slate-800 text-white text-[11px] leading-relaxed px-3 py-2.5 rounded-xl shadow-xl z-50 pointer-events-none">
+                              <div className="absolute -bottom-1 right-3.5 w-2 h-2 bg-slate-800 rotate-45" />
+                              💡 {acc.comment?.trim() || 'Pori가 소비 패턴을 분석해 추천한 금액이에요. 필요하면 직접 조정하세요.'}
+                            </div>
+                          )}
+                        </div>
                         <button
                           onClick={(e) => togglePin(index, e)}
                           className={`p-1.5 rounded-full transition-colors ${acc.isPinned ? 'bg-rose-50' : 'hover:bg-slate-100'}`}
@@ -420,17 +474,38 @@ export default function AssetPrescription() {
                     </div>
 
                     <div className="flex gap-2 items-center">
-                      {/* 금액 입력란 */}
+                      {/* -만원 버튼 */}
+                      <button
+                        type="button"
+                        disabled={acc.isPinned || acc.amount < 10000}
+                        onClick={() => updateAmount(index, Math.max(0, acc.amount - 10000))}
+                        className="w-12 h-12 rounded-xl border border-slate-200 bg-white text-slate-600 text-xs font-bold flex items-center justify-center shrink-0 hover:bg-slate-50 active:scale-95 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        -
+                      </button>
+
+                      {/* 직접 입력 */}
                       <div className="relative flex-1">
                         <input
                           type="text"
                           inputMode="numeric"
+                          disabled={acc.isPinned}
                           value={formatNumber(acc.amount)}
                           onChange={(e) => updateAmount(index, parseDigits(e.target.value))}
-                          className={`w-full bg-slate-50 border ${acc.isPinned ? 'border-rose-100' : 'border-slate-200'} rounded-xl py-3 pr-8 pl-3 text-right font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-lg`}
+                          className={`w-full bg-slate-50 border ${acc.isPinned ? 'border-rose-100 opacity-60 cursor-not-allowed' : 'border-slate-200'} rounded-xl py-3 pr-8 pl-3 text-right font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-lg`}
                         />
                         <span className="absolute right-3 top-3.5 text-slate-400 text-sm font-semibold">원</span>
                       </div>
+
+                      {/* +만원 버튼 */}
+                      <button
+                        type="button"
+                        disabled={acc.isPinned}
+                        onClick={() => updateAmount(index, acc.amount + 10000)}
+                        className="w-12 h-12 rounded-xl border border-slate-200 bg-white text-slate-600 text-xs font-bold flex items-center justify-center shrink-0 hover:bg-slate-50 active:scale-95 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -567,9 +642,17 @@ export default function AssetPrescription() {
                           }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acc.badgeBg} ${acc.badgeColor}`}>
-                            {acc.short}
-                          </div>
+                          {getBankImgSrc(acc.bank) ? (
+                            <img
+                              src={getBankImgSrc(acc.bank)}
+                              alt={acc.bank}
+                              className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0"
+                            />
+                          ) : (
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${acc.badgeBg} ${acc.badgeColor}`}>
+                              {acc.short}
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <p className="text-[10px] text-slate-400 font-medium">{acc.bank}</p>
                             <p className="text-sm font-bold text-slate-800 truncate">{acc.name}</p>
@@ -603,7 +686,7 @@ export default function AssetPrescription() {
                   ) : (
                     <div className="p-3 rounded-xl border-2 border-blue-300 bg-blue-50/60 space-y-3">
                       <div className="flex items-center gap-2.5">
-                        <img src={wooriLogo} alt="우리은행" className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0" />
+                        <img src={getBankImgSrc('우리은행')} alt="우리은행" className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0" />
                         <div className="min-w-0">
                           <p className="text-[10px] text-slate-500 font-medium">우리은행 · 신규 통장</p>
                           <p className="text-xs text-slate-600">월급을 나눠 담을 통장을 만들어요</p>
@@ -701,9 +784,9 @@ export default function AssetPrescription() {
                         }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        {BANK_LOGOS[acc.bank] ? (
+                        {getBankImgSrc(acc.bank) ? (
                           <img
-                            src={BANK_LOGOS[acc.bank]}
+                            src={getBankImgSrc(acc.bank)}
                             alt={acc.bank}
                             className="w-9 h-9 rounded-full object-contain border border-slate-100 bg-white shrink-0"
                           />

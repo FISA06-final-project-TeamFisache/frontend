@@ -1,63 +1,43 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, HelpCircle, Plus, Check, X } from 'lucide-react';
-import wooriLogo   from '../assets/banks/woori.png';
-import kakaoLogo   from '../assets/banks/kakao.png';
-import tossLogo    from '../assets/banks/toss.png';
-import shinhanLogo from '../assets/banks/shinhan.png';
-import hanaLogo    from '../assets/banks/hana.png';
-import kbLogo      from '../assets/banks/kb.png';
-import miraeLogo   from '../assets/banks/mirae.png';
-import heroImg     from '../assets/hero.png';
-import { getPortfolioItems, updatePortfolios } from '../api/portfolioApi';
-import { getTransferPlans, generateTransferPlans, updateTransferPlan } from '../api/transferApi';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, HelpCircle, Check, X } from 'lucide-react';
+import { getBankMeta } from '../constants/banks';
+import heroImg from '../assets/hero.png';
+import { getTransferPlans, updateTransferPlans, generateTransferPlans } from '../api/transferApi';
 import { getAssets } from '../api/assetApi';
 
 type View = 'summary' | 'detail' | 'success';
-type Tab  = 'spend' | 'invest';
+type Tab = 'spend' | 'invest';
 
 const fmt = (n: number) => n.toLocaleString('ko-KR');
 
 const SPEND_TYPE_META: Record<string, { tag: string; color: string }> = {
-  SPENDING:  { tag: '생활비', color: '#F59E0B' },
+  SPENDING: { tag: '생활비', color: '#F59E0B' },
+  CASH:     { tag: '생활비', color: '#F59E0B' },
   EMERGENCY: { tag: '비상금', color: '#6366F1' },
-  TARGET:    { tag: '목표',   color: '#10B981' },
-  SAVING:    { tag: '저축',   color: '#3B82F6' },
+  TARGET:   { tag: '목표',   color: '#10B981' },
+  SAVING:   { tag: '저축',   color: '#3B82F6' },
+  DEPOSIT:  { tag: '저축',   color: '#3B82F6' },
 };
 
-const MOCK_INVEST_PLANS = [
-  { id: 'mock-i1', name: '토스뱅크', tag: '단기', amount: 1_200_000, delta: 0, editedDelta: 20000, color: '#3b82f6', logo: tossLogo, term: '단', institution: '토스뱅크' },
-  { id: 'mock-i2', name: '투자증권', tag: '중기', amount: 1_200_000, delta: 0, editedDelta: 0, color: '#3b82f6', logo: shinhanLogo, term: '중', institution: '신한은행' },
-];
 
-const BANK_META: Record<string, { bg: string; imgSrc: string }> = {
-  '카카오뱅크': { bg: '#FEE500', imgSrc: kakaoLogo },
-  '토스뱅크':   { bg: '#3182F6', imgSrc: tossLogo  },
-  '토스증권':   { bg: '#3182F6', imgSrc: tossLogo  },
-  '신한은행':   { bg: '#0046FF', imgSrc: shinhanLogo },
-  '하나은행':   { bg: '#009F6B', imgSrc: hanaLogo },
-  '우리은행':   { bg: '#0067AC', imgSrc: wooriLogo },
-  'KB국민은행': { bg: '#FFBC00', imgSrc: kbLogo },
-  '미래에셋':   { bg: '#F05928', imgSrc: miraeLogo },
-};
 
 const TERM_META: Record<string, { label: string; bg: string; text: string }> = {
-  '단': { label: '단기', bg: 'bg-red-100',     text: 'text-red-700'     },
-  '중': { label: '중기', bg: 'bg-amber-100',   text: 'text-amber-700'   },
+  '단': { label: '단기', bg: 'bg-red-100', text: 'text-red-700' },
+  '중': { label: '중기', bg: 'bg-amber-100', text: 'text-amber-700' },
   '장': { label: '장기', bg: 'bg-emerald-100', text: 'text-emerald-700' },
 };
 
 const PRODUCT_TYPE_META: Record<string, { tag: string; term: string }> = {
-  DEPOSIT: { tag: '예금',  term: '단' },
-  BOND:    { tag: '채권',  term: '중' },
-  STOCK:   { tag: '주식',  term: '장' },
+  DEPOSIT: { tag: '예금', term: '단' },
+  BOND: { tag: '채권', term: '중' },
+  STOCK: { tag: '주식', term: '장' },
 };
 
 
-const REASONS = [
-  '생활비 카테고리 지난달 32,000원 초과',
-  '비상금 최근 3개월 미인출',
-  '투자 비율 20% 유지 기준 충족',
-];
+// 월급 변동이 없을 때(rebalanceComment 없음) 보여줄 안내 — AI 리밸런싱이 없으므로
+// "기존 계획대로 분배" 라는 정확한 문구를 노출한다.
+const NO_CHANGE_GUIDE = '이번 달은 월급 변동이 없어, 기존 계획대로 분배해 드릴게요.';
 
 const SPEND_REASONS = [
   '생활비 카테고리 지난달 32,000원 초과',
@@ -71,6 +51,7 @@ const INVEST_REASONS = [
 
 interface Plan {
   id: string;
+  assetId: string;   // PATCH /transfer-plans 매칭 키
   name: string;
   tag: string;
   amount: number;
@@ -82,148 +63,156 @@ interface Plan {
   institution?: string | null;
   interestRate?: number | null;
   productType?: string;
+  readOnly?: boolean;   // 생활비(출발 계좌) — 표시 전용, 이체/조정 불가
 }
 
 interface Props {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export default function SalaryManagement({ onClose }: Props) {
-  const [view,       setView]       = useState<View>('summary');
-  const [activeTab,  setActiveTab]  = useState<Tab>('spend');
+  const navigate = useNavigate();
+
+  const handleClose = () => {
+    if (onClose) onClose();
+    else navigate('/dashboard');
+  };
+
+  const [view, setView] = useState<View>('summary');
+  const [activeTab, setActiveTab] = useState<Tab>('spend');
   const [spendPlans, setSpendPlans] = useState<Plan[]>([]);
   const [investPlans, setInvestPlans] = useState<Plan[]>([]);
-  const [salary,     setSalary]     = useState(0);
+  const [salary, setSalary] = useState(0);
   const [salaryDelta, setSalaryDelta] = useState(0);
   const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>(null);
-  const [accounts,   setAccounts]   = useState<Array<{ id: string; name: string; bank: string; logo: string }>>([]);
-  const [tooltip,    setTooltip]    = useState<string | null>(null);
-  const [showAddModal,  setShowAddModal]  = useState(false);
+  const [accounts, setAccounts] = useState<Array<{ id: string; name: string; bank: string; logo: string }>>([]);
+  const [tooltip, setTooltip] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
-  const [newTag,        setNewTag]        = useState('');
-
-
+  const [newTag, setNewTag] = useState('');
+  const [agentReasons, setAgentReasons] = useState<string[]>([NO_CHANGE_GUIDE]);
+  // StrictMode 이중 마운트로 자동 generate 가 두 번 호출돼 플랜이 중복 생성되는 것 방지
+  const didLoadRef = useRef(false);
 
   useEffect(() => {
+    if (didLoadRef.current) return;
+    didLoadRef.current = true;
+
     const now = new Date();
-    Promise.all([
-      getTransferPlans(now.getFullYear(), now.getMonth() + 1),
-      getAssets(),
-    ])
-      .then(([planData, assets]) => {
-        const assetMap = new Map(assets.map(a => [a.id, a]));
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+
+    (async () => {
+      try {
+        let planData = await getTransferPlans(year, month);
+        // 이번 달 이체 계획이 아직 없으면 자동 생성 후 재조회
+        if (planData.portfolioItems.length === 0 && planData.flowItems.length === 0) {
+          try {
+            await generateTransferPlans();
+            planData = await getTransferPlans(year, month);
+          } catch (e) {
+            console.warn('[SalaryManagement] 이체 계획 자동 생성 실패:', e);
+          }
+        }
+        const assets = await getAssets();
+
+        // 급여 계좌 정보
         const salaryAsset = assets.find(a => a.isSalary);
         if (salaryAsset) {
-          setSalary(salaryAsset.balance);
+          setSalary(planData.currentSalary ?? salaryAsset.balance);
           setSalaryAccount({
             institution: salaryAsset.institution,
-            logo: BANK_META[salaryAsset.institution]?.imgSrc ?? wooriLogo,
+            logo: getBankMeta(salaryAsset.institution).imgSrc,
           });
         }
-        setSalaryDelta(planData.salaryAmount ?? planData.totalAmount ?? 0);
+        setSalaryDelta(planData.salaryDiff ?? 0);
+        // Pori 분배 가이드: 월급 변동이 있어 AI 코멘트(rebalanceComment)가 오면 그걸,
+        // 변동이 없어 null 이면 "기존 계획대로 분배" 안내를 보여준다.
+        setAgentReasons(planData.rebalanceComment ? [planData.rebalanceComment] : [NO_CHANGE_GUIDE]);
 
-        const mapPlans = (plans: typeof planData.plans) =>
-          plans.map(p => {
-            const asset = p.assetId ? assetMap.get(p.assetId) : null;
+        // 지출 항목 (portfolioItems: CASH/DEPOSIT/EMERGENCY)
+        if (planData.portfolioItems.length > 0) {
+          setSpendPlans(planData.portfolioItems.map(p => {
             const typeMeta = SPEND_TYPE_META[p.assetType] ?? { tag: p.assetType, color: '#94A3B8' };
             return {
-              id: p.id,
-              name: asset?.accountName ?? p.institution ?? '계좌',
-              tag: typeMeta.tag,
-              amount: asset?.balance ?? 0,
+              id: p.planId ?? '__auto_transfer__',   // 생활비는 planId=null → 표시 전용 sentinel
+              assetId: p.assetId,
+              name: p.accountName ?? p.institution ?? '계좌',   // 좌측 = 통장이름
+              tag: p.accountPurpose ?? typeMeta.tag,            // 파란칸 = nickname(생활비/비상금/적금)
+              amount: p.baselineAmount,
               delta: p.plannedAmount,
               editedDelta: p.plannedAmount,
               color: typeMeta.color,
-              logo: p.institution ? (BANK_META[p.institution]?.imgSrc ?? wooriLogo) : wooriLogo,
+              logo: getBankMeta(p.institution ?? '').imgSrc,
+              readOnly: p.planId == null,   // 출발 계좌(우리은행에 남기는 몫) — 조정/이체 제외
             };
-          });
-
-        if (planData.plans.length > 0) {
-          setSpendPlans(mapPlans(planData.plans));
-        } else {
-          generateTransferPlans()
-            .then(generated => {
-              if (generated.plans.length > 0) {
-                setSpendPlans(mapPlans(generated.plans));
-                setSalaryDelta(generated.salaryAmount ?? generated.totalAmount ?? 0);
-              }
-            })
-            .catch(err => console.error('이체 계획 자동 생성 실패:', err));
+          }));
         }
+
+        // 투자 항목 (flowItems: portfolio_flows 기반)
+        if (planData.flowItems.length > 0) {
+          setInvestPlans(planData.flowItems.map(p => {
+            const meta = PRODUCT_TYPE_META[p.productType ?? ''] ?? { tag: p.productType ?? '투자', term: null };
+            return {
+              id: p.planId,
+              assetId: p.assetId,
+              name: p.institution ?? '투자계좌',
+              tag: meta.tag,
+              amount: p.baselineAmount,
+              delta: p.plannedAmount,
+              editedDelta: p.plannedAmount,
+              color: '#3b82f6',
+              logo: getBankMeta(p.institution ?? '').imgSrc,
+              term: meta.term ?? null,
+              institution: p.institution,
+              interestRate: null,
+              productType: p.productType ?? undefined,
+            };
+          }));
+        }
+
         setAccounts(
           assets.map(a => ({
             id: a.id,
             name: a.accountName,
             bank: a.institution,
-            logo: BANK_META[a.institution]?.imgSrc ?? wooriLogo,
+            logo: getBankMeta(a.institution).imgSrc,
           })),
         );
-      })
-      .catch(err => console.error('이체 계획 조회 실패:', err));
+      } catch (err) {
+        console.error('이체 계획 조회 실패:', err);
+      }
+    })();
   }, []);
 
-  useEffect(() => {
-    getPortfolioItems()
-      .then(({ items }) => {
-        if (items.length > 0) {
-          setInvestPlans(
-            items.map(item => {
-              const meta = PRODUCT_TYPE_META[item.productType] ?? { tag: item.productType, term: null };
-              const inst = item.institution;
-              return {
-                id: item.id,
-                name: inst ?? '투자계좌',
-                tag: meta.tag,
-                amount: item.balance ?? 0,
-                delta: 0,
-                editedDelta: 0,
-                color: '#3b82f6',
-                logo: inst ? (BANK_META[inst]?.imgSrc ?? wooriLogo) : wooriLogo,
-                term: meta.term,
-                institution: inst,
-                interestRate: null,
-                productType: item.productType,
-              };
-            }),
-          );
-        } else {
-          setInvestPlans(MOCK_INVEST_PLANS);
-        }
-      })
-      .catch(() => {
-        setInvestPlans(MOCK_INVEST_PLANS);
-      });
-  }, []);
-
-  const spendDelta  = spendPlans.reduce((s, p)  => s + p.editedDelta, 0);
+  const spendDelta = spendPlans.reduce((s, p) => s + p.editedDelta, 0);
   const investDelta = investPlans.reduce((s, p) => s + p.editedDelta, 0);
-  const remain      = salaryDelta - spendDelta - investDelta;
-  const isOver      = remain < 0;
+  const remain = salary - spendDelta - investDelta;
+  // 증감분(diff) = 현재 배분 − 원래 계획(baseline). Case2 합계 +/- 표시에 사용
+  const spendBaseline = spendPlans.reduce((s, p) => s + p.amount, 0);
+  const investBaseline = investPlans.reduce((s, p) => s + p.amount, 0);
+  const spendInc = spendDelta - spendBaseline;
+  const investInc = investDelta - investBaseline;
+  const isOver = remain < 0;
 
   const handleConfirm = async () => {
+    // 지출+투자 모두 이번 달 이체 계획(TransferPlans). 변경된 항목만 assetId+금액으로 일괄 PATCH
+    // 생활비(readOnly, planId=null)는 이체 대상이 아니므로 제외
+    const changed = [...spendPlans, ...investPlans]
+      .filter(p => !p.readOnly && p.editedDelta !== p.delta)
+      .map(p => ({ assetId: p.assetId, amount: p.editedDelta }));
     try {
-      await Promise.all(
-        spendPlans
-          .filter(p => p.editedDelta !== p.delta)
-          .map(p => updateTransferPlan(p.id, p.editedDelta)),
-      );
+      if (changed.length > 0) {
+        const now = new Date();
+        await updateTransferPlans(now.getFullYear(), now.getMonth() + 1, changed);
+      }
     } catch (err) {
       console.error('[SalaryManagement] PATCH /transfer-plans 실패:', err);
-    }
-    try {
-      const portfolios = investPlans.map(p => ({
-        assetType: p.productType ?? p.tag,
-        assetAmount: p.editedDelta,
-        assetId: p.id,
-      }));
-      await updatePortfolios(portfolios, investDelta);
-    } catch (err) {
-      console.error('[SalaryManagement] PATCH /portfolios 실패:', err);
     }
     setView('success');
   };
 
-  const activePlans    = activeTab === 'spend' ? spendPlans    : investPlans;
+  const activePlans = activeTab === 'spend' ? spendPlans : investPlans;
   const setActivePlans = activeTab === 'spend' ? setSpendPlans : setInvestPlans;
 
   const openAddModal = () => { setSelectedAccId(null); setNewTag(''); setShowAddModal(true); };
@@ -233,7 +222,7 @@ export default function SalaryManagement({ onClose }: Props) {
     const tag = newTag.trim();
     if (!acc || !tag) return;
     setActivePlans(prev => [...prev, {
-      id: String(Date.now()), name: acc.name, tag,
+      id: String(Date.now()), assetId: acc.id, name: acc.name, tag,
       amount: 0, delta: 0, editedDelta: 0,
       color: '#94A3B8', logo: acc.logo,
     }]);
@@ -241,50 +230,83 @@ export default function SalaryManagement({ onClose }: Props) {
   };
 
   // ── 요약 카드 ─────────────────────────────────────────
+  // Case1: 0 ≤ salaryDiff < 5만 → 회색, "월급이 들어왔어요", currentSalary 표시
+  // Case2: salaryDiff ≥ 5만 또는 음수(감소) → 빨간색, "월급에 변동이 있어요", salaryDiff 표시
+  const isCase2 = salaryDelta >= 50000 || salaryDelta < 0;
+
+  // Case2: 백엔드 리밸런싱으로 실제 바뀐 항목만 변동분(diff)을 +/-로 강조,
+  //        안 바뀐 항목은 전체 배분액을 회색으로. Case1: 전체 배분액(회색).
+  const renderPlanAmount = (p: { editedDelta: number; amount: number }) => {
+    if (isCase2) {
+      const inc = p.editedDelta - p.amount;   // plannedAmount − baselineAmount = 이번 변동분
+      if (inc !== 0) {
+        return (
+          <span className={`text-xs font-extrabold shrink-0 ${inc < 0 ? 'text-blue-500' : 'text-red-500'}`}>
+            {inc >= 0 ? '+' : ''}{fmt(inc)}원
+          </span>
+        );
+      }
+    }
+    return (
+      <span className="text-xs font-extrabold shrink-0 text-slate-600">
+        {fmt(p.editedDelta)}원
+      </span>
+    );
+  };
+
   if (view === 'summary') {
     return (
-      <div className="fixed inset-0 bg-black/40 z-50 flex flex-col items-center justify-end" onClick={onClose}>
-        <div className="w-full max-w-[375px] bg-[#f8fafc] rounded-t-[20px] max-h-[92vh] overflow-y-auto flex flex-col animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)]" onClick={e => e.stopPropagation()}>
+      <div className="min-h-screen bg-[#f8fafc] flex justify-center">
+        <div className="w-full max-w-[375px] flex flex-col h-screen">
           {/* Header */}
           <div className="px-4 py-3.5 flex items-center justify-between border-b border-slate-100 bg-white shrink-0">
             <div className="flex items-center gap-2">
               <span className="text-lg">💰</span>
-              <span className="text-base font-bold text-slate-800">월급 알림</span>
+              <span className="text-base font-bold text-slate-800">월급</span>
             </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-base p-1 flex items-center justify-center">✕</button>
+            <button onClick={() => navigate('/dashboard')} className="text-slate-400 hover:text-slate-700 text-base p-1 flex items-center justify-center">✕</button>
           </div>
 
           {/* Content Area */}
-          <div className="p-4 flex flex-col gap-3 overflow-y-auto">
-            {/* Title */}
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
             <h3 className="text-lg font-bold text-slate-800 text-center mt-2.5 mb-1.5">
-              월급에 변동이 있어요
+              {isCase2 ? '월급에 변동이 있어요!' : '월급이 들어왔어요!'}
             </h3>
 
-            {/* Box 1: 월급 변동 */}
+            {/* 월급 금액: Case1=변동없음(+없음), Case2=변동(+붙음) */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 text-center">
-              <p className="text-xs text-slate-400 mb-1.5">{salaryAccount?.institution ?? '급여'} 급여통장 · 이번달 배분 금액</p>
-              <p className="text-3xl font-extrabold text-red-500">+{fmt(salaryDelta)}원</p>
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                {salaryAccount?.logo && (
+                  <img src={salaryAccount.logo} alt="" className="w-4 h-4 rounded-full object-contain" />
+                )}
+                <p className="text-xs text-slate-400">{salaryAccount?.institution ?? '급여'} 급여통장</p>
+              </div>
+              {isCase2 ? (
+                <p className={`text-3xl font-extrabold ${salaryDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                  {salaryDelta >= 0 ? '+' : ''}{fmt(salaryDelta)}원
+                </p>
+              ) : (
+                <p className="text-3xl font-extrabold text-slate-600">
+                  {fmt(salary)}원
+                </p>
+              )}
             </div>
 
-            {/* Box 2: Pori 조언 */}
+            {/* Pori 분배 가이드 (agent API, 실패 시 fallback) */}
             <div className="bg-[#fffbeb] border border-[#fef3c7] rounded-2xl px-4 py-3.5 space-y-1.5">
-              {REASONS.map((r, i) => (
-                <p key={i} className="text-xs text-[#92400e] leading-relaxed">
-                  {r}
-                </p>
+              <p className="text-xs font-bold text-blue-500 mb-0.5">Pori의 분배 가이드</p>
+              {agentReasons.map((r, i) => (
+                <p key={i} className="text-xs text-[#92400e] leading-relaxed">{r}</p>
               ))}
             </div>
 
-            {/* Box 3: 세부 분배 계획 */}
+            {/* 세부 분배 계획 */}
             <div className="flex flex-col gap-3">
               {/* 지출할 금액 */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex">
-                {/* Left Label Column */}
                 <div className="w-[80px] shrink-0 bg-[#f8fafc] border-r border-slate-100 flex flex-col items-center justify-center p-2 text-center">
                   <p className="text-xs font-bold text-slate-500 leading-tight">지출할<br />금액</p>
                 </div>
-                {/* Right Accounts List */}
                 <div className="flex-1 p-3.5 space-y-3.5 bg-white">
                   {spendPlans.map(p => (
                     <div key={p.id} className="flex items-center justify-between">
@@ -295,9 +317,8 @@ export default function SalaryManagement({ onClose }: Props) {
                         <span className="text-xs font-bold text-slate-800 truncate">{p.name}</span>
                         <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">{p.tag}</span>
                       </div>
-                      <span className="text-xs font-extrabold text-red-500 shrink-0">
-                        +{fmt(Math.abs(p.editedDelta))}원
-                      </span>
+                      {/* Case2: 변동된 항목만 +/- 강조 / Case1: 전체금액 */}
+                      {renderPlanAmount(p)}
                     </div>
                   ))}
                 </div>
@@ -305,11 +326,9 @@ export default function SalaryManagement({ onClose }: Props) {
 
               {/* 투자할 금액 */}
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex">
-                {/* Left Label Column */}
                 <div className="w-[80px] shrink-0 bg-[#f8fafc] border-r border-slate-100 flex flex-col items-center justify-center p-2 text-center">
                   <p className="text-xs font-bold text-blue-600 leading-tight">투자할<br />금액</p>
                 </div>
-                {/* Right Accounts List */}
                 <div className="flex-1 p-3.5 space-y-3.5 bg-white">
                   {investPlans.map(p => {
                     const termInfo = p.term ? TERM_META[p.term] : null;
@@ -321,18 +340,12 @@ export default function SalaryManagement({ onClose }: Props) {
                           </div>
                           <span className="text-xs font-bold text-slate-800 truncate">{p.name}</span>
                           {termInfo ? (
-                            <span className={`${termInfo.bg} ${termInfo.text} px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0`}>
-                              {termInfo.label}
-                            </span>
+                            <span className={`${termInfo.bg} ${termInfo.text} px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0`}>{termInfo.label}</span>
                           ) : (
-                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">
-                              {p.tag}
-                            </span>
+                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">{p.tag}</span>
                           )}
                         </div>
-                        <span className="text-xs font-extrabold text-red-500 shrink-0">
-                          +{fmt(Math.abs(p.editedDelta))}원
-                        </span>
+                        {renderPlanAmount(p)}
                       </div>
                     );
                   })}
@@ -342,7 +355,7 @@ export default function SalaryManagement({ onClose }: Props) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex border-t border-slate-100 bg-white shrink-0 mt-3">
+          <div className="flex border-t border-slate-100 bg-white shrink-0">
             <button onClick={() => setView('detail')}
               className="flex-1 py-4 text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors border-r border-slate-100">
               재설정
@@ -360,13 +373,17 @@ export default function SalaryManagement({ onClose }: Props) {
   // ── 완료 화면 ────────────────────────────────────────────
   if (view === 'success') {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center font-sans gap-4">
-        <img src={heroImg} alt="Pori" className="w-32 h-32 object-contain" />
-        <h2 className="text-xl font-bold text-slate-800">월급 나누기 완료</h2>
-        <button onClick={onClose}
-          className="mt-2 px-12 py-3 bg-blue-600 text-white font-bold rounded-xl text-base hover:bg-blue-700 transition-colors">
-          확인
-        </button>
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 animate-[popIn_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+          <img src={heroImg} alt="Pori" className="w-28 h-28 object-contain" />
+          <h2 className="text-xl font-bold text-slate-800">월급 나누기 완료</h2>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mt-1 px-12 py-3 bg-blue-600 text-white font-bold rounded-xl text-base hover:bg-blue-700 transition-colors"
+          >
+            확인
+          </button>
+        </div>
       </div>
     );
   }
@@ -380,7 +397,7 @@ export default function SalaryManagement({ onClose }: Props) {
         <header className="flex items-center justify-between p-4 bg-white border-b border-slate-100 shrink-0">
           <button className="p-2" onClick={() => setView('summary')}><ChevronLeft className="w-6 h-6" /></button>
           <h1 className="font-semibold text-lg">월급 관리</h1>
-          <button className="p-2 text-slate-400" onClick={onClose}><X className="w-5 h-5" /></button>
+          <button className="p-2 text-slate-400" onClick={handleClose}><X className="w-5 h-5" /></button>
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 pt-4 pb-6">
@@ -388,12 +405,16 @@ export default function SalaryManagement({ onClose }: Props) {
           {/* 급여통장 노드 */}
           <div className="flex flex-col items-center mb-1">
             <p className="text-xs font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
-              <img src={salaryAccount?.logo ?? wooriLogo} alt="" className="w-4 h-4 rounded-full object-contain" />
+              <img src={salaryAccount?.logo ?? getBankMeta('우리은행').imgSrc} alt="" className="w-4 h-4 rounded-full object-contain" />
               {salaryAccount?.institution ?? '급여'} 급여통장
             </p>
             <div className="border-2 border-slate-700 rounded-2xl px-6 py-2.5 shadow-sm bg-white text-center">
               <p className="text-xs text-slate-400">{fmt(salary)}<span className="ml-0.5">원</span></p>
-              <p className="text-sm font-bold text-red-500 mt-0.5">+{fmt(salaryDelta)}원</p>
+              {salaryDelta !== 0 && (
+                <p className={`text-sm font-bold mt-0.5 ${salaryDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                  {salaryDelta > 0 ? '+' : ''}{fmt(salaryDelta)}원
+                </p>
+              )}
             </div>
           </div>
 
@@ -411,18 +432,22 @@ export default function SalaryManagement({ onClose }: Props) {
               <p className={`text-xs font-semibold mb-1 text-center transition-colors ${activeTab === 'spend' ? 'text-slate-600' : 'text-slate-300'}`}>지출할 금액</p>
               <div className={`rounded-2xl px-3 py-2.5 text-center transition-all ${activeTab === 'spend' ? 'border-2 border-slate-700 bg-white' : 'border border-slate-200 bg-white opacity-50'}`}>
                 <p className="text-xs text-slate-400">{fmt(spendDelta)}<span className="ml-0.5">원</span></p>
-                <p className={`text-sm font-bold ${spendDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                  {spendDelta < 0 ? '−' : '+'}{fmt(Math.abs(spendDelta))}원
-                </p>
+                {isCase2 && (
+                  <p className={`text-sm font-bold ${spendInc < 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {spendInc < 0 ? '−' : '+'}{fmt(Math.abs(spendInc))}원
+                  </p>
+                )}
               </div>
             </button>
             <button onClick={() => setActiveTab('invest')} className="text-left w-full">
               <p className={`text-xs font-semibold mb-1 text-center transition-colors ${activeTab === 'invest' ? 'text-blue-400' : 'text-slate-300'}`}>투자할 금액</p>
               <div className={`rounded-2xl px-3 py-2.5 text-center transition-all ${activeTab === 'invest' ? 'border-2 border-blue-400 bg-blue-50' : 'border border-slate-200 bg-white opacity-50'}`}>
                 <p className="text-xs text-slate-400">{fmt(investDelta)}<span className="ml-0.5">원</span></p>
-                <p className={`text-sm font-bold ${investDelta < 0 ? 'text-blue-500' : 'text-red-500'}`}>
-                  {investDelta < 0 ? '−' : '+'}{fmt(Math.abs(investDelta))}원
-                </p>
+                {isCase2 && (
+                  <p className={`text-sm font-bold ${investInc < 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {investInc < 0 ? '−' : '+'}{fmt(Math.abs(investInc))}원
+                  </p>
+                )}
               </div>
             </button>
           </div>
@@ -450,12 +475,15 @@ export default function SalaryManagement({ onClose }: Props) {
                 const isNeg = plan.editedDelta < 0;
                 const abs = Math.abs(plan.editedDelta);
                 const termInfo = plan.term ? TERM_META[plan.term] : null;
-                const meta = isInvest && plan.institution ? BANK_META[plan.institution] : null;
+                const meta = isInvest && plan.institution ? getBankMeta(plan.institution) : null;
                 const isLast = idx === activePlans.length - 1;
 
                 // 💡 동적 안전 조절 한도 계산 (마이너스 차단 & 전체 월급 인상분(10만원) 한도 내 배분 가능)
                 const minVal = 0; // 마이너스 불가능
                 const safeMax = Math.max(0, plan.editedDelta + remain);
+                const locked = !!plan.readOnly; // 생활비(출발 계좌) — 조정 불가
+                const baseline = plan.amount;                 // 원래 계획 (검은색 고정 표시)
+                const increment = plan.editedDelta - baseline; // 증감분 (Case2에서 +/-·입력으로 조절)
 
                 return (
                   <div key={plan.id} className={`relative pt-2 ${isInvest ? 'pr-12 pl-1' : 'pl-12 pr-1'}`}>
@@ -504,7 +532,9 @@ export default function SalaryManagement({ onClose }: Props) {
                         )}
                       </div>
 
-                      <p className="text-xs text-slate-400 text-right mb-1">{fmt(plan.amount)}원</p>
+                      <p className={`text-right mb-1 ${isCase2 ? 'text-xs text-slate-700 font-semibold' : 'text-xs text-slate-400'}`}>
+                        {isCase2 ? '원래 계획 ' : ''}{fmt(baseline)}원
+                      </p>
                       {isInvest && plan.interestRate != null && (
                         <p className="text-xs text-emerald-600 font-medium text-right mb-1">연 {plan.interestRate}%</p>
                       )}
@@ -518,22 +548,36 @@ export default function SalaryManagement({ onClose }: Props) {
                             type="button"
                             onClick={() => {
                               const nextVal = plan.editedDelta - 5000;
-                              if (nextVal >= minVal) {
+                              if (!locked && nextVal >= minVal) {
                                 setActivePlans(prev => prev.map(p => p.id === plan.id ? { ...p, editedDelta: nextVal } : p));
                               }
                             }}
-                            disabled={plan.editedDelta <= minVal}
+                            disabled={locked || plan.editedDelta <= minVal}
                             className={`w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center font-extrabold text-xs focus:outline-none transition-all
-                              ${plan.editedDelta <= minVal ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-slate-600 active:scale-95'}`}
+                              ${locked || plan.editedDelta <= minVal ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-slate-600 active:scale-95'}`}
                           >
                             -
                           </button>
 
-                          {/* 중앙 정합 금액값 */}
+                          {/* 중앙 금액 — Case2: 증감분 조절 / Case1: 전체 금액 직접 입력 */}
                           <div className="flex items-center gap-1 font-extrabold text-sm">
-                            <span className={plan.editedDelta > 0 ? 'text-red-500' : 'text-slate-500'}>
-                              {plan.editedDelta > 0 ? '+' : ''}{fmt(plan.editedDelta)}
-                            </span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={isCase2
+                                ? `${increment > 0 ? '+' : increment < 0 ? '−' : ''}${fmt(Math.abs(increment))}`
+                                : fmt(plan.editedDelta)}
+                              disabled={locked}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                const neg = /[-−]/.test(v);
+                                const n = (parseInt(v.replace(/[^0-9]/g, '') || '0', 10)) * (neg ? -1 : 1);
+                                const nextEdited = isCase2 ? baseline + n : n;     // Case2: 입력=증감분
+                                const clamped = Math.min(Math.max(0, nextEdited), safeMax);
+                                setActivePlans(prev => prev.map(p => p.id === plan.id ? { ...p, editedDelta: clamped } : p));
+                              }}
+                              className={`w-24 text-center bg-transparent outline-none ${isCase2 ? (increment !== 0 ? (increment < 0 ? 'text-blue-500' : 'text-red-500') : 'text-slate-500') : 'text-slate-700'} ${locked ? 'cursor-not-allowed' : ''}`}
+                            />
                             <span className="text-[10px] text-slate-400 font-normal">원</span>
 
                             {/* 미세다이얼 아이콘 */}
@@ -548,13 +592,13 @@ export default function SalaryManagement({ onClose }: Props) {
                             type="button"
                             onClick={() => {
                               const nextVal = plan.editedDelta + 5000;
-                              if (nextVal <= safeMax) {
+                              if (!locked && nextVal <= safeMax) {
                                 setActivePlans(prev => prev.map(p => p.id === plan.id ? { ...p, editedDelta: nextVal } : p));
                               }
                             }}
-                            disabled={plan.editedDelta >= safeMax}
+                            disabled={locked || plan.editedDelta >= safeMax}
                             className={`w-6 h-6 rounded-md bg-white border border-slate-200 flex items-center justify-center font-extrabold text-xs focus:outline-none transition-all
-                              ${plan.editedDelta >= safeMax ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-slate-600 active:scale-95'}`}
+                              ${locked || plan.editedDelta >= safeMax ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-slate-600 active:scale-95'}`}
                           >
                             +
                           </button>
@@ -597,7 +641,7 @@ export default function SalaryManagement({ onClose }: Props) {
             </div>
           </div>
           <span className={`block text-[10px] text-red-500 font-medium h-3 mb-2 transition-opacity ${isOver ? 'opacity-100' : 'opacity-0'}`}>
-            +{fmt(salaryDelta)}원보다 많이 배분했어요
+            +{fmt(salary)}원보다 많이 배분했어요
           </span>
           <button disabled={isOver} onClick={handleConfirm}
             className={`w-full ${isOver ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3.5 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2`}>

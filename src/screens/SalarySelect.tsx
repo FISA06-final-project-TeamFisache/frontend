@@ -3,12 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAssets, setSalaryAccount, connectAutoTransfer, type Asset } from '../api/assetApi';
 import { ChevronLeft, Check, ChevronRight, X } from 'lucide-react';
 import heroImg from '../assets/hero.png';
-import shinhanLogo from '../assets/banks/shinhan.png';
-import kakaoLogo   from '../assets/banks/kakao.png';
-import wooriLogo   from '../assets/banks/woori.png';
-import kbLogo      from '../assets/banks/kb.png';
-import tossLogo    from '../assets/banks/toss.png';
-import hanaLogo    from '../assets/banks/hana.png';
+import { getBankImgSrc, isWooriBank } from '../constants/banks';
 
 type Step = 'account-select' | 'transfer-setup';
 
@@ -21,26 +16,15 @@ interface Account {
   isWoori: boolean;
 }
 
-// institution 이름 → 로고·isWoori 매핑
-const BANK_INFO: Record<string, { logo?: string; isWoori: boolean }> = {
-  '우리은행':   { logo: wooriLogo,   isWoori: true  },
-  '카카오뱅크': { logo: kakaoLogo,   isWoori: false },
-  '신한은행':   { logo: shinhanLogo, isWoori: false },
-  '국민은행':   { logo: kbLogo,      isWoori: false },
-  '토스뱅크':   { logo: tossLogo,    isWoori: false },
-  '하나은행':   { logo: hanaLogo,    isWoori: false },
-};
-
 const assetToAccount = (asset: Asset): Account => {
   const institution = asset.institution ?? '';
-  const info = BANK_INFO[institution] ?? { isWoori: asset.bankType === 'WOORI' };
   return {
     id: asset.id,
     bank: institution,
-    logo: info.logo,
+    logo: getBankImgSrc(institution),
     name: asset.accountName ?? '',
     balance: asset.balance ?? 0,
-    isWoori: info.isWoori,
+    isWoori: isWooriBank(institution) || asset.bankType === 'WOORI',
   };
 };
 
@@ -183,7 +167,7 @@ export default function SalarySelect() {
               const result = await setSalaryAccount(selectedAccount.id);
               if (result.isWooriBank) {
                 // 우리은행 → 자동이체 자기 계좌로 설정, 바로 다음 단계
-                navigate('/porti-survey');
+                navigate('/porti-survey', { state: { forceIntro: true } });
               } else {
                 // 타행 → 자동이체 설정 화면으로
                 setStep('transfer-setup');
@@ -191,7 +175,7 @@ export default function SalarySelect() {
             } catch {
               // 에러 시에도 isWoori 여부로 fallback
               if (selectedAccount.isWoori) {
-                navigate('/porti-survey');
+                navigate('/porti-survey', { state: { forceIntro: true } });
               } else {
                 setStep('transfer-setup');
               }
@@ -234,7 +218,7 @@ export default function SalarySelect() {
                       return groups;
                     }, {})
                   ).map(([institution, accs]) => {
-                    const info = BANK_INFO[institution];
+                    const logoSrc = getBankImgSrc(institution);
                     return (
                       <div key={institution}>
                         <p className="text-xs font-bold text-gray-400 mb-2 px-1">{institution}</p>
@@ -246,8 +230,8 @@ export default function SalarySelect() {
                               className="w-full text-left px-4 py-3 rounded-2xl border-2 border-gray-100 bg-white hover:border-blue-300 active:scale-[0.98] flex items-center gap-3 transition"
                             >
                               <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                                {info?.logo
-                                  ? <img src={info.logo} alt={institution} className="w-7 h-7 object-contain" />
+                                {logoSrc
+                                  ? <img src={logoSrc} alt={institution} className="w-7 h-7 object-contain" />
                                   : <span className="text-xs font-bold text-gray-600">{institution.slice(0, 2)}</span>
                                 }
                               </div>
@@ -319,7 +303,7 @@ export default function SalarySelect() {
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-9 h-9 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                      <img src={wooriLogo} alt="우리은행" className="w-6 h-6 object-contain" />
+                      <img src={getBankImgSrc('우리은행')} alt="우리은행" className="w-6 h-6 object-contain" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-800 truncate">{acc.name}</p>
@@ -388,10 +372,10 @@ export default function SalarySelect() {
             try {
               // POST /assets/auto-transfer/connect
               await connectAutoTransfer(transferAccount.id, transferDate);
-              navigate('/porti-survey');
+              navigate('/porti-survey', { state: { forceIntro: true } });
             } catch {
               // 실패해도 다음 단계로 진행
-              navigate('/porti-survey');
+              navigate('/porti-survey', { state: { forceIntro: true } });
             } finally {
               setTransferLoading(false);
             }
