@@ -6,7 +6,7 @@ import { getDashboard, type DashboardData, type DashboardAllocation } from '../a
 import SalaryManagement from './SalaryManagement';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notificationApi';
 import { getAssets, deleteAsset, type Asset } from '../api/assetApi';
-import { fetchProposal, applyProposal, type Proposal } from '../api/poriApi';
+import { analyzeGoal, proposeReset, applyProposal, type ProposeResult, type AnalyzeResult } from '../api/poriApi';
 import {
   getChallengeAlarmDetail,
   recommendChallenge,
@@ -600,11 +600,12 @@ export default function Dashboard() {
   }, []);
 
   // ── Pori ─────────────────────────────────────────────────
-  type PoriStep = 'input' | 'loading' | 'preview' | 'applying' | 'done';
+  type PoriStep = 'input' | 'loading' | 'analyze' | 'proposing' | 'preview' | 'applying' | 'done';
   const [poriOpen, setPoriOpen] = useState(false);
   const [poriStep, setPoriStep] = useState<PoriStep>('input');
   const [poriMessage, setPoriMessage] = useState('');
-  const [poriProposal, setPoriProposal] = useState<Proposal | null>(null);
+  const [poriProposal, setPoriProposal] = useState<ProposeResult | null>(null);
+  const [poriAnalyze, setPoriAnalyze] = useState<AnalyzeResult | null>(null);
   const [poriError, setPoriError] = useState<string | null>(null);
   const poriInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -629,7 +630,7 @@ export default function Dashboard() {
             description: active.description,
             category: active.category,
             challengeSubType: active.challengeSubType,
-            challengeType: active.challengeType === 'AMOUNT' ? 'AMOUNT' : 'FREQUENCY',
+            challengeType: active.challengeType === 'AMOUNT' ? 'AMOUNT' : 'COUNT',
             target: active.target,
             estimatedSaving: active.estimatedSaving,
             ticker: active.ticker,
@@ -1019,7 +1020,7 @@ export default function Dashboard() {
           pointerEvents: 'none', zIndex: 400,
         }}>
           <button
-            onClick={() => { setPoriOpen(true); setPoriStep('input'); setPoriMessage(''); setPoriProposal(null); setPoriError(null); }}
+            onClick={() => { setPoriOpen(true); setPoriStep('input'); setPoriMessage(''); setPoriProposal(null); setPoriAnalyze(null); setPoriError(null); }}
             style={{
               position: 'absolute', bottom: 28, right: 20,
               pointerEvents: 'auto',
@@ -1068,7 +1069,7 @@ export default function Dashboard() {
             {poriStep === 'input' && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <span style={{ fontSize: 28 }}><img src='assets/missionpori.png' alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
+                  <img src={portiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} />
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori에게 물어보세요</p>
                     <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>재무 목표를 자연어로 입력하면 대시보드를 조정해 드려요</p>
@@ -1105,9 +1106,9 @@ export default function Dashboard() {
                     setPoriStep('loading');
                     setPoriError(null);
                     try {
-                      const proposal = await fetchProposal(poriMessage, dashboard);
-                      setPoriProposal(proposal);
-                      setPoriStep('preview');
+                      const analyzed = await analyzeGoal(poriMessage);
+                      setPoriAnalyze(analyzed);
+                      setPoriStep('analyze');
                     } catch (e) {
                       setPoriError(e instanceof Error ? e.message : 'AI 서버 오류');
                       setPoriStep('input');
@@ -1125,10 +1126,12 @@ export default function Dashboard() {
             )}
 
             {/* ── step: loading ── */}
-            {poriStep === 'loading' && (
+            {(poriStep === 'loading' || poriStep === 'proposing') && (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ fontSize: 40, marginBottom: 16 }}>🐥</div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 6 }}>분석 중이에요...</p>
+                <img src={portiImg} alt="Pori" style={{ display: 'block', width: 64, height: 64, objectFit: 'contain', margin: '0 auto 16px' }} />
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 6 }}>
+                  {poriStep === 'proposing' ? '플랜 생성 중이에요...' : '분석 중이에요...'}
+                </p>
                 <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>현재 재무 상태를 보고 최적 플랜을 찾고 있어요</p>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
                   {[0, 1, 2].map(i => (
@@ -1142,41 +1145,122 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* ── step: analyze (방향 선택) ── */}
+            {poriStep === 'analyze' && poriAnalyze && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <img src={portiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} />
+                  <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori의 분석 결과</p>
+                </div>
+                <div style={{ background: '#F0FDF4', borderRadius: 12, padding: '12px 14px', marginBottom: 20 }}>
+                  <p style={{ fontSize: 12, color: '#166534', lineHeight: 1.6, margin: 0 }}>{poriAnalyze.reasoning}</p>
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 10 }}>어떤 방향으로 조정할까요?</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                  {([
+                    { action: 'salary' as const, label: '월급 재분배', desc: '소득 배분 비율을 목표에 맞게 조정해요', emoji: '💸' },
+                    { action: 'portfolio' as const, label: '포트폴리오 변경', desc: '투자 상품 비율을 새로 짜드려요', emoji: '📊' },
+                  ] as const).map(opt => {
+                    const disabled = opt.action === 'portfolio' && !poriAnalyze.hasInvestmentFlows;
+                    return (
+                      <button
+                        key={opt.action}
+                        disabled={disabled}
+                        onClick={async () => {
+                          setPoriStep('proposing');
+                          setPoriError(null);
+                          try {
+                            const proposal = await proposeReset(poriMessage, opt.action);
+                            setPoriAnalyze({ ...poriAnalyze, action: opt.action });
+                            setPoriProposal(proposal);
+                            setPoriStep('preview');
+                          } catch (e) {
+                            setPoriError(e instanceof Error ? e.message : 'AI 서버 오류');
+                            setPoriStep('analyze');
+                          }
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '14px 16px', borderRadius: 12,
+                          cursor: disabled ? 'not-allowed' : 'pointer',
+                          opacity: disabled ? 0.45 : 1,
+                          border: poriAnalyze.action === opt.action ? '2px solid #1D9E75' : '1px solid #e2e8f0',
+                          background: poriAnalyze.action === opt.action ? '#F0FDF4' : '#fff',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ fontSize: 24 }}>{opt.emoji}</span>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '0 0 2px' }}>
+                            {opt.label}
+                            {poriAnalyze.action === opt.action && (
+                              <span style={{ marginLeft: 6, fontSize: 10, color: '#1D9E75', fontWeight: 600 }}>추천</span>
+                            )}
+                          </p>
+                          <p style={{ fontSize: 11, color: disabled ? '#94a3b8' : '#64748b', margin: 0 }}>
+                            {disabled ? '투자 상품이 설정된 포트폴리오 흐름이 없어요' : opt.desc}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {poriError && <p style={{ fontSize: 11, color: '#A32D2D', marginBottom: 8 }}>{poriError}</p>}
+              </>
+            )}
+
             {/* ── step: preview ── */}
-            {poriStep === 'preview' && poriProposal && (
+            {poriStep === 'preview' && poriProposal && poriAnalyze && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 22 }}><img src="missionpori.png" alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
+                  <img src={portiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} />
                   <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori의 제안</p>
                 </div>
-                <p style={{ fontSize: 12, color: '#475569', marginBottom: 16, lineHeight: 1.6 }}>{poriProposal.explanation}</p>
+                <p style={{ fontSize: 12, color: '#475569', marginBottom: 4, lineHeight: 1.6 }}>{poriProposal.summary}</p>
+                <p style={{ fontSize: 11, color: '#64748b', marginBottom: 16, lineHeight: 1.6 }}>{poriProposal.explanation}</p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                  {poriProposal.changes.events.map((ev, i) => (
-                    <div key={i} style={{ background: '#E1F5EE', borderRadius: 10, padding: '10px 12px' }}>
-                      <p style={{ fontSize: 10, color: '#0F6E56', fontWeight: 600, margin: '0 0 3px' }}>🎯 목표 추가</p>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: '0 0 2px' }}>{ev.title}</p>
-                      <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>
-                        목표금액 {parseInt(ev.targetAmount).toLocaleString()}원 · 마감 {ev.deadline}
-                      </p>
-                    </div>
-                  ))}
-                  {poriProposal.changes.salaryAllocations.map((al, i) => (
-                    <div key={i} style={{ background: '#EEF2FF', borderRadius: 10, padding: '10px 12px' }}>
-                      <p style={{ fontSize: 10, color: '#4338CA', fontWeight: 600, margin: '0 0 3px' }}>💸 월 배분 변경</p>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-                        {al.purpose} &nbsp;+{al.plannedAmount.toLocaleString()}원/월
-                      </p>
-                    </div>
-                  ))}
-                  {poriProposal.changes.portfolio.map((pt, i) => (
-                    <div key={i} style={{ background: '#FEF9EC', borderRadius: 10, padding: '10px 12px' }}>
-                      <p style={{ fontSize: 10, color: '#854F0B', fontWeight: 600, margin: '0 0 3px' }}>📊 포트폴리오 조정</p>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-                        {pt.assetType} → {pt.assetAmount.toLocaleString()}원/월
-                      </p>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {poriAnalyze.action === 'salary' && (
+                    <>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: '#4338CA', margin: '0 0 4px' }}>💸 월급 분배 계획이 변경됩니다</p>
+                      {(poriProposal.salaryAllocations ?? []).map((al, i) => (
+                        <div key={i} style={{ background: '#EEF2FF', borderRadius: 10, padding: '10px 14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{al.purpose}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#4338CA' }}>{al.plannedAmount.toLocaleString()}원/월</span>
+                          </div>
+                          <span style={{ fontSize: 11, color: '#6366F1' }}>{al.ratio}%</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {poriAnalyze.action === 'portfolio' && (
+                    <>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: '#854F0B', margin: '0 0 4px' }}>📊 투자 상품 배분 비율이 재조정됩니다</p>
+                      {(poriProposal.flows ?? []).map((flow, fi) => (
+                        <div key={fi} style={{ background: '#FEF9EC', borderRadius: 10, padding: '10px 14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (flow.products ?? []).length > 0 ? 8 : 0 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', wordBreak: 'keep-all' }}>
+                              {flow.flowTitle ?? flow.flowId.slice(0, 8)}
+                            </span>
+                            {flow.amount != null && (
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#854F0B' }}>
+                                → {flow.amount.toLocaleString()}원/월
+                              </span>
+                            )}
+                          </div>
+                          {(flow.products ?? []).map((pt, pi) => (
+                            <div key={pi} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 5, borderTop: pi === 0 ? '1px solid #F5DEB3' : 'none', marginTop: pi === 0 ? 4 : 0 }}>
+                              <span style={{ fontSize: 12, color: '#78350f', wordBreak: 'keep-all' }}>
+                                {pt.productName ?? pt.productId}
+                              </span>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#854F0B' }}>{pt.productRatio}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -1188,7 +1272,12 @@ export default function Dashboard() {
                     onClick={async () => {
                       setPoriStep('applying');
                       try {
-                        await applyProposal(poriProposal);
+                        await applyProposal({
+                          action: poriAnalyze.action,
+                          salaryAllocations: poriProposal.salaryAllocations,
+                          portfolio: poriProposal.portfolio,
+                          flows: poriProposal.flows,
+                        });
                         setPoriStep('done');
                         const fresh = await getDashboard();
                         setDashboard(fresh);
@@ -1213,17 +1302,86 @@ export default function Dashboard() {
             )}
 
             {/* ── step: done ── */}
-            {poriStep === 'done' && (
-              <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
-                <p style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>적용 완료!</p>
-                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 24 }}>대시보드가 업데이트 되었어요</p>
-                <button
-                  onClick={() => setPoriOpen(false)}
-                  style={{ padding: '10px 32px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #1D9E75, #085041)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-                >닫기</button>
-              </div>
-            )}
+            {poriStep === 'done' && poriProposal && poriAnalyze && (() => {
+              const DONE_COLORS = ['#E24B4A', '#378ADD', '#534AB7', '#3B6D11', '#C45500', '#639922', '#0F6E56'];
+              const isSalary = poriAnalyze.action === 'salary';
+              return (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <img src={portiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} />
+                    <div>
+                      <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                        {isSalary ? '월급 분배가 변경됐어요' : '투자 비율이 재조정됐어요'}
+                      </p>
+                      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>변경된 내용을 확인해 보세요</p>
+                    </div>
+                  </div>
+
+                  {/* 월급 분배 요약 */}
+                  {isSalary && (
+                    <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', height: 8, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 12 }}>
+                        {(poriProposal.salaryAllocations ?? []).map((al, i) => (
+                          <div key={i} style={{ flex: al.ratio, background: DONE_COLORS[i % DONE_COLORS.length] }} />
+                        ))}
+                      </div>
+                      {(poriProposal.salaryAllocations ?? []).map((al, i, arr) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: 99, background: DONE_COLORS[i % DONE_COLORS.length], flexShrink: 0 }} />
+                            <span style={{ fontSize: 13, color: '#0f172a' }}>{al.purpose}</span>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#4338CA' }}>
+                            {al.plannedAmount.toLocaleString()}원 <span style={{ fontWeight: 400, color: '#94a3b8' }}>· {al.ratio}%</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 포트폴리오 흐름 요약 */}
+                  {!isSalary && (poriProposal.flows ?? []).map((flow, fi) => (
+                    <div key={fi} style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (flow.products ?? []).length > 0 ? 10 : 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, wordBreak: 'keep-all' }}>
+                          {flow.flowTitle ?? flow.flowId?.slice(0, 8)}
+                        </p>
+                        {flow.amount != null && (
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#854F0B', flexShrink: 0, marginLeft: 8 }}>
+                            {flow.amount.toLocaleString()}원/월
+                          </span>
+                        )}
+                      </div>
+                      {(flow.products ?? []).length > 0 && (
+                        <>
+                          <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 8 }}>
+                            {(flow.products ?? []).map((p, i) => (
+                              <div key={i} style={{ flex: p.productRatio, background: DONE_COLORS[i % DONE_COLORS.length] }} />
+                            ))}
+                          </div>
+                          {(flow.products ?? []).map((p, i, arr) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: i < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: 99, background: DONE_COLORS[i % DONE_COLORS.length], flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', wordBreak: 'keep-all' }}>
+                                  {p.productName ?? p.productId}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: '#854F0B', flexShrink: 0, marginLeft: 8 }}>{p.productRatio}%</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => setPoriOpen(false)}
+                    style={{ width: '100%', marginTop: 8, padding: '13px 0', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #1D9E75, #085041)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                  >확인</button>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

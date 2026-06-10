@@ -1,59 +1,73 @@
-import type { DashboardData } from './dashboardApi';
+import { api } from './client';
 
-const AI_BASE = import.meta.env.VITE_AI_BASE ?? 'http://localhost:8000';
-const API_BASE = `${import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'}/api/v1`;
-
-function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('token');
-  const h: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) h['Authorization'] = `Bearer ${token}`;
-  return h;
+interface CommonResponse<T> {
+  status: number;
+  success: boolean;
+  message: string;
+  data: T;
 }
 
-export interface ProposalEvent {
-  title: string;
-  targetAmount: string;
-  deadline: string;
-  userInput: string;
+// ── 분석 ──────────────────────────────────────────────────────
+
+export interface AnalyzeResult {
+  action: 'salary' | 'portfolio';
+  reasoning: string;
+  hasInvestmentFlows: boolean;
 }
 
-export interface ProposalAllocation {
+export async function analyzeGoal(userGoal: string): Promise<AnalyzeResult> {
+  const res = await api.post<CommonResponse<AnalyzeResult>>('/consultant/analyze', { userGoal });
+  return res.data;
+}
+
+// ── 제안 ──────────────────────────────────────────────────────
+
+export interface SalaryAllocation {
   purpose: string;
   plannedAmount: number;
+  ratio: number;
 }
 
-export interface ProposalPortfolioItem {
+export interface PortfolioItem {
   assetType: string;
-  assetAmount: number;
+  ratio: number;
 }
 
-export interface ProposalChanges {
-  events: ProposalEvent[];
-  salaryAllocations: ProposalAllocation[];
-  portfolio: ProposalPortfolioItem[];
+export interface FlowProductItem {
+  productId: string;
+  productName?: string;
+  productRatio: number;
 }
 
-export interface Proposal {
+export interface FlowUpdate {
+  flowId: string;
+  flowTitle?: string;
+  amount?: number;
+  products: FlowProductItem[];
+}
+
+export interface ProposeResult {
   summary: string;
   explanation: string;
-  changes: ProposalChanges;
+  salaryAllocations: SalaryAllocation[];
+  portfolio: PortfolioItem[];
+  flows: FlowUpdate[];
 }
 
-export async function fetchProposal(userMessage: string, dashboardSnapshot: DashboardData): Promise<Proposal> {
-  const res = await fetch(`${AI_BASE}/propose`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_message: userMessage, dashboard_snapshot: dashboardSnapshot }),
-  });
-  if (!res.ok) throw new Error(`AI 서버 오류 (${res.status})`);
-  return res.json();
+export async function proposeReset(userGoal: string, action: 'salary' | 'portfolio'): Promise<ProposeResult> {
+  const res = await api.post<CommonResponse<ProposeResult>>('/consultant/propose', { userGoal, action });
+  return res.data;
 }
 
-export async function applyProposal(proposal: Proposal): Promise<void> {
-  const res = await fetch(`${API_BASE}/dashboard/apply`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify(proposal.changes),
-  });
-  if (!res.ok) throw new Error(`적용 실패 (${res.status})`);
+// ── 적용 ──────────────────────────────────────────────────────
+
+export interface ApplyRequest {
+  action: 'salary' | 'portfolio';
+  salaryAllocations?: SalaryAllocation[];
+  portfolio?: PortfolioItem[];
+  flows?: FlowUpdate[];
+}
+
+export async function applyProposal(request: ApplyRequest): Promise<void> {
+  await api.post<CommonResponse<null>>('/consultant/apply', request);
 }
