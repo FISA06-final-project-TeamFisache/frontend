@@ -2,31 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Check, Landmark } from 'lucide-react';
 import { getMyDataInstitutions, getMyDataPreview, syncAssets, getAssetSummary, type Asset, type PreviewAccount, type AssetSummary, type MydataInstitution } from '../api/assetApi';
-import wooriLogo   from '../assets/banks/woori.png';
-import kbLogo      from '../assets/banks/kb.png';
-import kakaoLogo   from '../assets/banks/kakao.png';
-import tossLogo    from '../assets/banks/toss.png';
-import shinhanLogo from '../assets/banks/shinhan.png';
-import hanaLogo    from '../assets/banks/hana.png';
+import { getBankImgSrc } from '../constants/banks';
 
 type Step = 'consent' | 'select' | 'linking' | 'account-pick' | 'complete';
 type LinkStatus = 'waiting' | 'linking' | 'done';
 
 // 기관명 → 로고. 더미 테이블에 어떤 기관이 들어오든 화면은 동작하고,
 // 여기에 매핑이 없는 기관(미래에셋·한국투자 등)은 기본 아이콘으로 표시한다.
-const LOGO_BY_NAME: Record<string, string> = {
-  '우리은행':   wooriLogo,
-  '우리카드':   wooriLogo,
-  '국민은행':   kbLogo,
-  '카카오뱅크': kakaoLogo,
-  '토스뱅크':   tossLogo,
-  '신한은행':   shinhanLogo,
-  '신한카드':   shinhanLogo,
-  '하나은행':   hanaLogo,
-};
-
 function BankLogo({ institution, className }: { institution: string; className?: string }) {
-  const logo = LOGO_BY_NAME[institution];
+  const logo = getBankImgSrc(institution);
   if (logo) return <img src={logo} alt={institution} className={className} />;
   return <Landmark className={`${className} text-gray-400`} strokeWidth={2} />;
 }
