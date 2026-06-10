@@ -74,6 +74,16 @@ export interface Flow {
 
 // ─── 유틸 ─────────────────────────────────────────────────
 
+// 만원 단위 숫자를 한국어 금액 표기로 변환 (1억 이상이면 "X억 Y만원")
+export const formatKrw = (manwon: number): string => {
+  if (manwon >= 10000) {
+    const eok = Math.floor(manwon / 10000);
+    const man = manwon % 10000;
+    return man > 0 ? `${eok}억 ${man}만 원` : `${eok}억 원`;
+  }
+  return `${manwon}만 원`;
+};
+
 // 개월 수를 "N년 M개월" 형태로 변환 (12개월 미만은 "N개월")
 export function formatMonths(months: number): string {
   if (months < 12) return `${months}개월`;
@@ -254,7 +264,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
   const projectedMonths = dto.investmentMonths ?? 12;
   const projectedPeriod = formatMonths(projectedMonths);
   const projected = dto.expectedAmount != null
-    ? `${Math.round(dto.expectedAmount / 10000)}만 원`
+    ? formatKrw(Math.round(dto.expectedAmount / 10000))
     : '-';
 
   return {
