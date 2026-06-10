@@ -7,9 +7,11 @@ interface CommonResponse<T = null> {
 }
 
 export interface PortfolioItem {
+  id?: string;
   assetType: string;
   assetAmount: number;
   assetId?: string;
+  institution?: string;      // 기관명 (GET 응답)
   accountPurpose?: string;   // nickname/목적 레이블 → assets.account_purpose 저장
 }
 
@@ -17,6 +19,7 @@ export interface PortfolioList {
   portfolios: PortfolioItem[];
   totalAmount: number;
   monthlyInvestAmount: number;
+  salary?: number;           // users.salary (GET 응답)
 }
 
 /**

@@ -4,7 +4,7 @@ import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X }
 import { getBankImgSrc } from '../constants/banks';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
-import { createPortfolios } from '../api/portfolioApi';
+import { createPortfolios, updatePortfolios, getPortfolios, type PortfolioList } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';
 import { getTransferPlans } from '../api/transferApi';
 
@@ -83,6 +83,8 @@ export default function AssetPrescription() {
   const navigate = useNavigate();
   const location = useLocation();
   const recommend = location.state?.recommend as AgentRecommend | undefined;
+  // 사이드바 "월급 분배 수정" 진입 → AI 재추천(리밸런싱) 대신 DB 저장본(GET /portfolios)을 그대로 보여준다
+  const isEdit = location.state?.mode === 'edit';
 
   const [totalSalary, setTotalSalary] = useState(recommend?.salary ?? 0);
   const [fixedExpenseComment, setFixedExpenseComment] = useState(recommend?.fixedExpenseComment ?? '');
@@ -124,11 +126,42 @@ export default function AssetPrescription() {
     })));
   };
 
+  // DB 저장본(GET /portfolios) → 화면 상태로 초기화. AI 재추천 없이 저장된 분배 그대로 표시
+  const applyPortfolios = (data: PortfolioList, assets: Asset[] = []) => {
+    setTotalSalary(data.salary ?? 0);
+    setInvestmentAmount(data.monthlyInvestAmount ?? 0);
+    const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
+    const salary = data.salary ?? 0;
+    setAccounts(data.portfolios.map((p, i) => {
+      const asset = p.assetId ? assetMap[p.assetId] : undefined;
+      return {
+        id: i,
+        assetId: p.assetId,
+        assetType: p.assetType,
+        bank: asset?.accountName ?? p.institution ?? p.assetType,   // 왼쪽 = 통장이름
+        bankName: p.institution ?? asset?.institution ?? '',
+        tag: p.accountPurpose ?? p.assetType,                        // 파란칸 = nickname(생활비/비상금/적금)
+        amount: p.assetAmount,
+        percent: salary > 0 ? Math.round((p.assetAmount / salary) * 100) : 0,
+        isPinned: false,
+        color: TAG_COLORS[i % TAG_COLORS.length],
+      };
+    }));
+  };
+
   // 자산 목록 로드 + 추천 데이터로 초기화
   useEffect(() => {
     const now = new Date();
 
-    if (recommend) {
+    if (isEdit) {
+      // "월급 분배 수정": DB 저장본만 조회 (리밸런싱/재추천 호출 안 함)
+      Promise.all([getAssets(), getPortfolios()])
+        .then(([assets, pf]) => {
+          setLinkedAccounts(assets.map(assetToLinked));
+          applyPortfolios(pf, assets);
+        })
+        .catch(err => console.error('[AssetPrescription] GET /portfolios 실패:', err));
+    } else if (recommend) {
       getAssets()
         .then(assets => {
           setLinkedAccounts(assets.map(assetToLinked));
@@ -280,11 +313,16 @@ export default function AssetPrescription() {
       ...(a.assetId ? { assetId: a.assetId } : {}),
     }));
     try {
-      await createPortfolios(portfolios, investmentAmount, totalSalary);
+      if (isEdit) {
+        // 수정 진입: 기존 분배를 갱신 (PATCH)
+        await updatePortfolios(portfolios, investmentAmount);
+      } else {
+        await createPortfolios(portfolios, investmentAmount, totalSalary);
+      }
     } catch (err) {
-      console.error('[AssetPrescription] POST /portfolios 실패:', err);
+      console.error('[AssetPrescription] /portfolios 저장 실패:', err);
     }
-    navigate('/prescription-complete');
+    navigate(isEdit ? '/dashboard' : '/prescription-complete');
   };
 
   return (
