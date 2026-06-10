@@ -8,8 +8,6 @@ export default function SalaryGuideWidget({ income, slices, active, onClick }: {
   active?: boolean;
   onClick?: () => void;
 }) {
-  const topSlices = [...slices].sort((a, b) => b.pct - a.pct).slice(0, 2);
-
   return (
     <div
       onClick={onClick}
@@ -34,25 +32,13 @@ export default function SalaryGuideWidget({ income, slices, active, onClick }: {
       </div>
 
       {/* 중앙 SalaryDonutChart */}
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
         <SalaryDonutChart
           data={slices}
           total={fmtManwon(income)}
           totalAmt={income}
-          size={80}
+          size={130}
         />
-      </div>
-
-      {/* 하단 범례 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {topSlices.map((s, idx) => (
-          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {s.label} {s.pct}%
-            </span>
-          </div>
-        ))}
       </div>
 
       {/* 우측 하단 화살표 */}

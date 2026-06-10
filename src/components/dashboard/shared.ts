@@ -34,18 +34,36 @@ export const fmtManwon = (n: number) => `${Math.round(n / 10000).toLocaleString(
 
 // ─── 매핑 함수 (API → 슬라이스/아이템) ───────────────────────
 // 월급 분배 도넛 데이터
+// 계좌 분배(별명)용 색상 — 투자 녹색(#1D9E75)/여유 회색과 겹치지 않게
+const ALLOCATION_PALETTE = ['#378ADD', '#7F77DD', '#EF9F27', '#E2B93B', '#D85A30', '#A32D2D', '#5DCAA5'];
+
 export function buildSalarySlices(salaryPlan: DashboardSalaryPlan): PortfolioSlice[] {
   const income = salaryPlan.monthlyIncome;
   if (income <= 0) return [];
 
   const investAmt = salaryPlan.investmentAmount ?? 0;
-  const investPct = Math.round(investAmt / income * 100);
-  const spendPct = 100 - investPct;
 
-  return [
-    { label: '지출', pct: spendPct, color: '#94a3b8' },
-    { label: '투자', pct: investPct, color: '#1D9E75' },
+  // 투자(고정 녹색) + 계좌별 분배 별명 + 여유(surplus)로 도넛을 채운다.
+  // 백엔드상 투자 + 분배합 + surplus = 월급 이므로 합이 100%가 된다.
+  const slices: PortfolioSlice[] = [
+    { label: '투자', pct: Math.round(investAmt / income * 100), color: '#1D9E75' },
   ];
+
+  salaryPlan.allocations.forEach((a, i) => {
+    if (!a.plannedAmount || a.plannedAmount <= 0) return;
+    slices.push({
+      label: a.purpose ?? '기타',
+      pct: Math.round(a.plannedAmount / income * 100),
+      color: ALLOCATION_PALETTE[i % ALLOCATION_PALETTE.length],
+    });
+  });
+
+  const surplus = salaryPlan.surplus ?? 0;
+  if (surplus > 0) {
+    slices.push({ label: '여유', pct: Math.round(surplus / income * 100), color: '#CBD5E1' });
+  }
+
+  return slices;
 }
 
 // 소비 카테고리 비율 아이템
