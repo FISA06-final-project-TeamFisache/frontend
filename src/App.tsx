@@ -13,6 +13,7 @@ import AssetPortfolio from './screens/AssetPortfolio';
 import Dashboard from './screens/Dashboard';
 import MonthlyReport from './screens/MonthlyReport';
 import SalaryManagement from './screens/SalaryManagement';
+import SalaryAccountChange from './screens/SalaryAccountChange';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
       <Route path="/asset-portfolio" element={<AssetPortfolio />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/salary-management" element={<SalaryManagement />} />
+      <Route path="/salary-account-change" element={<SalaryAccountChange />} />
       <Route path="/monthly-report" element={<MonthlyReport />} />
     </Routes>
   );

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
 import { getDashboard, type DashboardData, type DashboardAllocation } from '../api/dashboardApi';
-import SalaryManagement from './SalaryManagement';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notificationApi';
 import { getAssets, deleteAsset, type Asset } from '../api/assetApi';
 import { fetchProposal, applyProposal, type Proposal } from '../api/poriApi';
@@ -527,7 +526,6 @@ export default function Dashboard() {
   const [notiItems, setNotiItems] = useState<NotiItem[]>([]);
   const [accountMgmtOpen, setAccountMgmtOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [salaryMgmtOpen, setSalaryMgmtOpen] = useState(false);
   const [challengeProgress, setChallengeProgress] = useState<number>(() => {
     try { return parseInt(sessionStorage.getItem(`challenge:progress:${new Date().getMonth()}`) ?? '0', 10); }
     catch { return 0; }
@@ -865,7 +863,7 @@ export default function Dashboard() {
                   label: '초기 설정',
                   items: [
                     { id: 'account', title: '계좌 연결 관리', disabled: false, onClick: () => { setSidebarOpen(false); setAccountMgmtOpen(true); } },
-                    { id: 'salary', title: '급여 통장 변경', disabled: false, onClick: () => { setSidebarOpen(false); setSalaryMgmtOpen(true); } },
+                    { id: 'salary', title: '급여 통장 변경', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/salary-account-change'); } },
                   ],
                 },
                 {
@@ -993,11 +991,6 @@ export default function Dashboard() {
             />
           </div>
         </div>
-      )}
-
-      {/* 월급 관리 모달 */}
-      {salaryMgmtOpen && (
-        <SalaryManagement onClose={() => setSalaryMgmtOpen(false)} />
       )}
 
       {/* ── Pori 플로팅 버튼 (프로젝트 영역 우하단) ── */}
