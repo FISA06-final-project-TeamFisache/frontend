@@ -879,7 +879,7 @@ export default function Dashboard() {
                   label: '자산 관리',
                   items: [
                     { id: 'report', title: '월간리포트 조회', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/monthly-report'); } },
-                    { id: 'salary-split', title: '월급 분배 수정', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/prescription-loading'); } },
+                    { id: 'salary-split', title: '월급 분배 수정', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/asset-prescription', { state: { mode: 'edit' } }); } },
                     { id: 'invest-split', title: '투자 분배 수정', disabled: false, onClick: () => { setSidebarOpen(false); navigate('/asset-portfolio'); } },
                   ],
                 },
