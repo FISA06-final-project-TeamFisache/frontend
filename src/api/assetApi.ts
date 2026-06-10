@@ -38,6 +38,12 @@ export interface PreviewAccount {
   isSalary: boolean;
 }
 
+export interface MydataInstitution {
+  institution: string;
+  bankType: string;
+  accountCount: number;
+}
+
 export interface SalarySetResult {
   assetId: string;
   institution: string;
@@ -67,6 +73,15 @@ export async function getAssetSummary(): Promise<AssetSummary> {
   const res = await api.get<CommonResponse<AssetSummary>>('/assets/summary');
   if (!res.success) throw new Error(res.message || '자산 요약 조회 중 오류가 발생했습니다.');
   return res.data;
+}
+
+/**
+ * GET /assets/mydata/institutions — 연동 가능한 기관 목록 (더미 테이블 기반)
+ */
+export async function getMyDataInstitutions(): Promise<MydataInstitution[]> {
+  const res = await api.get<CommonResponse<{ institutions: MydataInstitution[]; totalCount: number }>>('/assets/mydata/institutions');
+  if (!res.success) throw new Error(res.message || '기관 목록 조회 중 오류가 발생했습니다.');
+  return res.data.institutions;
 }
 
 /**

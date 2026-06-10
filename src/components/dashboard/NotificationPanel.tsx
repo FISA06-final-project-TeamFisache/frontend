@@ -65,10 +65,7 @@ export default function NotificationPanel({ onClose, items, setItems, onChalleng
           let icon = n.icon;
           let iconBg = n.iconBg;
 
-          if (n.type === 'SALARY_REBALANCING') {
-            title = '월급';
-            body = '급여가 들어왔어요 - PorTI의 월급 가이드를 확인하고 편하게 분배해봐요!';
-          } else if (n.type === 'REPORT_READY') {
+          if (n.type === 'REPORT_READY') {
             title = '월간리포트';
             body = `${userName}님의 월간리포트가 도착했어요 - 2026년 5월의 소비·투자를 종합 분석했어요!`;
           } else if (n.type === 'CHALLENGE_NAG') {

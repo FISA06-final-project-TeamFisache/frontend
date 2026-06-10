@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Lock, Check } from 'lucide-react';
-import { getMyDataPreview, syncAssets, getAssetSummary, getAssets, type Asset, type PreviewAccount, type AssetSummary } from '../api/assetApi';
+import { Lock, Check, Landmark } from 'lucide-react';
+import { getMyDataInstitutions, getMyDataPreview, syncAssets, getAssetSummary, type Asset, type PreviewAccount, type AssetSummary, type MydataInstitution } from '../api/assetApi';
 import wooriLogo   from '../assets/banks/woori.png';
 import kbLogo      from '../assets/banks/kb.png';
 import kakaoLogo   from '../assets/banks/kakao.png';
@@ -12,14 +12,24 @@ import hanaLogo    from '../assets/banks/hana.png';
 type Step = 'consent' | 'select' | 'linking' | 'account-pick' | 'complete';
 type LinkStatus = 'waiting' | 'linking' | 'done';
 
-const BANK_LIST = [
-  { id: 'woori',   name: '우리은행',   logo: wooriLogo   },
-  { id: 'kb',      name: '국민은행',   logo: kbLogo      },
-  { id: 'kakao',   name: '카카오뱅크', logo: kakaoLogo   },
-  { id: 'toss',    name: '토스뱅크',   logo: tossLogo    },
-  { id: 'shinhan', name: '신한은행',   logo: shinhanLogo },
-  { id: 'hana',    name: '하나은행',   logo: hanaLogo    },
-];
+// 기관명 → 로고. 더미 테이블에 어떤 기관이 들어오든 화면은 동작하고,
+// 여기에 매핑이 없는 기관(미래에셋·한국투자 등)은 기본 아이콘으로 표시한다.
+const LOGO_BY_NAME: Record<string, string> = {
+  '우리은행':   wooriLogo,
+  '우리카드':   wooriLogo,
+  '국민은행':   kbLogo,
+  '카카오뱅크': kakaoLogo,
+  '토스뱅크':   tossLogo,
+  '신한은행':   shinhanLogo,
+  '신한카드':   shinhanLogo,
+  '하나은행':   hanaLogo,
+};
+
+function BankLogo({ institution, className }: { institution: string; className?: string }) {
+  const logo = LOGO_BY_NAME[institution];
+  if (logo) return <img src={logo} alt={institution} className={className} />;
+  return <Landmark className={`${className} text-gray-400`} strokeWidth={2} />;
+}
 
 
 const CONSENT_ITEMS = [
@@ -31,9 +41,16 @@ const CONSENT_ITEMS = [
 
 function assetTypeLabel(assetType: string): string {
   const map: Record<string, string> = {
-    SAVINGS: '입출금',
+    CHECKING: '입출금',
+    SAVINGS: '예·적금',
     DEPOSIT: '예·적금',
+    PARKING: '파킹',
+    STOCK: '증권',
     INVESTMENT: '증권',
+    IRP: 'IRP',
+    ISA: 'ISA',
+    PENSION_SAVINGS: '연금저축',
+    CREDIT_CARD: '카드',
     CARD: '카드',
   };
   return map[assetType] ?? assetType;
@@ -69,11 +86,14 @@ export default function Linking() {
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
   const [step, setStep] = useState<Step>(returnTo ? 'select' : 'consent');
   const [consents, setConsents] = useState({ personal: false, financial: false, terms: false, marketing: false });
+  // 더미 테이블에서 받아온 연동 가능 기관 목록
+  const [institutions, setInstitutions] = useState<MydataInstitution[]>([]);
+  const [institutionsLoading, setInstitutionsLoading] = useState(false);
+  // 선택한 기관명(institution) 목록
   const [selected, setSelected] = useState<string[]>([]);
   const [linkStatus, setLinkStatus] = useState<Record<string, LinkStatus>>({});
   const [pickedAccounts, setPickedAccounts] = useState<string[]>([]);
   const [previewAccounts, setPreviewAccounts] = useState<PreviewAccount[]>([]);
-  const [linkedNumbers, setLinkedNumbers] = useState<Set<string>>(new Set());  // 이미 연동된 계좌번호
   const [syncLoading, setSyncLoading] = useState(false);
   const [summary, setSummary] = useState<AssetSummary | null>(null);
   const [syncedAssets, setSyncedAssets] = useState<Asset[]>([]);
@@ -86,32 +106,36 @@ export default function Linking() {
   const toggleConsent = (key: keyof typeof consents) =>
     setConsents(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const toggleBank = (id: string) =>
-    setSelected(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]);
+  const toggleBank = (name: string) =>
+    setSelected(prev => prev.includes(name) ? prev.filter(b => b !== name) : [...prev, name]);
+
+  // select 단계 진입 시 더미 테이블의 연동 가능 기관을 한 번 불러온다
+  useEffect(() => {
+    if (step !== 'select' || institutions.length > 0 || institutionsLoading) return;
+    setInstitutionsLoading(true);
+    getMyDataInstitutions()
+      .then(setInstitutions)
+      .catch(() => setInstitutions([]))
+      .finally(() => setInstitutionsLoading(false));
+  }, [step, institutions.length, institutionsLoading]);
 
   useEffect(() => {
     if (step !== 'linking') return;
 
     const initial: Record<string, LinkStatus> = {};
-    selected.forEach(id => { initial[id] = 'waiting'; });
+    selected.forEach(name => { initial[name] = 'waiting'; });
     setLinkStatus(initial);
 
     let delay = 0;
-    selected.forEach((id, i) => {
+    selected.forEach((name, i) => {
       setTimeout(() => {
-        setLinkStatus(prev => ({ ...prev, [id]: 'linking' }));
+        setLinkStatus(prev => ({ ...prev, [name]: 'linking' }));
         setTimeout(() => {
-          setLinkStatus(prev => ({ ...prev, [id]: 'done' }));
+          setLinkStatus(prev => ({ ...prev, [name]: 'done' }));
           if (i === selected.length - 1) {
-            // 마지막 은행 완료 후: 마이데이터 전체 계좌 + 이미 연동된 계좌를 함께 조회
-            Promise.all([getMyDataPreview([]), getAssets().catch(() => [] as Asset[])])
-              .then(([accounts, linkedAssets]) => {
-                setPreviewAccounts(accounts);
-                const linked = new Set(linkedAssets.map(a => a.assetNumber));
-                setLinkedNumbers(linked);
-                // 이미 연동된 계좌는 기본 선택 (재연동 시 해제 방지)
-                setPickedAccounts(accounts.filter(a => linked.has(a.assetNumber)).map(a => a.assetNumber));
-              })
+            // 마지막 기관 완료 후: 선택한 기관의 마이데이터 계좌 조회 (selected = 기관명)
+            getMyDataPreview(selected)
+              .then(accounts => setPreviewAccounts(accounts))
               .catch(() => { setPreviewAccounts([]); })
               .finally(() => { setTimeout(() => setStep('account-pick'), 600); });
           }
@@ -178,32 +202,42 @@ export default function Linking() {
       {/* 전체 선택 */}
       <button
         onClick={() => setSelected(
-          selected.length === BANK_LIST.length ? [] : BANK_LIST.map(b => b.id)
+          selected.length === institutions.length ? [] : institutions.map(i => i.institution)
         )}
-        className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-3 active:scale-[0.99] transition"
+        disabled={institutions.length === 0}
+        className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-3 active:scale-[0.99] transition disabled:opacity-40"
       >
         <span className="text-sm font-bold text-blue-700">전체 선택</span>
-        <Checkbox checked={selected.length === BANK_LIST.length} />
+        <Checkbox checked={institutions.length > 0 && selected.length === institutions.length} />
       </button>
 
       <div className="space-y-3 flex-1">
-        {BANK_LIST.map(bank => (
-          <button
-            key={bank.id}
-            onClick={() => toggleBank(bank.id)}
-            className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition active:scale-95 ${
-              selected.includes(bank.id) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
-                <img src={bank.logo} alt={bank.name} className="w-7 h-7 object-contain" />
+        {institutionsLoading ? (
+          <p className="text-center text-sm text-gray-400 py-10">연동 가능한 기관을 불러오는 중...</p>
+        ) : institutions.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-10">연동 가능한 기관이 없습니다</p>
+        ) : (
+          institutions.map(inst => (
+            <button
+              key={inst.institution}
+              onClick={() => toggleBank(inst.institution)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition active:scale-95 ${
+                selected.includes(inst.institution) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                  <BankLogo institution={inst.institution} className="w-7 h-7 object-contain" />
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-medium text-gray-700">{inst.institution}</span>
+                  <p className="text-xs text-gray-400">계좌 {inst.accountCount}개</p>
+                </div>
               </div>
-              <span className="text-sm font-medium text-gray-700">{bank.name}</span>
-            </div>
-            <Checkbox checked={selected.includes(bank.id)} />
-          </button>
-        ))}
+              <Checkbox checked={selected.includes(inst.institution)} />
+            </button>
+          ))
+        )}
       </div>
 
       <button
@@ -229,12 +263,11 @@ export default function Linking() {
         </p>
 
         <div className="w-full space-y-3">
-          {selected.map(id => {
-            const bank = BANK_LIST.find(b => b.id === id)!;
-            const status = linkStatus[id] ?? 'waiting';
+          {selected.map(name => {
+            const status = linkStatus[name] ?? 'waiting';
             return (
               <div
-                key={id}
+                key={name}
                 className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors ${
                   status === 'done'    ? 'border-green-200 bg-green-50' :
                   status === 'linking' ? 'border-blue-200  bg-blue-50'  :
@@ -253,7 +286,7 @@ export default function Linking() {
                   status === 'linking' ? 'text-blue-700'  :
                                         'text-gray-400'
                 }`}>
-                  {bank.name}&nbsp;
+                  {name}&nbsp;
                   {status === 'done' ? '완료' : status === 'linking' ? '연결 중' : '대기 중'}
                 </span>
               </div>
@@ -330,9 +363,9 @@ export default function Linking() {
         가져온 계좌 중 사용할 계좌를 선택해주세요
       </p>
 
-      {/* 전체 선택 (연동된 계좌는 항상 유지) */}
+      {/* 전체 선택 */}
       <button
-        onClick={() => setPickedAccounts(isAll ? allAssetNumbers.filter(n => linkedNumbers.has(n)) : allAssetNumbers)}
+        onClick={() => setPickedAccounts(isAll ? [] : allAssetNumbers)}
         className="flex items-center justify-between w-full bg-blue-50 rounded-2xl px-4 py-3 mb-4 active:scale-[0.99] transition"
       >
         <span className="text-sm font-bold text-blue-700">전체 선택</span>
@@ -344,28 +377,22 @@ export default function Linking() {
           <p className="text-center text-sm text-gray-400 py-10">연결된 계좌가 없습니다</p>
         ) : (
           Object.entries(groupedPreview).map(([institution, accs]) => {
-            const bank = BANK_LIST.find(b => b.name === institution);
             return (
               <div key={institution}>
                 <div className="flex items-center gap-2 mb-2 px-1">
-                  {bank?.logo && (
-                    <div className="w-5 h-5 rounded-full bg-white border border-gray-100 overflow-hidden flex items-center justify-center">
-                      <img src={bank.logo} alt={institution} className="w-4 h-4 object-contain" />
-                    </div>
-                  )}
+                  <div className="w-5 h-5 rounded-full bg-white border border-gray-100 overflow-hidden flex items-center justify-center">
+                    <BankLogo institution={institution} className="w-4 h-4 object-contain" />
+                  </div>
                   <p className="text-xs font-bold text-gray-500">{institution}</p>
                 </div>
                 <div className="space-y-2">
                   {accs.map(acc => {
-                    const isLinked = linkedNumbers.has(acc.assetNumber);
-                    const checked = isLinked || pickedAccounts.includes(acc.assetNumber);
+                    const checked = pickedAccounts.includes(acc.assetNumber);
                     return (
                       <button
                         key={acc.assetNumber}
-                        onClick={() => { if (!isLinked) togglePickedAccount(acc.assetNumber); }}
-                        disabled={isLinked}
+                        onClick={() => togglePickedAccount(acc.assetNumber)}
                         className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition ${
-                          isLinked ? 'border-green-200 bg-green-50 cursor-default' :
                           checked  ? 'border-blue-400 bg-blue-50 active:scale-[0.98]' :
                                      'border-gray-100 bg-white hover:border-gray-200 active:scale-[0.98]'
                         }`}
@@ -376,9 +403,6 @@ export default function Linking() {
                               {assetTypeLabel(acc.assetType)}
                             </span>
                             <span className="text-sm font-bold text-gray-800 truncate">{acc.accountName}</span>
-                            {isLinked && (
-                              <span className="text-[10px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded shrink-0">연결됨</span>
-                            )}
                           </div>
                           <p className="text-xs text-gray-500">{acc.balance.toLocaleString()}원</p>
                         </div>
@@ -397,9 +421,7 @@ export default function Linking() {
         onClick={async () => {
           setSyncLoading(true);
           try {
-            // 이미 연동된 계좌는 항상 포함 (sync가 미선택 계좌를 해제하므로)
-            const finalSelection = Array.from(new Set([...pickedAccounts, ...linkedNumbers]));
-            const assets = await syncAssets(finalSelection);
+            const assets = await syncAssets(pickedAccounts);
             setSyncedAssets(assets);
             const s = await getAssetSummary().catch(() => null);
             setSummary(s);

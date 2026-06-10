@@ -73,21 +73,21 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
       <div style={{
         background: '#FFFFFF', border: '1px solid #E0F2FE', borderRadius: 22,
         padding: '16px', boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
+        display: 'flex', alignItems: 'center', gap: 12, minHeight: 80,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>⚓ 이번주 추천 미션</span>
-          <span style={{ fontSize: 11, color: '#64748b' }}>AI 분석 중...</span>
+        <img src="/src/assets/missionpori.png" alt="Pori" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: '0 0 4px' }}>미니챌린지 정하는 중...</p>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{
+                width: 6, height: 6, borderRadius: '50%', background: '#0095DB',
+                animation: `dot 1.2s ${i * 0.2}s ease-in-out infinite`,
+              }} />
+            ))}
+          </div>
         </div>
-        {/* 스켈레톤 */}
-        {[80, 60, 40].map((w, i) => (
-          <div key={i} style={{
-            height: 14, borderRadius: 7, background: '#E2E8F0',
-            width: `${w}%`, marginBottom: 10,
-            animation: 'pulse 1.5s ease-in-out infinite',
-          }} />
-        ))}
-        <div style={{ height: 10, background: THREE_COLOR_BAR_BG, borderRadius: 99, marginTop: 8, opacity: 0.4 }} />
-        <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
+        <style>{`@keyframes dot { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }`}</style>
       </div>
     );
   }

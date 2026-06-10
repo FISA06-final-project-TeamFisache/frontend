@@ -233,9 +233,7 @@ function SpringDecorator() {
     <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: -6, zIndex: 1, position: 'relative' }}>
       {Array.from({ length: 9 }).map((_, i) => (
         <svg key={i} width="16" height="24" viewBox="0 0 16 24" fill="none">
-          {/* 스프링 링 뒷선 */}
           <path d="M4 14 C4 10, 12 10, 12 14" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" />
-          {/* 스프링 링 앞선 */}
           <path d="M4 6 C4 10, 12 10, 12 6" stroke="#94a3b8" strokeWidth="2.2" strokeLinecap="round" />
           <rect x="6" y="8" width="4" height="8" rx="2" fill="#64748b" />
         </svg>
@@ -296,7 +294,7 @@ function MissionSummarySection({ missions, comment }: { missions: MiniChallenge[
 
 function TaxDeductionSection({ tax }: { tax: TaxBenefitSummary }) {
   const rows = [
-    { category: 'IRP',    paid: tax.irpContribution,     deducted: tax.irpCumulativeDeduction },
+    { category: 'IRP', paid: tax.irpContribution, deducted: tax.irpCumulativeDeduction },
     { category: '연금 저축', paid: tax.pensionContribution, deducted: tax.pensionCumulativeDeduction },
   ];
   const comment = `IRP와 연금저축 납입을 통해 총 ${tax.totalTaxSavings.toLocaleString()}원의 세액 공제 혜택을 확보하였습니다. 소득 세액 공제 한도가 아직 남아 있으니, 연말까지 납입 금액을 조금 더 늘려 절세 효과를 극대화해 보시길 추천해요.`;
