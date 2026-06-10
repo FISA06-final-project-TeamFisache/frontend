@@ -33,7 +33,7 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
           <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>미니챌린지</span>
           <div style={{ background: '#FFD700', borderRadius: 8, padding: '3px 8px' }}>
             <span style={{ fontSize: 9, fontWeight: 700, color: '#713F12' }}>
-              🏆 성공 시 {proposal.ticker} {fmt(Math.round(proposal.estimatedSaving / 78500 * 100) / 100)}주
+              🏆 성공 시 {proposal.tickerName} {fmt(Math.round(proposal.estimatedSaving / 78500 * 100) / 100)}주
             </span>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
   }
 
   // ── 미시작: AI 제안 표시 ──────────────────────────────────────
-  const savingsLabel = `${proposal.ticker} ~${fmt(proposal.estimatedSaving)}원 절약`;
+  const savingsLabel = `${proposal.tickerName} ~${fmt(proposal.estimatedSaving)}원 절약`;
 
   return (
     <div style={{
@@ -152,7 +152,7 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
             cursor: 'pointer', opacity: adjusting ? 0.5 : 1,
           }}
         >
-          쉽게 ▲
+          쉽게
         </button>
         <button
           onClick={onStart}
@@ -176,7 +176,7 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
             cursor: 'pointer', opacity: adjusting ? 0.5 : 1,
           }}
         >
-          어렵게 ▼
+          어렵게
         </button>
       </div>
     </div>
