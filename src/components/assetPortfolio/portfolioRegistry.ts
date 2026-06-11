@@ -18,7 +18,7 @@ export interface HubItem {
   border: string;
   nameColor: string;
   subColor: string;
-  kind: '일반' | 'IRP' | 'ISA';
+  kind: '일반' | 'IRP' | 'ISA' | '연금저축';
   hubLabel: string;
   imgSrc?: string;
 }
@@ -33,6 +33,7 @@ export interface ProductItem {
   iconColor: string;
   badgeBg: string;
   badgeColor: string;
+  rate?: number;   // 기대 연수익률(%) — 흐름 수익률 재계산에 사용
 }
 
 export interface FlowProduct {
@@ -41,6 +42,7 @@ export interface FlowProduct {
   barColor: string;
   productType: string;
   comment?: string;
+  rate?: number;   // 기대 연수익률(%) — 흐름 수익률 재계산에 사용
 }
 
 export type FlowTerm = '단기' | '중기' | '장기';
@@ -51,7 +53,7 @@ export interface Flow {
   summary: string;
   term: FlowTerm;
   termRaw: string;
-  kind: '일반' | 'IRP' | 'ISA';
+  kind: '일반' | 'IRP' | 'ISA' | '연금저축';
   hubId: string;
   rate: string;
   projected: string;
@@ -160,8 +162,8 @@ export const productTypeMeta = (t: string | null | undefined): ProductTypeMeta =
 export const isInvestableHub = (t?: string | null): boolean =>
   INVESTABLE_HUB_TYPES.has(t ?? '');
 
-export const assetTypeToKind = (t: string | null | undefined): '일반' | 'IRP' | 'ISA' =>
-  t === 'IRP' ? 'IRP' : t === 'ISA' ? 'ISA' : '일반';
+export const assetTypeToKind = (t: string | null | undefined): '일반' | 'IRP' | 'ISA' | '연금저축' =>
+  t === 'IRP' ? 'IRP' : t === 'ISA' ? 'ISA' : t === 'PENSION_SAVINGS' ? '연금저축' : '일반';
 
 export const apiTermToFlowTerm = (t?: string | null): FlowTerm =>
   t?.startsWith('단') ? '단기' : t?.startsWith('장') ? '장기' : '중기';
@@ -221,6 +223,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
         iconColor: meta.iconColor,
         badgeBg: meta.badgeBg,
         badgeColor: meta.badgeColor,
+        rate: p.interestRate ?? undefined,
       });
     }
     if (p.productType) productApiTypeById.set(productId, p.productType);
@@ -230,6 +233,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
       barColor: meta.barColor,
       productType: p.productType ?? 'STOCK',
       comment: p.comment ?? undefined,
+      rate: p.interestRate ?? undefined,
     };
   });
 
@@ -291,8 +295,40 @@ export function productToCatalogItem(p: Product): ProductItem {
     iconColor: meta.iconColor,
     badgeBg: meta.badgeBg,
     badgeColor: meta.badgeColor,
+    rate: p.interestRate ?? undefined,
   };
   dynamicProducts.set(p.id, item);
   if (p.productType) productApiTypeById.set(p.id, p.productType);
   return item;
+}
+
+// ─── 수익률/예상액 재계산 ─────────────────────────────────
+// 상품 구성이 바뀌면 3단계(불리기) 수익률·예상액이 즉시 반영되도록 흐름에서 다시 계산
+
+const parsePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
+
+// 상품 비중 가중 평균 연수익률(%). 상품에 rate가 없으면 fallback(기존 흐름 수익률) 사용
+export function weightedProductRate(products: FlowProduct[], fallbackPct: number): number {
+  const ratioSum = products.reduce((s, p) => s + p.pct, 0);
+  const hasRates = products.length > 0 && products.some(p => (p.rate ?? 0) > 0);
+  if (!hasRates || ratioSum === 0) return fallbackPct;
+  return products.reduce((s, p) => s + p.pct * (p.rate ?? 0), 0) / ratioSum;
+}
+
+// 월 적립식(기말) 복리 미래가치 — 만원 단위 입·출력
+export function futureValueMonthly(monthlyManwon: number, months: number, annualRatePct: number): number {
+  const i = (annualRatePct / 100) / 12;
+  if (i === 0) return monthlyManwon * months;
+  return monthlyManwon * ((Math.pow(1 + i, months) - 1) / i);
+}
+
+// 흐름의 rate/projected를 현재 상품·금액 기준으로 다시 채워 반환
+export function withProjection(flow: Flow): Flow {
+  const investable = isInvestableHub(flow.hubAssetType);
+  const basePct = parsePct(flow.rate);
+  const ratePct = investable ? weightedProductRate(flow.products, basePct) : basePct;
+  const rounded = Math.round(ratePct * 10) / 10;
+  const rate = `${rounded >= 0 ? '+' : ''}${rounded}%`;
+  const projected = formatKrw(Math.round(futureValueMonthly(flow.amount, flow.projectedMonths, ratePct)));
+  return { ...flow, rate, projected };
 }

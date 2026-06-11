@@ -63,13 +63,13 @@ interface HubPickerModalProps {
 }
 
 export function HubPickerModal({ catalog, currentId, onClose, onPick }: HubPickerModalProps) {
-  const [filter, setFilter] = useState<'전체' | '일반' | 'IRP' | 'ISA'>('전체');
+  const [filter, setFilter] = useState<'전체' | '일반' | 'IRP' | 'ISA' | '연금저축'>('전체');
   const filtered = filter === '전체' ? catalog : catalog.filter(h => h.kind === filter);
   return (
     <ModalShell title="모으는 계좌 선택" onClose={onClose}>
       <div style={{ padding: '10px 14px 0' }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-          {(['전체', '일반', 'IRP', 'ISA'] as const).map(f => (
+          {(['전체', '일반', 'IRP', 'ISA', '연금저축'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
