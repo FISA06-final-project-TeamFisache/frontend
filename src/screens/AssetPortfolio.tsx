@@ -8,6 +8,7 @@ import {
 import { getProducts } from '../api/productApi';
 import pillImg from '../assets/money1.png';
 import poriImg from '../assets/robot_pori.png';
+import missionPoriImg from '../assets/mirror_missionpori.jpg';
 import {
   type HubItem, type ProductItem, type FlowProduct, type FlowTerm, type Flow,
   STEP_COLORS, BAR_COLORS, HUB_ASSET_TYPES,
@@ -35,9 +36,9 @@ const PIE_TERM_COLORS: Record<FlowTerm, string> = { 단기: '#FECACA', 중기: '
 
 // term별 막대 색상 — 같은 흐름의 상품끼리는 명암으로 구분 (단기=빨강, 중기=노랑, 장기=초록 계열)
 const TERM_BAR_SHADES: Record<FlowTerm, string[]> = {
-  단기: ['#FCA5A5', '#F87171', '#EF4444', '#DC2626', '#B91C1C'],
-  중기: ['#FCD34D', '#FBBF24', '#F59E0B', '#D97706', '#B45309'],
-  장기: ['#86EFAC', '#4ADE80', '#22C55E', '#16A34A', '#15803D'],
+  단기: ['#FECACA', '#F87171', '#DC2626', '#991B1B', '#7F1D1D'],
+  중기: ['#FDE68A', '#FBBF24', '#D97706', '#92400E', '#78350F'],
+  장기: ['#BBF7D0', '#4ADE80', '#16A34A', '#166534', '#14532D'],
 };
 const termBarColor = (term: FlowTerm, idx: number): string => {
   const shades = TERM_BAR_SHADES[term] ?? TERM_BAR_SHADES.단기;
@@ -135,20 +136,31 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
         }
       >
         {flow.isRecommendation && (
-          <div style={{ marginBottom: 8, textAlign: 'center' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, background: '#EFF6FF', color: '#3182F6', padding: '3px 8px', borderRadius: 99 }}>✨ 추천 계좌 (아직 미보유)</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 8, padding: '8px 11px', background: '#EFF6FF', borderRadius: 8 }}>
+            <span style={{ fontSize: 12, flexShrink: 0 }}>✨</span>
+            <span style={{ fontSize: 11, color: '#1D4ED8', fontWeight: 500, lineHeight: 1.5 }}>
+              포리가 추천한 <strong>아직 개설 전</strong>인 계좌예요. 저장하면 자동으로 새로 개설돼요.
+            </span>
           </div>
         )}
         <button
           onClick={() => onEdit({ type: 'hub-pick', flowId: flow.id })}
-          style={{ width: '100%', cursor: 'pointer', background: hub.cardBg, border: `1px solid ${hub.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left', gap: 12 }}
+          style={{
+            width: '100%', cursor: 'pointer', borderRadius: 10, padding: '12px 14px',
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left', gap: 12,
+            background: flow.isRecommendation ? '#F8FAFF' : hub.cardBg,
+            border: flow.isRecommendation ? '1.5px dashed #60A5FA' : `1px solid ${hub.border}`,
+          }}
         >
           <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={36} imgSrc={hub.imgSrc} />
           <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: hub.nameColor }}>{hub.name}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: flow.isRecommendation ? '#1E40AF' : hub.nameColor }}>{hub.name}</div>
             <div style={{ fontSize: 10, color: hub.subColor, fontFamily: 'monospace', marginTop: 1 }}>{hub.number}</div>
             <div style={{ fontSize: 11, color: hub.subColor, marginTop: 2 }}>{hub.sub}</div>
           </div>
+          {flow.isRecommendation && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#3182F6', background: '#DBEAFE', padding: '3px 8px', borderRadius: 99, flexShrink: 0 }}>개설 전</span>
+          )}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
           <span style={{ fontSize: 12, color: '#64748b' }}>매월 들어가는 금액</span>
@@ -222,6 +234,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   <input
                     type="number"
+                    step={5}
                     value={p.pct}
                     onChange={(e) => onPct(i, Math.max(0, Math.min(100, parseInt(e.target.value || '0', 10))))}
                     style={{ width: 44, textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0f172a', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 6px', outline: 'none' }}
@@ -620,6 +633,52 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
         const hub = lookupHub(f.hubId);
         const termLabel = flowLabels[f.id] ?? f.term;
         const tc = TERM_COLORS[f.term] ?? TERM_COLORS.all;
+
+        // 추천(미보유) 흐름은 일반 카드 대신 프로모션 배너 스타일 — "새로 만들어 주는 계좌"임을 강조
+        if (f.isRecommendation) {
+          return (
+            <button
+              key={f.id}
+              onClick={() => onSelectFlow(f.id)}
+              style={{
+                width: '100%', textAlign: 'left', cursor: 'pointer', border: 'none', borderRadius: 18,
+                padding: '16px 16px 14px',
+                background: 'linear-gradient(150deg, #EFF6FF 0%, #E3EEFF 55%, #DBEAFE 100%)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, background: tc.bg, color: tc.text, padding: '3px 9px', borderRadius: 99 }}>{termLabel}</span>
+                {(() => {
+                  const badge = ASSET_TYPE_BADGE[f.hubAssetType ?? ''];
+                  return badge ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: badge.bg, color: badge.color, padding: '2px 7px', borderRadius: 99 }}>
+                      {badge.label}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: '0 0 4px', fontSize: 11, color: '#64748b' }}>{f.title}</p>
+                  <p style={{ margin: '0 0 7px', fontSize: 13, fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>
+                    아직 없는 계좌는 Pori가 새로 만들어 드려요!
+                  </p>
+                  <p style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 700, color: '#3182F6' }}>
+                    {hub.hubLabel} {hub.name}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>
+                    월 {formatKrw(f.amount)} · {f.projectedPeriod} 후 <strong style={{ color: '#0f172a' }}>{f.projected}</strong>
+                  </p>
+                </div>
+                <img src={missionPoriImg} alt="Pori" style={{ width: 92, height: 92, objectFit: 'contain', flexShrink: 0 }} />
+              </div>
+              <div style={{ marginTop: 12, padding: '11px 0', textAlign: 'center', fontSize: 13, fontWeight: 700, background: '#3182F6', color: '#fff', borderRadius: 12, boxShadow: '0 4px 10px rgba(49,130,246,0.25)' }}>
+                자세히 보고 개설하기
+              </div>
+            </button>
+          );
+        }
+
         return (
           <button
             key={f.id}
@@ -647,9 +706,6 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Logo letter={hub.logo} bg={hub.logoBg} color={hub.logoColor} size={20} imgSrc={hub.imgSrc} />
                 <span style={{ fontSize: 11, color: '#64748b' }}>{hub.hubLabel}</span>
-                {f.isRecommendation && (
-                  <span style={{ fontSize: 9, fontWeight: 700, background: '#EFF6FF', color: '#3182F6', padding: '1px 6px', borderRadius: 99 }}>추천</span>
-                )}
               </div>
               <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>월 {formatKrw(f.amount)}</span>
             </div>
@@ -692,6 +748,112 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
   );
 }
 
+// ─── 계좌 개설 동의 모달 ──────────────────────────────────
+// 추천(미보유) 계좌를 저장으로 개설하기 전, 은행 앱처럼 약관 동의를 받는 UX. 동의 내용은 서버로 보내지 않는다
+
+const CONSENT_TERMS = [
+  '예금거래 기본약관',
+  '비대면 계좌 개설 서비스 이용약관',
+  '개인(신용)정보 수집·이용 동의',
+  '불법·탈법 차명거래 금지 설명 확인',
+];
+
+function CheckCircle({ on }: { on: boolean }) {
+  return (
+    <span style={{
+      width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      background: on ? '#3182F6' : '#fff',
+      border: on ? 'none' : '1.5px solid #cbd5e1',
+      transition: 'all .12s',
+    }}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={on ? '#fff' : '#cbd5e1'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 6L9 17l-5-5" />
+      </svg>
+    </span>
+  );
+}
+
+function AccountOpenConsentModal({ hubs, onClose, onAgree }: { hubs: HubItem[]; onClose: () => void; onAgree: () => void }) {
+  const [checked, setChecked] = useState<boolean[]>(() => CONSENT_TERMS.map(() => false));
+  const allChecked = checked.every(Boolean);
+  const toggle = (i: number) => setChecked(prev => prev.map((c, j) => j === i ? !c : c));
+  const toggleAll = () => setChecked(CONSENT_TERMS.map(() => !allChecked));
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 390, padding: '20px 18px 16px', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>계좌 개설 동의</h3>
+          <button onClick={onClose} aria-label="닫기" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+        <p style={{ margin: '0 0 14px', fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+          아래 {hubs.length}개 계좌를 새로 개설하려면 약관 동의가 필요해요
+        </p>
+
+        {/* 개설할 계좌 목록 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+          {hubs.map((h, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#F8FAFF', border: '1px dashed #93C5FD', borderRadius: 12 }}>
+              <Logo letter={h.logo} bg={h.logoBg} color={h.logoColor} size={30} imgSrc={h.imgSrc} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>{h.name}</div>
+                <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 1 }}>{h.hubLabel}</div>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#3182F6', background: '#DBEAFE', padding: '2px 7px', borderRadius: 99, flexShrink: 0 }}>개설 전</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 전체 동의 */}
+        <button
+          onClick={toggleAll}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '13px 14px',
+            background: allChecked ? '#EFF6FF' : '#f8fafc',
+            border: `1.5px solid ${allChecked ? '#3182F6' : '#e2e8f0'}`,
+            borderRadius: 12, cursor: 'pointer', marginBottom: 8,
+          }}
+        >
+          <CheckCircle on={allChecked} />
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>전체 동의</span>
+        </button>
+
+        {/* 개별 약관 */}
+        <div style={{ marginBottom: 16 }}>
+          {CONSENT_TERMS.map((term, i) => (
+            <div key={term} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px' }}>
+              <button onClick={() => toggle(i)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <CheckCircle on={checked[i]} />
+                <span style={{ fontSize: 12.5, color: '#334155' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#3182F6', marginRight: 5 }}>[필수]</span>
+                  {term}
+                </span>
+              </button>
+              <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>보기 ›</span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onAgree}
+          disabled={!allChecked}
+          style={{
+            width: '100%', padding: '15px 0', fontSize: 15, fontWeight: 700,
+            background: allChecked ? '#3182F6' : '#E2E8F0', color: allChecked ? '#fff' : '#94a3b8',
+            border: 'none', borderRadius: 14, cursor: allChecked ? 'pointer' : 'not-allowed',
+            boxShadow: allChecked ? '0 4px 12px rgba(49,130,246,0.2)' : 'none',
+          }}
+        >
+          동의하고 개설하기
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── 메인 컴포넌트 ────────────────────────────────────────
 
 export default function AssetPortfolio() {
@@ -710,6 +872,8 @@ export default function AssetPortfolio() {
   const [saving, setSaving] = useState(false);
   // 저장 시 새로 개설된 추천 계좌 — 개설 완료 오버레이 표시용
   const [openedAccounts, setOpenedAccounts] = useState<HubItem[] | null>(null);
+  // 추천 계좌 개설 동의 모달 (저장 직전 1회)
+  const [consentOpen, setConsentOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -803,7 +967,13 @@ export default function AssetPortfolio() {
     })),
   });
 
-  const handleSaveAll = async () => {
+  // 추천(미보유) 계좌가 있으면 실제 저장 전에 은행처럼 개설 동의를 먼저 받는다 (UX용 — 동의 내용은 전송하지 않음)
+  const handleSaveAll = () => {
+    if (flows.some(f => f.isRecommendation)) setConsentOpen(true);
+    else void doSave();
+  };
+
+  const doSave = async () => {
     setSaving(true);
     // 저장 전에 추천(미보유) 흐름의 모을 통장을 캡처 — 저장 후엔 보유 계좌로 바뀌어 식별 불가
     const opened = flows.filter(f => f.isRecommendation).map(f => lookupHub(f.hubId));
@@ -984,6 +1154,15 @@ export default function AssetPortfolio() {
           currentId={editor.productIdx === 'new' ? undefined : editorFlow?.products[editor.productIdx as number]?.productId}
           onClose={() => setEditor(null)}
           onPick={handleProductPick}
+        />
+      )}
+
+      {/* 추천 계좌 개설 동의 (저장 직전) */}
+      {consentOpen && (
+        <AccountOpenConsentModal
+          hubs={flows.filter(f => f.isRecommendation).map(f => lookupHub(f.hubId))}
+          onClose={() => setConsentOpen(false)}
+          onAgree={() => { setConsentOpen(false); void doSave(); }}
         />
       )}
 
