@@ -17,7 +17,6 @@ import {
   type ChallengeProposal,
 } from '../api/challengeApi';
 import ChallengeAlarmModal from '../components/ChallengeAlarmModal';
-import portiImg from '../assets/porti.png';
 import {
   buildSalarySlices,
   buildSpendingItems,
@@ -616,7 +615,7 @@ export default function Dashboard() {
             description: active.description,
             category: active.category,
             challengeSubType: active.challengeSubType,
-            challengeType: active.challengeType === 'AMOUNT' ? 'AMOUNT' : 'FREQUENCY',
+            challengeType: active.challengeType === 'AMOUNT' ? 'AMOUNT' : 'COUNT',
             target: active.target,
             estimatedSaving: active.estimatedSaving,
             ticker: active.ticker,
@@ -1005,35 +1004,6 @@ export default function Dashboard() {
               onAddInstitution={() => { setAccountMgmtOpen(false); navigate('/linking', { state: { returnTo: '/dashboard' } }); }}
             />
           </div>
-        </div>
-      )}
-
-      {/* ── Pori 플로팅 버튼 (프로젝트 영역 우하단) ── */}
-      {!poriOpen && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%', maxWidth: 375,
-          pointerEvents: 'none', zIndex: 400,
-        }}>
-          <button
-            onClick={() => { setPoriOpen(true); setPoriStep('input'); setPoriMessage(''); setPoriProposal(null); setPoriError(null); }}
-            style={{
-              position: 'absolute', bottom: 28, right: 20,
-              pointerEvents: 'auto',
-              width: 56, height: 56, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0095DB, #00BFFF)',
-              border: 'none', cursor: 'pointer', padding: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 20px rgba(0,149,219,0.35)',
-              transition: 'transform 0.15s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
-            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-            aria-label="Pori AI 열기"
-          >
-            <img src={portiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} />
-          </button>
         </div>
       )}
 
