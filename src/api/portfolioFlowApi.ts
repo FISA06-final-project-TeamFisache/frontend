@@ -31,11 +31,11 @@ export interface PortfolioFlow {
   amount: number | null;        // 모을 통장 월 납입 금액 (원)
   isActive: boolean;
   isRecommendation: boolean;    // true = 계좌 추천(gatheringAsset.id=null) / false = 보유 계좌
-  accountComment: string | null;   // 모을 통장(추천) 이유
   expectedRrPct: number | null;    // 1년 예상 수익률(%)
   investmentMonths: number | null; // 예상 기간(개월)
   expectedAmount: number | null;   // 복리 고려 N개월 후 예상 수익 (원)
   rrComment: string | null;        // 수익률 코멘트
+  reasoning: string | null;        // 흐름 배분 근거 (AI)
   gatheringAsset: PortfolioFlowGatheringAsset | null;
   products: PortfolioFlowProductItem[];
 }
