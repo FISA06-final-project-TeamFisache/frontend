@@ -64,8 +64,8 @@ export interface Flow {
   amount: number;
   hubAssetType?: string;
   isRecommendation: boolean;
-  accountComment?: string;
   rrComment?: string;
+  reasoning?: string | null;
   products: FlowProduct[];
 }
 
@@ -257,8 +257,8 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
     amount: Math.round((dto.amount ?? 0) / 10000),
     hubAssetType: dto.gatheringAsset?.assetType ?? undefined,
     isRecommendation: dto.isRecommendation,
-    accountComment: dto.accountComment ?? undefined,
     rrComment: dto.rrComment ?? undefined,
+    reasoning: dto.reasoning ?? null,
     products: isInvestableHub(dto.gatheringAsset?.assetType) ? products : [],
   };
 }

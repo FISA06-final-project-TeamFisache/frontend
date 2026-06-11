@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
 import { getBankImgSrc } from '../constants/banks';
 import { useAuth } from '../contexts/AuthContext';
+import poriImg from '../assets/robot_pori.png';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 import { createPortfolios, updatePortfolios, getPortfolios, type PortfolioList } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';
@@ -88,6 +89,7 @@ export default function AssetPrescription() {
 
   const [totalSalary, setTotalSalary] = useState(recommend?.salary ?? 0);
   const [fixedExpenseComment, setFixedExpenseComment] = useState(recommend?.fixedExpenseComment ?? '');
+  const [reasoning, setReasoning] = useState<string | null>(recommend?.reasoning ?? null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [showFixedInfo, setShowFixedInfo] = useState(false);
@@ -111,6 +113,7 @@ export default function AssetPrescription() {
     setTotalSalary(data.salary);
     setInvestmentAmount(data.investAmount);
     setFixedExpenseComment(data.fixedExpenseComment ?? '');
+    setReasoning(data.reasoning ?? null);
     const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
     setAccounts(data.rebalancingPlans.map((plan, i) => ({
       id: i,
@@ -348,9 +351,23 @@ export default function AssetPrescription() {
 
         <main className="p-5 pt-2">
           {/* 헤더 텍스트 */}
-          <h2 className="text-base font-bold leading-snug mb-3.5 text-slate-800">
+          <h2 className="text-base font-bold leading-snug mb-3 text-slate-800">
             <span className="text-blue-600">Pori</span>가 {USER_NAME}님에 맞게 월급을 나눠봤어요!
           </h2>
+
+          {/* Pori 에이전트 코멘트 */}
+          <div
+            className="flex items-center gap-3 mb-4 rounded-2xl p-3 border border-blue-200"
+            style={{ background: '#f0f7ff', backgroundImage: 'radial-gradient(circle, #bfdbfe 1px, transparent 1px)', backgroundSize: '14px 14px' }}
+          >
+            <img src={poriImg} alt="Pori" className="w-16 h-16 object-contain shrink-0" />
+            <div>
+              <p className="text-[11px] font-bold text-blue-500 mb-1.5">에이전트 포리의 한마디</p>
+              <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
+                {reasoning ?? '이번 달 소비 패턴을 분석했어요. 고정지출을 먼저 챙기고, 남은 여유자금은 목적별로 나눠 배분했어요. 투자 금액도 꾸준히 늘려가면 좋을 것 같아요!'}
+              </p>
+            </div>
+          </div>
 
           {/* Row 1: 급여통장 (중앙 정렬) */}
           <div className="flex flex-col items-center justify-center relative z-10 pt-2">
