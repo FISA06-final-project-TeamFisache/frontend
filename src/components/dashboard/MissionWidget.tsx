@@ -1,6 +1,7 @@
 // 미니챌린지 위젯 — AI 추천 챌린지 표시 + 난이도/주제 조정 + 시작
 import type { ChallengeProposal } from '../../api/challengeApi';
 import { getChallengeIcon } from '../../api/challengeApi';
+import missionporiImg from '../../assets/missionpori.png';
 
 const THREE_COLOR_BAR_BG = 'linear-gradient(to right, #10B981 33%, #FBBF24 33% 66%, #EF4444 66%)';
 
@@ -75,7 +76,7 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
         padding: '16px', boxShadow: '0 2px 12px rgba(0,149,219,0.06)',
         display: 'flex', alignItems: 'center', gap: 12, minHeight: 80,
       }}>
-        <img src="/src/assets/missionpori.png" alt="Pori" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
+        <img src={missionporiImg} alt="Pori" style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
         <div>
           <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: '0 0 4px' }}>미니챌린지 정하는 중...</p>
           <div style={{ display: 'flex', gap: 4 }}>
@@ -110,7 +111,7 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
         display: 'flex', alignItems: 'flex-start', gap: 10,
         background: '#F0F9FF', padding: '10px 12px', borderRadius: 12, marginTop: 10,
       }}>
-        <img src="/src/assets/missionpori.png" alt="Pori" style={{ width: 36, height: 36, objectFit: 'contain', flexShrink: 0 }} />
+        <img src={missionporiImg} alt="Pori" style={{ width: 36, height: 36, objectFit: 'contain', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
             {icon} {proposal.title}

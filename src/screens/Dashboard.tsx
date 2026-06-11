@@ -18,6 +18,7 @@ import {
 } from '../api/challengeApi';
 import ChallengeAlarmModal from '../components/ChallengeAlarmModal';
 import portiImg from '../assets/porti.png';
+import missionporiImg from '../assets/missionpori.png';
 import {
   buildSalarySlices,
   buildSpendingItems,
@@ -1051,7 +1052,7 @@ export default function Dashboard() {
             {poriStep === 'input' && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <span style={{ fontSize: 28 }}><img src='assets/missionpori.png' alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
+                  <span style={{ fontSize: 28 }}><img src={missionporiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori에게 물어보세요</p>
                     <p style={{ fontSize: 11, color: '#64748b', margin: '2px 0 0' }}>재무 목표를 자연어로 입력하면 대시보드를 조정해 드려요</p>
@@ -1129,7 +1130,7 @@ export default function Dashboard() {
             {poriStep === 'preview' && poriProposal && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 22 }}><img src="missionpori.png" alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
+                  <span style={{ fontSize: 22 }}><img src={missionporiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} /></span>
                   <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Pori의 제안</p>
                 </div>
                 <p style={{ fontSize: 12, color: '#475569', marginBottom: 16, lineHeight: 1.6 }}>{poriProposal.explanation}</p>
