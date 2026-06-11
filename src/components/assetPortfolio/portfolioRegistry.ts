@@ -23,9 +23,15 @@ export interface HubItem {
   imgSrc?: string;
 }
 
+// 상품 배지 라벨 — 카탈로그가 사실상 ETF뿐이라 ETF는 상품명 키워드로 세부 분류해 보여준다
+export type ProductType =
+  | '국내주식' | '해외주식' | '채권' | '배당' | '테마' | '금/원자재' | 'TDF' | '리츠'  // ETF 세부 분류
+  | 'ETF'    // 키워드로 분류되지 않은 ETF
+  | '적금';   // SAVING / DEPOSIT
+
 export interface ProductItem {
   id: string;
-  type: 'ETF' | '적금' | 'TDF' | '채권' | '리츠' | '주식';
+  type: ProductType;
   name: string;
   description: string;
   recommended?: boolean;
@@ -157,6 +163,48 @@ const PRODUCT_TYPE_META: Record<string, ProductTypeMeta> = {
 export const productTypeMeta = (t: string | null | undefined): ProductTypeMeta =>
   PRODUCT_TYPE_META[t ?? ''] ?? PRODUCT_TYPE_META.STOCK;
 
+// ─── ETF 세부 분류 ────────────────────────────────────────
+// 상품명 키워드로 ETF의 성격(국내/해외/채권/배당/테마…)을 나눈다. 위에서부터 우선 적용
+
+interface EtfCategoryMeta {
+  type: ProductType;
+  iconColor: string;
+  badgeBg: string;
+  badgeColor: string;
+  barColor: string;
+}
+
+const ETF_CATEGORY_RULES: { re: RegExp; meta: EtfCategoryMeta }[] = [
+  { re: /TDF/i,
+    meta: { type: 'TDF', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7', barColor: '#534AB7' } },
+  { re: /리츠|REITs?/i,
+    meta: { type: '리츠', iconColor: '#0F766E', badgeBg: '#CCFBF1', badgeColor: '#0F766E', barColor: '#14B8A6' } },
+  { re: /금현물|골드|은현물|원자재|원유|구리|팔라듐/,
+    meta: { type: '금/원자재', iconColor: '#92400E', badgeBg: '#FEF3C7', badgeColor: '#92400E', barColor: '#F59E0B' } },
+  { re: /채권|국채|국고채|통안채|회사채|금리|단기자금|하이일드|KOFR|SOFR|MMF/,
+    meta: { type: '채권', iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' } },
+  { re: /배당|주주환원|커버드콜/,
+    meta: { type: '배당', iconColor: '#15803D', badgeBg: '#DCFCE7', badgeColor: '#15803D', barColor: '#22C55E' } },
+  { re: /반도체|2차전지|전기.?수소차|자율주행|AI|테크|바이오|헬스케어|메타버스|게임|K-POP|미디어|푸드|골프|조선|해운|친환경|원자력|로봇|5G|iSelect|설비투자/,
+    meta: { type: '테마', iconColor: '#7E22CE', badgeBg: '#F3E8FF', badgeColor: '#7E22CE', barColor: '#A855F7' } },
+  { re: /미국|나스닥|S&P|글로벌|중국|차이나|일본|니케이|Nikkei|인도|Nifty|베트남|유럽|러시아|아시아|항셍|선진국|신흥국|월드|World/i,
+    meta: { type: '해외주식', iconColor: '#0369A1', badgeBg: '#E0F2FE', badgeColor: '#0369A1', barColor: '#0EA5E9' } },
+  { re: /200|코스피|코스닥|KRX|코리아|Korea|삼성그룹|TOP\d+/i,
+    meta: { type: '국내주식', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D', barColor: '#E24B4A' } },
+];
+
+const ETF_FALLBACK_META: EtfCategoryMeta =
+  { type: 'ETF', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D', barColor: '#E24B4A' };
+
+export const classifyEtf = (name: string): EtfCategoryMeta =>
+  ETF_CATEGORY_RULES.find(r => r.re.test(name))?.meta ?? ETF_FALLBACK_META;
+
+// productType이 ETF 계열(STOCK)이면 상품명으로 세부 분류한 메타를 돌려준다
+export const resolveProductMeta = (productType: string | null | undefined, name: string | null | undefined): ProductTypeMeta => {
+  const base = productTypeMeta(productType);
+  return base.type === 'ETF' ? { ...base, ...classifyEtf(name ?? '') } : base;
+};
+
 // ─── 헬퍼 함수 ────────────────────────────────────────────
 
 export const isInvestableHub = (t?: string | null): boolean =>
@@ -210,7 +258,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
   }
 
   const products: FlowProduct[] = dto.products.map((p, i) => {
-    const meta = productTypeMeta(p.productType);
+    const meta = resolveProductMeta(p.productType, p.productName);
     const productId = p.productId ?? `dyn-prod-${dto.id}-${i}`;
     if (!dynamicProducts.has(productId)) {
       dynamicProducts.set(productId, {
@@ -284,7 +332,7 @@ export function assetToHubItem(a: AvailableAsset): HubItem {
 }
 
 export function productToCatalogItem(p: Product): ProductItem {
-  const meta = productTypeMeta(p.productType);
+  const meta = resolveProductMeta(p.productType, p.name);
   const item: ProductItem = {
     id: p.id,
     type: meta.type,

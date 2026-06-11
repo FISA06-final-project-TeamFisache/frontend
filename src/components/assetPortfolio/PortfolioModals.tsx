@@ -191,7 +191,7 @@ export function ProductPickerModal({ catalog, currentId, mode, onClose, onPick }
           />
         </div>
         <div style={{ display: 'flex', gap: 5, marginBottom: 10, flexWrap: 'wrap' }}>
-          {(['전체', 'ETF', 'TDF', '채권', '리츠', '주식'] as const).map(t => (
+          {(['전체', '국내주식', '해외주식', '채권', '배당', '테마', '금/원자재', 'TDF', '리츠'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
