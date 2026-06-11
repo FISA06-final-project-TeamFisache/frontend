@@ -31,6 +31,18 @@ const TERM_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 const PIE_TERM_COLORS: Record<FlowTerm, string> = { 단기: '#FECACA', 중기: '#FDE68A', 장기: '#BBF7D0' };
+
+// term별 막대 색상 — 같은 흐름의 상품끼리는 명암으로 구분 (단기=빨강, 중기=노랑, 장기=초록 계열)
+const TERM_BAR_SHADES: Record<FlowTerm, string[]> = {
+  단기: ['#FCA5A5', '#F87171', '#EF4444', '#DC2626', '#B91C1C'],
+  중기: ['#FCD34D', '#FBBF24', '#F59E0B', '#D97706', '#B45309'],
+  장기: ['#86EFAC', '#4ADE80', '#22C55E', '#16A34A', '#15803D'],
+};
+const termBarColor = (term: FlowTerm, idx: number): string => {
+  const shades = TERM_BAR_SHADES[term] ?? TERM_BAR_SHADES.단기;
+  return shades[idx % shades.length];
+};
+
 const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
 
 const ASSET_TYPE_BADGE: Record<string, { label: string; bg: string; color: string }> = {
@@ -167,7 +179,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
       >
         {flow.products.length > 0 ? (
           <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
-            {flow.products.map((p, i) => <div key={i} style={{ width: `${p.pct}%`, background: p.barColor }} />)}
+            {flow.products.map((p, i) => <div key={i} style={{ width: `${p.pct}%`, background: termBarColor(flow.term, i) }} />)}
           </div>
         ) : investable ? (
           <div style={{ padding: '10px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
@@ -460,7 +472,7 @@ function PieChart({ data }: { data: { pct: number; color: string; label: string;
   );
 }
 
-function ProductBar({ products }: { products: FlowProduct[] }) {
+function ProductBar({ products, term }: { products: FlowProduct[]; term: FlowTerm }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const hoveredName = hoveredIdx !== null ? lookupProduct(products[hoveredIdx].productId).name : null;
   return (
@@ -471,7 +483,7 @@ function ProductBar({ products }: { products: FlowProduct[] }) {
             key={i}
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(null)}
-            style={{ width: `${p.pct}%`, background: p.barColor, cursor: 'default' }}
+            style={{ width: `${p.pct}%`, background: termBarColor(term, i), cursor: 'default' }}
           />
         ))}
       </div>
@@ -586,7 +598,7 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
               </>
             ) : (
               <>
-                <ProductBar products={f.products} />
+                <ProductBar products={f.products} term={f.term} />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 2 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>{f.rate}</span>
                   <span style={{ fontSize: 10, color: '#cbd5e1' }}>·</span>

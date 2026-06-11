@@ -91,6 +91,7 @@ export default function AssetPrescription() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [showFixedInfo, setShowFixedInfo] = useState(false);
+  const [initialFixedInfo, setInitialFixedInfo] = useState(true);   // 첫 로딩 시 자동 노출 → 첫 hover에 사라지고 이후 hover로 재노출
   const [showModal, setShowModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedLinkedId, setSelectedLinkedId] = useState<string | null>(null);
@@ -218,6 +219,13 @@ export default function AssetPrescription() {
   useEffect(() => () => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
+
+  // 첫 로딩 시 보여준 고정지출 안내는 일정 시간 뒤 자동으로 닫는다 (hover 안 해도 사라지도록)
+  useEffect(() => {
+    if (!initialFixedInfo) return;
+    const t = setTimeout(() => setInitialFixedInfo(false), 5000);
+    return () => clearTimeout(t);
+  }, [initialFixedInfo]);
 
   const [investmentAmount, setInvestmentAmount] = useState(recommend?.investAmount ?? 0);
 
@@ -382,15 +390,19 @@ export default function AssetPrescription() {
                 <span className="relative inline-block align-middle">
                   <button
                     type="button"
-                    onMouseEnter={() => setShowFixedInfo(true)}
+                    onMouseEnter={() => {
+                      // 첫 로딩 자동 노출 상태였다면 이번 hover에는 닫기만 하고, 이후 hover부터 정상 노출
+                      if (initialFixedInfo) setInitialFixedInfo(false);
+                      else setShowFixedInfo(true);
+                    }}
                     onMouseLeave={() => setShowFixedInfo(false)}
-                    onClick={() => setShowFixedInfo(prev => !prev)}
+                    onClick={() => { setInitialFixedInfo(false); setShowFixedInfo(prev => !prev); }}
                     className="p-0.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600 outline-none"
                     aria-label="고정지출 안내"
                   >
                     <Info className="w-3 h-3" />
                   </button>
-                  {showFixedInfo && (
+                  {(showFixedInfo || initialFixedInfo) && (
                     <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[240px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 transform rotate-45" />
                       <p className="font-bold text-blue-300 mb-1">고정지출은?</p>
