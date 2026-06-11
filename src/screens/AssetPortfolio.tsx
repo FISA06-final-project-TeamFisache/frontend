@@ -13,7 +13,7 @@ import {
   dynamicHubs, dynamicProducts, productApiTypeById,
   lookupHub, lookupProduct,
   isInvestableHub, assetToHubItem, productToCatalogItem,
-  apiToFlow, buildFlowTabLabels, formatKrw,
+  apiToFlow, buildFlowTabLabels, formatKrw, withProjection,
 } from '../components/assetPortfolio/portfolioRegistry';
 import {
   Logo, ProductIcon,
@@ -104,6 +104,12 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
   const hub = lookupHub(flow.hubId);
   const total = flow.amount;
   const investable = isInvestableHub(flow.hubAssetType);
+  // 막대는 허브 금액 대비가 아니라 담긴 상품들끼리의 상대 비중으로 표시 (항상 100% 채움)
+  const ratioSum = flow.products.reduce((s, p) => s + p.pct, 0);
+  const pctSum = ratioSum || 1;
+  // 상품 비중 합이 100%를 넘으면 허브 금액(45만 원)보다 많이 배분된 상태 → 경고
+  const allocatedTotal = flow.products.reduce((s, p) => s + Math.round(total * p.pct / 100), 0);
+  const isOverAllocated = flow.products.length > 0 && ratioSum > 100;
 
   return (
     <div>
@@ -179,7 +185,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
       >
         {flow.products.length > 0 ? (
           <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
-            {flow.products.map((p, i) => <div key={i} style={{ width: `${p.pct}%`, background: termBarColor(flow.term, i) }} />)}
+            {flow.products.map((p, i) => <div key={i} style={{ width: `${(p.pct / pctSum) * 100}%`, background: termBarColor(flow.term, i) }} />)}
           </div>
         ) : investable ? (
           <div style={{ padding: '10px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
@@ -188,6 +194,14 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
         ) : (
           <div style={{ padding: '12px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
             예·적금/파킹 통장은 상품 없이 그대로 모아요.<br />증권·ISA·IRP·연금저축 계좌일 때만 상품을 넣을 수 있어요.
+          </div>
+        )}
+        {isOverAllocated && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 10, padding: '7px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8 }}>
+            <span style={{ fontSize: 11, flexShrink: 0 }}>⚠️</span>
+            <span style={{ fontSize: 10, color: '#B91C1C', lineHeight: 1.5 }}>
+              담은 상품 합이 월 {formatKrw(total)}을 넘었어요 (합 {formatKrw(allocatedTotal)} · {ratioSum}%). 비중을 줄여 주세요.
+            </span>
           </div>
         )}
         {flow.products.map((p, i, arr) => {
@@ -249,8 +263,9 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
       <StepCard num={3} title="불리기" sub={
         flow.kind === 'IRP' ? 'IRP 세액공제 + 복리 수익이 쌓여요' :
           flow.kind === 'ISA' ? 'ISA 비과세 혜택으로 더 많이 남아요' :
-            !investable ? '납입 방식 복리로 이자가 쌓여요' :
-              '시장 수익률에 따라 자산이 불어나요'
+            flow.kind === '연금저축' ? '연금저축 세액공제 + 복리 수익이 쌓여요' :
+              !investable ? '납입 방식 복리로 이자가 쌓여요' :
+                '시장 수익률에 따라 자산이 불어나요'
       }>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 7 }}>
           <div style={{ background: '#f8fafc', borderRadius: 8, padding: 11, textAlign: 'center' }}>
@@ -413,6 +428,57 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
             </div>
           );
         })()}
+        {flow.kind === '연금저축' && (() => {
+          const months = flow.projectedMonths || 48;
+          const annualPayment = flow.amount * 12; // 만원/년
+          // 연금저축 세액공제: 연 600만 한도, 16.5%(종소세 5500만 이하)
+          const deductibleBase = Math.min(annualPayment, 600); // 만원
+          const taxSaving = Math.round(deductibleBase * 0.165); // 16.5% 적용
+          const totalYears = Math.floor(months / 12);
+          const totalTaxSaving = taxSaving * totalYears;
+          const fmt = (n: number) => n.toLocaleString('ko-KR');
+          const Row = ({ label, value }: { label: string; value: string }) => (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+              <span style={{ fontSize: 11, color: '#64748b' }}>{label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{value}</span>
+            </div>
+          );
+          return (
+            <div style={{ marginTop: 10, borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+              <div style={{ background: '#f8fafc', padding: '6px 12px', borderBottom: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>가입 정보</span>
+              </div>
+              <div style={{ padding: '4px 12px 6px' }}>
+                <Row label="상품 유형" value="연금저축펀드" />
+                <Row label="월 납입액" value={formatKrw(flow.amount)} />
+                <Row label="운용 기간" value={flow.projectedPeriod} />
+                <Row label="예상 수익률" value={`연 ${flow.rate}`} />
+              </div>
+              <div style={{ background: '#f8fafc', padding: '6px 12px', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>세제 혜택 (연간)</span>
+              </div>
+              <div style={{ padding: '4px 12px 6px' }}>
+                <Row label="세액공제 대상" value={`연 ${fmt(deductibleBase)}만원`} />
+                <Row label="세액공제율" value="16.5% (총급여 5,500만원 이하)" />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderTop: '1px dashed #e2e8f0', marginTop: 4, paddingTop: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>연간 환급 예상액</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>약 {fmt(taxSaving)}만원</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>{totalYears}년 누적 절세액</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a' }}>약 {fmt(totalTaxSaving)}만원</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>{flow.projectedPeriod} 후 예상액</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{flow.projected}</span>
+                </div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '5px 12px', borderTop: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 9, color: '#94a3b8' }}>※ IRP 합산 연 900만원 한도 · 55세 이후 연금 수령 시 3.3~5.5% 낮은 세율 적용</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {flow.rrComment && (
           <div style={{ marginTop: 8, padding: '6px 9px', background: '#f1f5f9', borderRadius: 6, fontSize: 10, color: '#64748b', lineHeight: 1.5 }}>
@@ -475,6 +541,8 @@ function PieChart({ data }: { data: { pct: number; color: string; label: string;
 function ProductBar({ products, term }: { products: FlowProduct[]; term: FlowTerm }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const hoveredName = hoveredIdx !== null ? lookupProduct(products[hoveredIdx].productId).name : null;
+  // 담긴 상품들끼리의 상대 비중으로 표시 (허브 금액 대비가 아니라 항상 100% 채움)
+  const pctSum = products.reduce((s, p) => s + p.pct, 0) || 1;
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', gap: 2, marginBottom: 4 }}>
@@ -483,7 +551,7 @@ function ProductBar({ products, term }: { products: FlowProduct[]; term: FlowTer
             key={i}
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(null)}
-            style={{ width: `${p.pct}%`, background: termBarColor(term, i), cursor: 'default' }}
+            style={{ width: `${(p.pct / pctSum) * 100}%`, background: termBarColor(term, i), cursor: 'default' }}
           />
         ))}
       </div>
@@ -641,7 +709,7 @@ export default function AssetPortfolio() {
     Promise.all([getPortfolioFlows(), getAvailableAssets(), getProducts()])
       .then(([flowsRes, assetsRes, productsRes]) => {
         if (cancelled) return;
-        setFlows(sortFlowsByTerm(flowsRes.flows.map(apiToFlow)));
+        setFlows(sortFlowsByTerm(flowsRes.flows.map(apiToFlow).map(withProjection)));
         setMonthlyInvestAmount(Math.round((flowsRes.monthlyInvestAmount ?? 0) / 10000));
         setAvailableAssets(assetsRes.assets);
         assetsRes.assets.forEach(assetToHubItem);
@@ -670,7 +738,7 @@ export default function AssetPortfolio() {
   }, [flows]);
 
   const updateFlow = (id: string, patch: (prev: Flow) => Flow) => {
-    setFlows(prev => prev.map(f => f.id === id ? patch(f) : f));
+    setFlows(prev => prev.map(f => f.id === id ? withProjection(patch(f)) : f));
   };
 
   const handlePct = (id: string, productIdx: number, pct: number) => {
@@ -701,11 +769,11 @@ export default function AssetPortfolio() {
     updateFlow(flowId, f => {
       if (productIdx === 'new') {
         const barColor = BAR_COLORS[f.products.length % BAR_COLORS.length];
-        return { ...f, products: [...f.products, { productId: p.id, pct: 0, barColor, productType: apiType }] };
+        return { ...f, products: [...f.products, { productId: p.id, pct: 0, barColor, productType: apiType, rate: p.rate }] };
       }
       return {
         ...f,
-        products: f.products.map((prod, i) => i === productIdx ? { ...prod, productId: p.id, productType: apiType } : prod),
+        products: f.products.map((prod, i) => i === productIdx ? { ...prod, productId: p.id, productType: apiType, rate: p.rate } : prod),
       };
     });
     setEditor(null);
@@ -734,7 +802,7 @@ export default function AssetPortfolio() {
       const updatedList = await Promise.all(
         flows.map(f => updatePortfolioFlow(f.id, buildRequest(f))),
       );
-      setFlows(sortFlowsByTerm(updatedList.map(apiToFlow)));
+      setFlows(sortFlowsByTerm(updatedList.map(apiToFlow).map(withProjection)));
       if (opened.length > 0) {
         setOpenedAccounts(opened);   // 개설 완료 오버레이 → 대시보드 이동은 오버레이 버튼에서
         setSaving(false);
