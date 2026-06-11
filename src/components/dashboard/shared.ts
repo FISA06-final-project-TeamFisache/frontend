@@ -7,8 +7,10 @@ import type {
   DashboardSalaryPlan,
   DashboardCategoryExpense,
   DashboardPortfolioItem,
+  DashboardPortfolioSubItem,
   DashboardConsumption,
 } from '../../api/dashboardApi';
+import { classifyEtf } from '../assetPortfolio/portfolioRegistry';
 
 // ─── 공용 타입 ───────────────────────────────────────────────
 export interface SpendingItem { label: string; pct: number; color: string; amount: number; }
@@ -19,11 +21,20 @@ export interface PortfolioSlice { label: string; pct: number; color: string; rat
 export const SPENDING_PALETTE = ['#D85A30', '#EF9F27', '#E2B93B', '#1D9E75', '#378ADD', '#7F77DD', '#A32D2D', '#5DCAA5'];
 
 // 포트폴리오 카테고리별 색상 (categoryLabel → 색상)
+// ETF 세부 분류 라벨은 portfolioRegistry의 ETF_CATEGORY_RULES barColor와 맞춤
 export const PORTFOLIO_COLOR: Record<string, string> = {
   'ETF': '#1D9E75',
   '현금성': '#5DCAA5',
   '적금': '#9FE1CB',
   'IRP': '#085041',
+  '국내주식': '#E24B4A',
+  '해외주식': '#0EA5E9',
+  '채권': '#378ADD',
+  '배당': '#22C55E',
+  '테마': '#A855F7',
+  '금/원자재': '#F59E0B',
+  'TDF': '#534AB7',
+  '리츠': '#14B8A6',
 };
 
 // 월급 분배 도넛 팔레트
@@ -74,6 +85,38 @@ export function buildSpendingItems(categories: DashboardCategoryExpense[]): Spen
     color: SPENDING_PALETTE[i % SPENDING_PALETTE.length],
     amount: c.expenseAmount,
   }));
+}
+
+// 'ETF' 카테고리를 상품명 키워드(classifyEtf)로 세부 분류해 별도 카테고리로 쪼갠다.
+// 키워드에 안 걸린 상품은 'ETF' 라벨로 남고, 나머지 카테고리(현금성/적금/IRP)는 그대로 통과
+export function splitEtfPortfolio(portfolio: DashboardPortfolioItem[]): DashboardPortfolioItem[] {
+  const result: DashboardPortfolioItem[] = [];
+  for (const cat of portfolio) {
+    if (cat.categoryLabel !== 'ETF' || cat.items.length === 0) {
+      result.push(cat);
+      continue;
+    }
+    const buckets = new Map<string, DashboardPortfolioSubItem[]>();
+    for (const item of cat.items) {
+      const label = classifyEtf(item.name).type;
+      if (!buckets.has(label)) buckets.set(label, []);
+      buckets.get(label)!.push(item);
+    }
+    const split = Array.from(buckets.entries()).map(([label, items]) => {
+      const ratio = items.reduce((s, i) => s + i.ratio, 0);
+      return {
+        categoryLabel: label,
+        ratio,
+        // 백엔드는 카테고리 단위 금액만 주므로 비중으로 안분
+        assetAmount: cat.ratio > 0 ? Math.round(cat.assetAmount * ratio / cat.ratio) : 0,
+        rate: cat.rate,
+        items,
+      };
+    });
+    split.sort((a, b) => b.ratio - a.ratio);
+    result.push(...split);
+  }
+  return result;
 }
 
 // 포트폴리오 비중 슬라이스

@@ -21,6 +21,7 @@ import {
   buildSalarySlices,
   buildSpendingItems,
   buildPortfolioSlices,
+  splitEtfPortfolio,
   computeConsumption,
 } from '../components/dashboard/shared';
 import WeatherAssetWidget from '../components/dashboard/WeatherAssetWidget';
@@ -596,7 +597,9 @@ export default function Dashboard() {
   // 매핑/계산 로직은 components/dashboard/shared.ts 에 모아둠.
   const salarySlices = dashboard ? buildSalarySlices(dashboard.salaryPlan) : [];
   const spendingItems = dashboard ? buildSpendingItems(dashboard.consumption.categories) : [];
-  const portfolioSlices = dashboard ? buildPortfolioSlices(dashboard.portfolio) : [];
+  // ETF는 상품명 키워드로 세부 분류(테마/해외주식/채권…)해서 표시
+  const portfolioView = dashboard ? splitEtfPortfolio(dashboard.portfolio) : [];
+  const portfolioSlices = buildPortfolioSlices(portfolioView);
   // 총 투자금액 = 포트폴리오 items 금액 합산 (assetAmount = 잔액×비율/100)
   const portfolioTotal = dashboard ? dashboard.portfolio.reduce((s, p) => s + p.assetAmount, 0) : 0;
   const consumptionView = dashboard ? computeConsumption(dashboard.consumption) : null;
@@ -820,7 +823,7 @@ export default function Dashboard() {
           <div style={{ gridColumn: '1' }}>
             <InvestmentWidget
               investAmt={portfolioTotal}
-              portfolioItems={dashboard.portfolio.slice(0, 3)}
+              portfolioItems={portfolioView.slice(0, 3)}
               active={openWidget === 'investment'}
               onClick={() => toggleWidget('investment')}
             />
@@ -838,7 +841,7 @@ export default function Dashboard() {
           {/* 투자 펼침 영역 */}
           {openWidget === 'investment' && (
             <div style={{ gridColumn: '1 / -1' }}>
-              <InvestmentDetail portfolioSlices={portfolioSlices} portfolio={dashboard.portfolio} />
+              <InvestmentDetail portfolioSlices={portfolioSlices} portfolio={portfolioView} />
             </div>
           )}
 
