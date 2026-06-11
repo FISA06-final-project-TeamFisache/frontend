@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { ChallengeAlarmDetail, DailyLog, StockInfo } from '../api/challengeApi';
-import { suggestNewChallenge, getStockInfo } from '../api/challengeApi';
+import { getStockInfo } from '../api/challengeApi';
 import missionpori from '../assets/missionpori.png';
 
 interface Props {
   detail: ChallengeAlarmDetail;
   userName: string;
   onClose: () => void;
+  onNewChallenge?: () => void | Promise<void>;   // 실패 모달 "새 미션 도전하기"
 }
 
 const BLUE_LIGHT = '#E0F2FE';
@@ -272,7 +273,7 @@ function StockChartView({
 }
 
 // ── 메인 컴포넌트 ────────────────────────────────────────────
-export default function ChallengeAlarmModal({ detail, userName, onClose }: Props) {
+export default function ChallengeAlarmModal({ detail, userName, onClose, onNewChallenge }: Props) {
   const [suggesting, setSuggesting] = useState(false);
   const [showChartDetail, setShowChartDetail] = useState(false);
   const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
@@ -287,7 +288,7 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
   useEffect(() => {
     if (!showChartDetail || stockInfo || stockLoading) return;
     setStockLoading(true);
-    getStockInfo()
+    getStockInfo(detail.challengeId || undefined)
       .then(s => setStockInfo(s))
       .finally(() => setStockLoading(false));
   }, [showChartDetail]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -302,7 +303,7 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
 
   async function handleNewMission() {
     setSuggesting(true);
-    try { await suggestNewChallenge(); } catch { /* ignore */ }
+    try { await onNewChallenge?.(); } catch { /* ignore */ }
     setSuggesting(false);
     onClose();
   }
@@ -366,6 +367,13 @@ export default function ChallengeAlarmModal({ detail, userName, onClose }: Props
               </div>
               <ProgressBar progressPercent={100} weeklyStatus="SUCCESS" />
             </div>
+
+            {/* AI 리워드 코멘트 (content) */}
+            {detail.aiComment && (
+              <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '12px 14px', fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
+                <p style={{ margin: 0 }}>{detail.aiComment}</p>
+              </div>
+            )}
 
             {/* 리워드 안내 */}
             <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #DCFCE7)', border: '1.5px solid #86EFAC', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

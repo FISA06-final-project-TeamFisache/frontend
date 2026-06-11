@@ -646,6 +646,21 @@ export default function Dashboard() {
     sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '1');
   };
 
+  // 실패 알림 모달의 "새 미션 도전하기" — 진행률 리셋 후 새 AI 추천을 불러와
+  // MissionWidget이 "▶ 시작" 가능한 새 제안 카드로 돌아가게 한다.
+  const handleStartNewChallenge = async () => {
+    setChallengeAlarmOpen(false);
+    setChallengeProgress(0);
+    sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '0');
+    setChallengeLoading(true);
+    try {
+      const next = await recommendChallenge();
+      setChallengeProposal(next);
+    } finally {
+      setChallengeLoading(false);
+    }
+  };
+
   const unreadCount = notiItems.filter(n => !n.read).length;
 
   // ── 로딩 / 에러 화면 ────────────────────────────────────
@@ -1217,6 +1232,7 @@ export default function Dashboard() {
           detail={challengeAlarmDetail}
           userName={USER_NAME ?? '사용자'}
           onClose={() => setChallengeAlarmOpen(false)}
+          onNewChallenge={handleStartNewChallenge}
         />
       )}
 

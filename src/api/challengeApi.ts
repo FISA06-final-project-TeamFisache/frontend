@@ -64,6 +64,7 @@ const MOCK_CHALLENGE_DETAIL: ChallengeAlarmDetail = {
 /** 백엔드 GET /notifications/nag/{id} 응답 (NagNotificationResponseDto) */
 interface NagNotificationResponse {
   id: string;
+  challengeId: string | null;   // 알림이 가리키는 챌린지 (상태 무관) — 리워드 주식 조회용
   type: string;                 // NAG_50 | NAG_80 | NAG_90 | CHALLENGE_COMPLETE | CHALLENGE_FAILED
   challengeTitle: string | null;
   stockName: string | null;
@@ -83,7 +84,7 @@ export async function getChallengeAlarmDetail(notificationId: string): Promise<C
     // 백엔드가 제공하지 않는 필드(dailyLogs·weeklyBaseline·category 등)는 안전 기본값.
     // progressPercent·weeklyStatus 는 호출부(Dashboard)가 알림 타입으로 덮어쓴다.
     return {
-      challengeId: '',
+      challengeId: d.challengeId ?? '',
       title: d.challengeTitle ?? '미니챌린지',
       category: '',
       challengeType: 'FREQUENCY',
@@ -137,11 +138,13 @@ const FALLBACK_STOCK: StockInfo = {
   ],
 };
 
-/** GET /stocks — 진행 중인 챌린지의 보상 주식 시세 + 차트 (백엔드가 활성 챌린지에서 ticker를 꺼냄) */
-export async function getStockInfo(): Promise<StockInfo> {
+/** GET /stocks — 보상 주식 시세 + 차트. challengeId를 주면 그 챌린지(성공/실패 포함)의 ticker를,
+ *  없으면 백엔드가 진행 중인 챌린지에서 ticker를 꺼낸다. */
+export async function getStockInfo(challengeId?: string): Promise<StockInfo> {
   try {
-    const res = await api.get<CommonResponse<StockInfo>>('/stocks');
-    if (!res.success || !res.data) return FALLBACK_STOCK;   // 활성 챌린지 없음/시세 조회 실패 → 폴백
+    const url = challengeId ? `/stocks?challengeId=${encodeURIComponent(challengeId)}` : '/stocks';
+    const res = await api.get<CommonResponse<StockInfo>>(url);
+    if (!res.success || !res.data) return FALLBACK_STOCK;   // 챌린지 없음/시세 조회 실패 → 폴백
     return res.data;
   } catch {
     return FALLBACK_STOCK;
