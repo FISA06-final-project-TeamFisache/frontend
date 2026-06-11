@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, HelpCircle, Check, X } from 'lucide-react';
+import { ChevronLeft, Check, X } from 'lucide-react';
 import { getBankMeta } from '../constants/banks';
 import heroImg from '../assets/hero.png';
 import { getTransferPlans, updateTransferPlans, generateTransferPlans } from '../api/transferApi';
@@ -23,10 +23,15 @@ const SPEND_TYPE_META: Record<string, { tag: string; color: string }> = {
 
 
 const TERM_META: Record<string, { label: string; bg: string; text: string }> = {
-  '단': { label: '단기', bg: 'bg-red-100', text: 'text-red-700' },
-  '중': { label: '중기', bg: 'bg-amber-100', text: 'text-amber-700' },
-  '장': { label: '장기', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  '단': { label: '단기', bg: '#FECACA', text: '#991B1B' },
+  '단기': { label: '단기', bg: '#FECACA', text: '#991B1B' },
+  '중': { label: '중기', bg: '#FDE68A', text: '#92400E' },
+  '중기': { label: '중기', bg: '#FDE68A', text: '#92400E' },
+  '장': { label: '장기', bg: '#BBF7D0', text: '#166534' },
+  '장기': { label: '장기', bg: '#BBF7D0', text: '#166534' },
 };
+
+const TERM_ORDER: Record<string, number> = { '단': 0, '단기': 0, '중': 1, '중기': 1, '장': 2, '장기': 2 };
 
 const PRODUCT_TYPE_META: Record<string, { tag: string; term: string }> = {
   DEPOSIT: { tag: '예금', term: '단' },
@@ -39,15 +44,6 @@ const PRODUCT_TYPE_META: Record<string, { tag: string; term: string }> = {
 // "기존 계획대로 분배" 라는 정확한 문구를 노출한다.
 const NO_CHANGE_GUIDE = '이번 달은 월급 변동이 없어, 기존 계획대로 분배해 드릴게요.';
 
-const SPEND_REASONS = [
-  '생활비 카테고리 지난달 32,000원 초과',
-  '비상금 최근 3개월 미인출',
-];
-
-const INVEST_REASONS = [
-  '단기 목적 자산(생활 여유 자금)의 유동성 확보와 우대 금리 혜택을 위해 추천해요',
-  '중기 목표 자금 마련 및 안정적 가치 상승을 위한 자산 분산 투자처예요',
-];
 
 interface Plan {
   id: string;
@@ -86,7 +82,6 @@ export default function SalaryManagement({ onClose }: Props) {
   const [salaryDelta, setSalaryDelta] = useState(0);
   const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>(null);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string; bank: string; logo: string }>>([]);
-  const [tooltip, setTooltip] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
   const [newTag, setNewTag] = useState('');
@@ -163,12 +158,12 @@ export default function SalaryManagement({ onClose }: Props) {
               editedDelta: p.plannedAmount,
               color: '#3b82f6',
               logo: getBankMeta(p.institution ?? '').imgSrc,
-              term: meta.term ?? null,
+              term: p.term ?? meta.term ?? null,
               institution: p.institution,
               interestRate: null,
               productType: p.productType ?? undefined,
             };
-          }));
+          }).sort((a, b) => (TERM_ORDER[a.term ?? ''] ?? 99) - (TERM_ORDER[b.term ?? ''] ?? 99)));
         }
 
         setAccounts(
@@ -340,7 +335,7 @@ export default function SalaryManagement({ onClose }: Props) {
                           </div>
                           <span className="text-xs font-bold text-slate-800 truncate">{p.name}</span>
                           {termInfo ? (
-                            <span className={`${termInfo.bg} ${termInfo.text} px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0`}>{termInfo.label}</span>
+                            <span style={{ background: termInfo.bg, color: termInfo.text }} className="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">{termInfo.label}</span>
                           ) : (
                             <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0">{p.tag}</span>
                           )}
@@ -499,8 +494,8 @@ export default function SalaryManagement({ onClose }: Props) {
                     )}
 
                     {/* 수평 화살표 */}
-                    <svg className={`absolute top-11 w-6 h-4 text-slate-300 ${isInvest ? 'right-6' : 'left-6'}`}
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24" preserveAspectRatio="none"
+                    <svg className={`absolute top-10 w-5 h-5 text-slate-300 ${isInvest ? 'right-[22px]' : 'left-[22px]'}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
                       style={isInvest ? { transform: 'scaleX(-1)' } : undefined}>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M0 12h20M16 6l6 6-6 6" />
                     </svg>
@@ -526,7 +521,7 @@ export default function SalaryManagement({ onClose }: Props) {
                           </div>
                         </div>
                         {isInvest && termInfo ? (
-                          <span className={`${termInfo.bg} ${termInfo.text} px-2 py-0.5 rounded-md text-xs font-medium`}>{termInfo.label}</span>
+                          <span style={{ background: termInfo.bg, color: termInfo.text }} className="px-2 py-0.5 rounded-md text-xs font-medium">{termInfo.label}</span>
                         ) : (
                           <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-md text-xs font-medium">{plan.tag}</span>
                         )}
@@ -580,11 +575,6 @@ export default function SalaryManagement({ onClose }: Props) {
                             />
                             <span className="text-[10px] text-slate-400 font-normal">원</span>
 
-                            {/* 미세다이얼 아이콘 */}
-                            <svg className={`w-3.5 h-3.5 ml-1 text-slate-300 shrink-0 ${plan.editedDelta !== 0 ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <circle cx={12} cy={12} r={9} strokeDasharray="3 3" />
-                              <circle cx={12} cy={12} r={3} />
-                            </svg>
                           </div>
 
                           {/* 플러스 버튼 */}
@@ -604,23 +594,6 @@ export default function SalaryManagement({ onClose }: Props) {
                           </button>
                         </div>
 
-                        {/* AI 추천 팁 툴팁 */}
-                        <div className="relative shrink-0 flex items-center">
-                          <button
-                            type="button"
-                            onMouseEnter={() => setTooltip(plan.id)}
-                            onMouseLeave={() => setTooltip(null)}
-                            className="p-1.5 focus:outline-none rounded-full bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors"
-                          >
-                            <HelpCircle className="w-4 h-4 text-slate-400 hover:text-slate-500 transition-colors" />
-                          </button>
-                          {tooltip === plan.id && (
-                            <div className="absolute right-0 bottom-8 w-60 bg-slate-800 text-white text-[11px] px-3 py-2.5 rounded-xl shadow-xl z-50 leading-relaxed pointer-events-none">
-                              <div className="absolute -bottom-1 right-3.5 w-2 h-2 bg-slate-800 rotate-45" />
-                              💡 {(isInvest ? INVEST_REASONS : SPEND_REASONS)[idx] ?? 'AI 추천 조정 금액이에요'}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </div>
