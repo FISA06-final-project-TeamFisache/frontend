@@ -32,7 +32,7 @@ export function TaxSavingWidget({ taxDeduction, active, onClick }: {
       {/* 중앙 예상 환급액 */}
       <div style={{ display: 'flex', flexDirection: 'column', margin: '4px 0' }}>
         <span style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>13월의 월급으로</span>
-        <span style={{ fontSize: 14, fontWeight: 800, color: '#1D9E75', marginTop: 2, lineHeight: 1.35 }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: '#0095DB', marginTop: 2, lineHeight: 1.35 }}>
           {taxDeduction.toLocaleString()}원<br />돌려받아요
         </span>
       </div>
@@ -45,8 +45,9 @@ export function TaxSavingWidget({ taxDeduction, active, onClick }: {
   );
 }
 
-const PEN_COLOR = '#1D9E75';   // 연금저축 — 초록
-const IRP_COLOR = '#3B82F6';   // IRP — 파랑
+const PEN_COLOR = '#0095DB';   // 연금저축 — 우리 메인 블루
+const IRP_COLOR = '#3B82F6';   // IRP — 인디고 블루
+const DEEP_BLUE = '#075985';   // 강조 텍스트용 딥 블루 (기존 딥 그린 대체)
 
 export function TaxSavingDetail({ view }: { view: DashboardTaxSaving }) {
   const { deductionRate, totalTaxDeduction, remaining, bars } = view;
@@ -89,7 +90,7 @@ export function TaxSavingDetail({ view }: { view: DashboardTaxSaving }) {
       {/* 헤더 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>연금·IRP 세액공제 현황</span>
-        <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: '#E1F5EE', color: '#0F6E56' }}>
+        <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: '#E0F2FE', color: '#0369A1' }}>
           {deductionRate.toFixed(1)}% 공제율
         </span>
       </div>
@@ -153,7 +154,7 @@ export function TaxSavingDetail({ view }: { view: DashboardTaxSaving }) {
         <span>✅</span> 어디에 얼마를 더 넣을 수 있나요?
       </p>
       <div style={{ display: 'flex', gap: 10 }}>
-        <div style={{ flex: 1, background: '#F0FAF6', border: '1px solid #D6F0E5', borderRadius: 14, padding: 12 }}>
+        <div style={{ flex: 1, background: '#EFF8FF', border: '1px solid #CDE9FB', borderRadius: 14, padding: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: PEN_COLOR }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>연금저축</span>
@@ -182,14 +183,14 @@ export function TaxSavingDetail({ view }: { view: DashboardTaxSaving }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 3px' }}>올해 예상 세액공제</p>
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#085041', margin: 0 }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: DEEP_BLUE, margin: 0 }}>
               {totalTaxDeduction > 0 ? `${totalTaxDeduction.toLocaleString()}원` : '–'}
             </p>
           </div>
           {remaining > 0 && (
-            <div style={{ background: '#E1F5EE', borderRadius: 8, padding: '6px 10px', textAlign: 'right' }}>
-              <p style={{ fontSize: 9, color: '#0F6E56', margin: '0 0 1px' }}>한도 추가 납입 시</p>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#085041', margin: 0 }}>
+            <div style={{ background: '#E0F2FE', borderRadius: 8, padding: '6px 10px', textAlign: 'right' }}>
+              <p style={{ fontSize: 9, color: '#0369A1', margin: '0 0 1px' }}>한도 추가 납입 시</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: DEEP_BLUE, margin: 0 }}>
                 +{Math.round(remaining * deductionRate / 100).toLocaleString()}원 환급↑
               </p>
             </div>

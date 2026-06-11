@@ -27,14 +27,24 @@ function WaveBar({ topColor }: { topColor: string }) {
 // ── 진행 바 (50% / 80% / 90% 마일스톤 마커 포함) ─────────────
 function ProgressBar({ progressPercent, weeklyStatus }: { progressPercent: number; weeklyStatus: string }) {
   const pct = Math.min(100, Math.max(0, progressPercent));
-  const isActive = weeklyStatus === 'ACTIVE';
   const isSuccess = weeklyStatus === 'SUCCESS';
+  const isFailed = weeklyStatus === 'FAILED';
 
-  const pinEmoji = isActive ? '📍' : isSuccess ? '🏆' : '😢';
-  const pinFontSize = isActive ? 22 : 20;
+  // 상태별 말풍선 색상 — 진행중(파랑) / 성공(초록) / 실패(빨강)
+  const bubbleBg = isSuccess
+    ? 'linear-gradient(135deg, #16A34A, #22C55E)'
+    : isFailed
+      ? 'linear-gradient(135deg, #DC2626, #EF4444)'
+      : 'linear-gradient(135deg, #0095DB, #00BFFF)';
+  const bubbleShadow = isSuccess
+    ? 'rgba(22,163,74,0.35)'
+    : isFailed
+      ? 'rgba(220,38,38,0.35)'
+      : 'rgba(0,149,219,0.35)';
+  const tailColor = isSuccess ? '#16A34A' : isFailed ? '#DC2626' : '#00A9E8';
 
   return (
-    <div style={{ marginTop: 10, marginBottom: 5 }}>
+    <div style={{ marginTop: 28, marginBottom: 5 }}>
       <div style={{ position: 'relative', height: 12, borderRadius: 99 }}>
         {/* 3색 바 */}
         <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(to right, #10B981 0%, #10B981 33%, #FBBF24 33%, #FBBF24 66%, #EF4444 66%, #EF4444 100%)' }} />
@@ -51,15 +61,31 @@ function ProgressBar({ progressPercent, weeklyStatus }: { progressPercent: numbe
           }} />
         ))}
 
-        {/* 현재 위치 핀 */}
+        {/* 현재 위치 핀 — 진행률 숫자 말풍선 + 꼬리 삼각형 */}
         <div style={{
-          position: 'absolute', left: `${pct}%`, top: '50%',
-          transform: 'translate(-50%, -80%)',
-          fontSize: pinFontSize, lineHeight: 1,
-          pointerEvents: 'none', userSelect: 'none',
-          filter: 'drop-shadow(0px 2px 3px rgba(0,0,0,0.2))',
+          position: 'absolute',
+          left: `${pct}%`,
+          bottom: '100%',
+          transform: 'translateX(-50%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          paddingBottom: 4,
+          pointerEvents: 'none',
+          transition: 'left 0.3s ease',
         }}>
-          {pinEmoji}
+          <div style={{
+            background: bubbleBg,
+            color: '#fff', fontSize: 10, fontWeight: 800,
+            padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap',
+            boxShadow: `0 2px 6px ${bubbleShadow}`,
+          }}>
+            {pct}%
+          </div>
+          <div style={{
+            width: 0, height: 0, marginTop: -1,
+            borderLeft: '4px solid transparent',
+            borderRight: '4px solid transparent',
+            borderTop: `5px solid ${tailColor}`,
+          }} />
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, padding: '0 2px' }}>
@@ -360,21 +386,6 @@ export default function ChallengeAlarmModal({ detail, userName, onClose, onNewCh
               <p style={{ fontSize: 16, fontWeight: 700, color: '#F8FAF6', margin: 0, textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>{detail.title}</p>
             </div>
 
-            {/* day 트래커 + 완료 바 */}
-            <div style={{ background: BLUE_LIGHT, borderRadius: 12, padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
-                {detail.dailyLogs.map(log => <EmojiCell key={log.day} log={log} />)}
-              </div>
-              <ProgressBar progressPercent={100} weeklyStatus="SUCCESS" />
-            </div>
-
-            {/* AI 리워드 코멘트 (content) */}
-            {detail.aiComment && (
-              <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '12px 14px', fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
-                <p style={{ margin: 0 }}>{detail.aiComment}</p>
-              </div>
-            )}
-
             {/* 리워드 안내 */}
             <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #DCFCE7)', border: '1.5px solid #86EFAC', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
@@ -385,6 +396,13 @@ export default function ChallengeAlarmModal({ detail, userName, onClose, onNewCh
                 주식 받기
               </button>
             </div>
+
+            {/* AI 리워드 코멘트 (content) */}
+            {detail.aiComment && (
+              <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '12px 14px', fontSize: 13, color: '#166534', lineHeight: 1.6 }}>
+                <p style={{ margin: 0 }}>{detail.aiComment}</p>
+              </div>
+            )}
 
             <button onClick={onClose} style={{ width: '100%', padding: '14px 0', borderRadius: 12, background: '#16A34A', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700 }}>
               확인
