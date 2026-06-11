@@ -790,15 +790,21 @@ export default function AssetPrescription() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">태그</label>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">태그</label>
+                  <span className="text-[11px] font-medium text-slate-400">통장의 용도를 적어주세요</span>
+                </div>
                 <input
                   type="text"
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="예: 비상금"
+                  placeholder="예: 비상금, 월세, 퇴사비상금"
                   onKeyDown={(e) => { if (e.key === 'Enter') addAccount(); }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
+                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+                  태그를 자세히 적어주실수록 좋아요. 월급에 변동이 생겼을 때 Pori가 태그를 읽고 통장별로 더 똑똑하게 나눠드려요.
+                </p>
               </div>
             </div>
             <div className="flex border-t border-slate-100 bg-slate-50">
