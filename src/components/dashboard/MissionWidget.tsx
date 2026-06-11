@@ -43,17 +43,33 @@ export default function MissionWidget({ proposal, loading, adjusting, progress, 
           <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{proposal.title}</span>
         </div>
 
-        {/* 삼색 진행바 + 🟡 이모지 */}
-        <div style={{ position: 'relative', height: 10, background: THREE_COLOR_BAR_BG, borderRadius: 99, margin: '8px 0 4px' }}>
+        {/* 삼색 진행바 + 진행률 말풍선 마커 (말풍선 + 꼬리 삼각형이 현재 위치를 짚는다) */}
+        <div style={{ position: 'relative', height: 10, background: THREE_COLOR_BAR_BG, borderRadius: 99, margin: '28px 0 4px' }}>
           <div style={{
             position: 'absolute',
             left: `${Math.min(100, progress)}%`,
-            top: '50%',
-            transform: 'translate(-50%, -75%)',
-            fontSize: 18, lineHeight: 1, pointerEvents: 'none',
-            filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.2))',
+            bottom: '100%',
+            transform: 'translateX(-50%)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            paddingBottom: 3,
+            pointerEvents: 'none',
             transition: 'left 0.3s ease',
-          }}>🟡</div>
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #0095DB, #00BFFF)',
+              color: '#fff', fontSize: 9, fontWeight: 800,
+              padding: '2px 7px', borderRadius: 99, whiteSpace: 'nowrap',
+              boxShadow: '0 2px 6px rgba(0,149,219,0.35)',
+            }}>
+              {progress}%
+            </div>
+            <div style={{
+              width: 0, height: 0, marginTop: -1,
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: '5px solid #00A9E8',
+            }} />
+          </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
