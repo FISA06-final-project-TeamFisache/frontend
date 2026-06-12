@@ -28,6 +28,7 @@ export interface FlowItem {
   assetId: string;
   institution: string | null;
   productType: string | null;
+  term: string | null;
   plannedAmount: number;
   baselineAmount: number;
   diff: number;

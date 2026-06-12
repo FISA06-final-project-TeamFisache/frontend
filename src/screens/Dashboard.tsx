@@ -17,12 +17,12 @@ import {
   type ChallengeProposal,
 } from '../api/challengeApi';
 import ChallengeAlarmModal from '../components/ChallengeAlarmModal';
-import portiImg from '../assets/porti.png';
 import missionporiImg from '../assets/missionpori.png';
 import {
   buildSalarySlices,
   buildSpendingItems,
   buildPortfolioSlices,
+  splitEtfPortfolio,
   computeConsumption,
 } from '../components/dashboard/shared';
 import WeatherAssetWidget from '../components/dashboard/WeatherAssetWidget';
@@ -598,7 +598,9 @@ export default function Dashboard() {
   // 매핑/계산 로직은 components/dashboard/shared.ts 에 모아둠.
   const salarySlices = dashboard ? buildSalarySlices(dashboard.salaryPlan) : [];
   const spendingItems = dashboard ? buildSpendingItems(dashboard.consumption.categories) : [];
-  const portfolioSlices = dashboard ? buildPortfolioSlices(dashboard.portfolio) : [];
+  // ETF는 상품명 키워드로 세부 분류(테마/해외주식/채권…)해서 표시
+  const portfolioView = dashboard ? splitEtfPortfolio(dashboard.portfolio) : [];
+  const portfolioSlices = buildPortfolioSlices(portfolioView);
   // 총 투자금액 = 포트폴리오 items 금액 합산 (assetAmount = 잔액×비율/100)
   const portfolioTotal = dashboard ? dashboard.portfolio.reduce((s, p) => s + p.assetAmount, 0) : 0;
   const consumptionView = dashboard ? computeConsumption(dashboard.consumption) : null;
@@ -617,7 +619,7 @@ export default function Dashboard() {
             description: active.description,
             category: active.category,
             challengeSubType: active.challengeSubType,
-            challengeType: active.challengeType === 'AMOUNT' ? 'AMOUNT' : 'FREQUENCY',
+            challengeType: active.challengeType === 'AMOUNT' ? 'AMOUNT' : 'COUNT',
             target: active.target,
             estimatedSaving: active.estimatedSaving,
             ticker: active.ticker,
@@ -645,6 +647,21 @@ export default function Dashboard() {
     try { await createChallenge(challengeProposal); } catch { /* ignore */ }
     setChallengeProgress(1);
     sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '1');
+  };
+
+  // 실패 알림 모달의 "새 미션 도전하기" — 진행률 리셋 후 새 AI 추천을 불러와
+  // MissionWidget이 "▶ 시작" 가능한 새 제안 카드로 돌아가게 한다.
+  const handleStartNewChallenge = async () => {
+    setChallengeAlarmOpen(false);
+    setChallengeProgress(0);
+    sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, '0');
+    setChallengeLoading(true);
+    try {
+      const next = await recommendChallenge();
+      setChallengeProposal(next);
+    } finally {
+      setChallengeLoading(false);
+    }
   };
 
   const unreadCount = notiItems.filter(n => !n.read).length;
@@ -807,7 +824,7 @@ export default function Dashboard() {
           <div style={{ gridColumn: '1' }}>
             <InvestmentWidget
               investAmt={portfolioTotal}
-              portfolioItems={dashboard.portfolio.slice(0, 3)}
+              portfolioItems={portfolioView.slice(0, 3)}
               active={openWidget === 'investment'}
               onClick={() => toggleWidget('investment')}
             />
@@ -825,7 +842,7 @@ export default function Dashboard() {
           {/* 투자 펼침 영역 */}
           {openWidget === 'investment' && (
             <div style={{ gridColumn: '1 / -1' }}>
-              <InvestmentDetail portfolioSlices={portfolioSlices} portfolio={dashboard.portfolio} />
+              <InvestmentDetail portfolioSlices={portfolioSlices} portfolio={portfolioView} />
             </div>
           )}
 
@@ -991,35 +1008,6 @@ export default function Dashboard() {
               onAddInstitution={() => { setAccountMgmtOpen(false); navigate('/linking', { state: { returnTo: '/dashboard' } }); }}
             />
           </div>
-        </div>
-      )}
-
-      {/* ── Pori 플로팅 버튼 (프로젝트 영역 우하단) ── */}
-      {!poriOpen && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%', maxWidth: 375,
-          pointerEvents: 'none', zIndex: 400,
-        }}>
-          <button
-            onClick={() => { setPoriOpen(true); setPoriStep('input'); setPoriMessage(''); setPoriProposal(null); setPoriError(null); }}
-            style={{
-              position: 'absolute', bottom: 28, right: 20,
-              pointerEvents: 'auto',
-              width: 56, height: 56, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0095DB, #00BFFF)',
-              border: 'none', cursor: 'pointer', padding: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 20px rgba(0,149,219,0.35)',
-              transition: 'transform 0.15s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
-            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-            aria-label="Pori AI 열기"
-          >
-            <img src={portiImg} alt="Pori" style={{ width: 38, height: 38, objectFit: 'contain' }} />
-          </button>
         </div>
       )}
 
@@ -1218,6 +1206,7 @@ export default function Dashboard() {
           detail={challengeAlarmDetail}
           userName={USER_NAME ?? '사용자'}
           onClose={() => setChallengeAlarmOpen(false)}
+          onNewChallenge={handleStartNewChallenge}
         />
       )}
 
