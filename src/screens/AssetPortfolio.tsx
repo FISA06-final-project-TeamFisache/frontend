@@ -7,7 +7,7 @@ import {
 } from '../api/portfolioFlowApi';
 import { getProducts } from '../api/productApi';
 import pillImg from '../assets/money1.png';
-import poriImg from '../assets/robot_pori.png';
+import poriImg from '../assets/point_pori.png';
 import missionPoriImg from '../assets/mirror_missionpori.jpg';
 import {
   type HubItem, type ProductItem, type FlowProduct, type FlowTerm, type Flow,
@@ -48,9 +48,9 @@ const termBarColor = (term: FlowTerm, idx: number): string => {
 const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
 
 const ASSET_TYPE_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  IRP:              { label: 'IRP',   bg: '#FFF4E6', color: '#9A4D00' },
-  ISA:              { label: 'ISA',   bg: '#FEF3C7', color: '#92400E' },
-  PENSION_SAVINGS:  { label: '연금저축', bg: '#EEEDFE', color: '#534AB7' },
+  IRP: { label: 'IRP', bg: '#FFF4E6', color: '#9A4D00' },
+  ISA: { label: 'ISA', bg: '#FEF3C7', color: '#92400E' },
+  PENSION_SAVINGS: { label: '연금저축', bg: '#EEEDFE', color: '#534AB7' },
 };
 
 // 흐름 정렬 — 단기 → 중기 → 장기 (같은 term 내 순서는 API 순서 유지: 안정 정렬)
@@ -116,11 +116,18 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
   return (
     <div>
       {flow.reasoning && (
-        <div style={{ background: '#f0f7ff', backgroundImage: 'radial-gradient(circle, #bfdbfe 1px, transparent 1px)', backgroundSize: '14px 14px', border: '0.5px solid #bfdbfe', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <img src={poriImg} alt="Pori" style={{ width: 52, height: 52, objectFit: 'contain', flexShrink: 0 }} />
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#3182F6', margin: '0 0 4px' }}>에이전트 포리의 한마디</p>
-            <p style={{ fontSize: 13, color: '#1e293b', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>{flow.reasoning}</p>
+        <div className="relative flex items-center gap-4 mb-4 rounded-2xl p-4 border border-sky-200 shadow-md overflow-hidden" style={{ background: 'linear-gradient(150deg, #f0faff 0%, #e0f2fe 55%, #bae6fd 100%)' }}>
+          <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,24 C65,8 130,38 195,24 C260,10 325,38 390,24 L390,48 L0,48 Z" fill="rgba(186,230,253,0.4)" />
+            <path d="M0,32 C80,18 160,44 240,30 C305,20 355,38 390,32 L390,48 L0,48 Z" fill="rgba(147,197,253,0.35)" />
+            <path d="M0,40 C55,28 125,48 195,38 C255,30 325,44 390,40 L390,48 L0,48 Z" fill="rgba(125,211,252,0.45)" />
+          </svg>
+          <img src={poriImg} alt="Pori" className="w-20 h-20 object-contain shrink-0 z-10" />
+          <div className="flex-1 min-w-0 z-10">
+            <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">
+              🤖 AI Pori의 설명
+            </div>
+            <p className="text-[13px] text-slate-700 leading-relaxed font-medium">{flow.reasoning}</p>
           </div>
         </div>
       )}
@@ -1063,13 +1070,13 @@ export default function AssetPortfolio() {
 
         <div style={{ padding: '12px 16px 0' }}>
           {!showDetail && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 0 }}>
               <p style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, margin: 0 }}>
                 {isEditMode
                   ? <>흐름과 상품 구성을<br />원하는 대로 수정해보세요</>
                   : <>{USER_NAME}님의 자산<br />이렇게 설계되었어요</>}
               </p>
-              <img src={pillImg} alt={isEditMode ? '재설정' : '처방전'} style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
+              <img src={pillImg} alt={isEditMode ? '재설정' : '처방전'} style={{ width: 100, height: 100, objectFit: 'contain', flexShrink: 0, marginTop: -24 }} />
             </div>
           )}
 

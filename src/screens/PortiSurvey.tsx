@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import heroImg from '../assets/hero.png';
+import pointPoriImg from '../assets/point_pori.png';
 import portiImg from '../assets/porti.png';
 import swimporiImg from '../assets/Swimpori.png';
 import golfporiImg from '../assets/Golfpori.png';
@@ -897,17 +898,32 @@ export default function PortiSurvey() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => toggleDetail('spending')}
-                  className="w-full flex justify-between items-center px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 transition active:scale-[0.98]"
-                >
-                  <span>자세한 설명 보기</span>
-                  {openDetail.spending ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => toggleDetail('spending')}
+                    className="flex items-center gap-0.5 text-xs text-blue-400 hover:text-blue-600 transition font-medium"
+                  >
+                    {openDetail.spending ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    <span>{openDetail.spending ? '접기' : '자세히 보기'}</span>
+                  </button>
+                </div>
                 {openDetail.spending && (
-                  <div className="bg-blue-50 p-4 rounded-2xl rounded-tl-none text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
-                    {agentProfile?.expenseComment ?? '소비 분석 데이터를 불러오는 중입니다.'}
+                  <div className="relative flex items-center gap-4 rounded-2xl p-4 border border-sky-200 shadow-md overflow-hidden animate-in fade-in slide-in-from-top-1" style={{ background: 'linear-gradient(150deg, #f0faff 0%, #e0f2fe 55%, #bae6fd 100%)' }}>
+                    <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M0,24 C65,8 130,38 195,24 C260,10 325,38 390,24 L390,48 L0,48 Z" fill="rgba(186,230,253,0.4)" />
+                      <path d="M0,32 C80,18 160,44 240,30 C305,20 355,38 390,32 L390,48 L0,48 Z" fill="rgba(147,197,253,0.35)" />
+                      <path d="M0,40 C55,28 125,48 195,38 C255,30 325,44 390,40 L390,48 L0,48 Z" fill="rgba(125,211,252,0.45)" />
+                    </svg>
+                    <img src={pointPoriImg} alt="Pori" className="w-20 h-20 object-contain shrink-0 z-10" />
+                    <div className="flex-1 min-w-0 z-10">
+                      <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">
+                        🤖 AI Pori의 한마디
+                      </div>
+                      <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
+                        {agentProfile?.expenseComment ?? '소비 분석 데이터를 불러오는 중입니다.'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </section>
@@ -953,17 +969,32 @@ export default function PortiSurvey() {
                   );
                 })()}
 
-                <button
-                  type="button"
-                  onClick={() => toggleDetail('investment')}
-                  className="w-full flex justify-between items-center px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-semibold text-gray-700 transition active:scale-[0.98]"
-                >
-                  <span>자세한 설명 보기</span>
-                  {openDetail.investment ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => toggleDetail('investment')}
+                    className="flex items-center gap-0.5 text-xs text-blue-400 hover:text-blue-600 transition font-medium"
+                  >
+                    {openDetail.investment ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    <span>{openDetail.investment ? '접기' : '자세히 보기'}</span>
+                  </button>
+                </div>
                 {openDetail.investment && (
-                  <div className="bg-blue-50 p-4 rounded-2xl text-sm leading-relaxed text-blue-900 animate-in fade-in slide-in-from-top-1">
-                    {agentProfile?.investComment ?? '투자 성향 분석 데이터를 불러오는 중입니다.'}
+                  <div className="relative flex items-center gap-4 rounded-2xl p-4 border border-sky-200 shadow-md overflow-hidden animate-in fade-in slide-in-from-top-1" style={{ background: 'linear-gradient(150deg, #f0faff 0%, #e0f2fe 55%, #bae6fd 100%)' }}>
+                    <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M0,24 C65,8 130,38 195,24 C260,10 325,38 390,24 L390,48 L0,48 Z" fill="rgba(186,230,253,0.4)" />
+                      <path d="M0,32 C80,18 160,44 240,30 C305,20 355,38 390,32 L390,48 L0,48 Z" fill="rgba(147,197,253,0.35)" />
+                      <path d="M0,40 C55,28 125,48 195,38 C255,30 325,44 390,40 L390,48 L0,48 Z" fill="rgba(125,211,252,0.45)" />
+                    </svg>
+                    <img src={pointPoriImg} alt="Pori" className="w-20 h-20 object-contain shrink-0 z-10" />
+                    <div className="flex-1 min-w-0 z-10">
+                      <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">
+                        🤖 AI Pori의 한마디
+                      </div>
+                      <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
+                        {agentProfile?.investComment ?? '투자 성향 분석 데이터를 불러오는 중입니다.'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </section>
