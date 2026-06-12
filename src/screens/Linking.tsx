@@ -63,6 +63,18 @@ function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
+const MOCK_INSTITUTIONS: MydataInstitution[] = [
+  { institution: '우리은행', bankType: 'BANK', accountCount: 3 },
+  { institution: '신한은행', bankType: 'BANK', accountCount: 2 },
+  { institution: 'KB국민은행', bankType: 'BANK', accountCount: 2 },
+  { institution: '하나은행', bankType: 'BANK', accountCount: 1 },
+  { institution: 'NH농협은행', bankType: 'BANK', accountCount: 2 },
+  { institution: '카카오뱅크', bankType: 'BANK', accountCount: 1 },
+  { institution: '토스뱅크', bankType: 'BANK', accountCount: 1 },
+  { institution: '삼성증권', bankType: 'SECURITIES', accountCount: 1 },
+  { institution: '미래에셋증권', bankType: 'SECURITIES', accountCount: 1 },
+];
+
 export default function Linking() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,7 +83,7 @@ export default function Linking() {
   const [step, setStep] = useState<Step>(returnTo ? 'select' : 'consent');
   const [consents, setConsents] = useState({ personal: false, financial: false, terms: false, marketing: false });
   // 더미 테이블에서 받아온 연동 가능 기관 목록
-  const [institutions, setInstitutions] = useState<MydataInstitution[]>([]);
+  const [institutions, setInstitutions] = useState<MydataInstitution[]>(MOCK_INSTITUTIONS);
   const [institutionsLoading, setInstitutionsLoading] = useState(false);
   // 선택한 기관명(institution) 목록
   const [selected, setSelected] = useState<string[]>([]);
@@ -99,7 +111,7 @@ export default function Linking() {
     setInstitutionsLoading(true);
     getMyDataInstitutions()
       .then(setInstitutions)
-      .catch(() => setInstitutions([]))
+      .catch(() => setInstitutions(MOCK_INSTITUTIONS))
       .finally(() => setInstitutionsLoading(false));
   }, [step, institutions.length, institutionsLoading]);
 

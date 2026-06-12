@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import heroImg from '../assets/hero.png';
+import poriArtistVideo from '../assets/pori_artist.mov';
 import pointPoriImg from '../assets/point_pori.png';
 import portiImg from '../assets/porti.png';
 import swimporiImg from '../assets/Swimpori.png';
@@ -419,7 +419,7 @@ export default function PortiSurvey() {
       ? (GOAL_CATEGORIES.find(g => g.id === selectedGoal)?.label ?? selectedGoal)
       : null;
 
-    const minDelay = new Promise<void>(resolve => setTimeout(resolve, 2800));
+    const minDelay = new Promise<void>(resolve => setTimeout(resolve, 7000));
     const apiCall = generateAgentProfile(answersArray, stockThemes, lifeGoal)
       .then(profile => {
         setAgentProfile(profile);
@@ -677,13 +677,11 @@ export default function PortiSurvey() {
       <div className="w-full max-w-[390px] min-h-screen bg-white flex flex-col items-center justify-center shadow-2xl px-10 gap-8">
         <p className="text-sm text-blue-500 text-center leading-relaxed">
           마이데이터와 PorTI 검사를 기반으로<br />
-          <span className="font-bold">{USER_NAME}</span>님을 그리고 있어요.
+          <span className="font-bold">{USER_NAME}</span>님의 자산을 그리고 있어요.
         </p>
 
-        {/* 점선 원 + 마스코트 */}
-        <div className="relative flex items-center justify-center w-44 h-44">
-          <div className="absolute inset-0 rounded-full border-4 border-dashed border-blue-300 animate-spin [animation-duration:6s]" />
-          <img src={heroImg} alt="Pori" className="w-28 h-28 object-contain relative z-10" />
+        <div style={{ paddingTop: '20px' }}>
+          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
         </div>
       </div>
     </div>
