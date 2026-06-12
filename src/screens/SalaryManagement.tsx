@@ -416,9 +416,22 @@ export default function SalaryManagement({ onClose }: Props) {
           {/* T자 분기선 */}
           <div className="relative h-7 pointer-events-none">
             <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[2px] h-[14px] bg-slate-300" />
-            <div className="absolute left-[25%] right-[25%] top-[12px] h-[2px] bg-slate-300 rounded-sm" />
-            <div className="absolute left-[25%] -translate-x-1/2 top-[12px] w-[2px] h-[16px] bg-slate-300" />
-            <div className="absolute right-[25%] translate-x-1/2 top-[12px] w-[2px] h-[16px] bg-slate-300" />
+            <div className="absolute top-[12px] h-[2px] bg-slate-300 rounded-sm"
+              style={{
+                left: 'calc(25% - 4px)',
+                right: 'calc(25% - 4px)',
+              }}
+            />
+            <div className="absolute top-[12px] w-[2px] h-[16px] bg-slate-300"
+              style={{
+                left: 'calc(25% - 4px)',
+              }}
+            />
+            <div className="absolute top-[12px] w-[2px] h-[16px] bg-slate-300"
+              style={{
+                right: 'calc(25% - 4px)',
+              }}
+            />
           </div>
 
           {/* 탭 노드 */}
@@ -451,17 +464,67 @@ export default function SalaryManagement({ onClose }: Props) {
           <div className="relative mt-3">
             {/* 브랜치 연결선 (Symmetrical Dynamic SVG Path - 오버랩 처리로 선 끊김 방지) */}
             <div className="relative h-8 w-full pointer-events-none mb-1">
-              <svg className="absolute inset-0 w-full h-full text-slate-300 overflow-visible" fill="none" stroke="currentColor">
-                <path
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d={activeTab === 'spend'
-                    ? "M 87.5 -8 L 87.5 16 L 24 16 L 24 40"
-                    : "M 262.5 -8 L 262.5 16 L 326 16 L 326 40"
-                  }
-                />
-              </svg>
+              {activeTab === 'spend' ? (
+                <>
+                  {/* Vertical line down from center of left tab */}
+                  <div
+                    className="absolute w-[2px] bg-slate-300"
+                    style={{
+                      left: 'calc(25% - 4px)',
+                      top: '-8px',
+                      height: '24px',
+                    }}
+                  />
+                  {/* Horizontal line from left vertical line to center of left tab */}
+                  <div
+                    className="absolute h-[2px] bg-slate-300"
+                    style={{
+                      left: '23px',
+                      right: 'calc(75% + 4px)',
+                      top: '15px',
+                    }}
+                  />
+                  {/* Vertical line going down to meet the card's vertical line */}
+                  <div
+                    className="absolute w-[2px] bg-slate-300"
+                    style={{
+                      left: '23px',
+                      top: '15px',
+                      height: '25px',
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  {/* Vertical line down from center of right tab */}
+                  <div
+                    className="absolute w-[2px] bg-slate-300"
+                    style={{
+                      right: 'calc(25% - 4px)',
+                      top: '-8px',
+                      height: '24px',
+                    }}
+                  />
+                  {/* Horizontal line from right vertical line to center of right tab */}
+                  <div
+                    className="absolute h-[2px] bg-slate-300"
+                    style={{
+                      right: '23px',
+                      left: 'calc(75% + 4px)',
+                      top: '15px',
+                    }}
+                  />
+                  {/* Vertical line going down to meet the card's vertical line */}
+                  <div
+                    className="absolute w-[2px] bg-slate-300"
+                    style={{
+                      right: '23px',
+                      top: '15px',
+                      height: '25px',
+                    }}
+                  />
+                </>
+              )}
             </div>
 
             <div className="space-y-5 relative">
