@@ -69,6 +69,7 @@ interface NagNotificationResponse {
   challengeTitle: string | null;
   stockName: string | null;
   affordableShares: number | null;
+  estimatedSaving: number | null;   // 절약한 금액(원) — DB 저장값
   content: string;              // 잔소리/결과 메시지
   isRead: boolean;
   sentAt: string;
@@ -90,7 +91,7 @@ export async function getChallengeAlarmDetail(notificationId: string): Promise<C
       challengeType: 'FREQUENCY',
       target: 0,
       currentCount: 0,
-      estimatedSaving: 0,
+      estimatedSaving: d.estimatedSaving ?? 0,
       tickerName: d.stockName ?? '',
       estimatedShares: d.affordableShares != null ? `${d.affordableShares.toFixed(2)}주` : '-',
       dailyLogs: [],
