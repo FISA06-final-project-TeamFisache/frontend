@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { generatePrescriptions } from '../api/agentApi';
-import poriLoadingVideo from '../assets/Pori_loading.mov';
+import poriLoadingVideo from '../assets/pori/pori_loading.mov';
 
 const MIN_DISPLAY_MS = 4000;
 const FADE_MS = 500;
@@ -47,7 +47,7 @@ export default function PrescriptionComplete() {
 
         {/* 마스코트 — 진입 후 위아래 float 애니메이션 */}
         <div className="flex justify-center items-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
+          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent' }} />
         </div>
 
         {/* 메인 텍스트 */}

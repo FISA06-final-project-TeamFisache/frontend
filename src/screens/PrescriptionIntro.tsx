@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import poriLoadingVideo from '../assets/Pori_loading.mov';
+import poriLoadingVideo from '../assets/pori/pori_loading.mov';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 
-const DISPLAY_MS = 3500;
+const DISPLAY_MS = 10000;
 const FADE_MS = 500;
 
 export default function PrescriptionIntro() {
@@ -61,13 +61,12 @@ export default function PrescriptionIntro() {
           어느 통장에 얼마씩 넣으면 좋을지
         </p>
 
-        {/* 점선 원 + 마스코트 */}
+        {/* 마스코트 */}
         <div
-          className="relative flex items-center justify-center animate-slide-up"
-          style={{ animationDelay: '0.6s', width: '50vw', height: '50vw', maxWidth: '320px', maxHeight: '320px' }}
+          className="flex items-center justify-center animate-slide-up"
+          style={{ animationDelay: '0.6s' }}
         >
-          <div className="absolute inset-0 rounded-full border-4 border-dashed border-blue-300 animate-spin [animation-duration:6s]" />
-          <video src={poriLoadingVideo} autoPlay loop muted playsInline className="relative z-10" style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
+          <video src={poriLoadingVideo} autoPlay muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent' }} />
         </div>
 
         {/* 하단 텍스트 */}

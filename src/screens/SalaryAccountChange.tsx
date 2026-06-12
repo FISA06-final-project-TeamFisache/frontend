@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { getAssets, setSalaryAccount, connectAutoTransfer, type Asset } from '../api/assetApi';
 import { getBankImgSrc, isWooriBank } from '../constants/banks';
-import heroImg from '../assets/hero.png';
+import heroImg from '../assets/pori/hero.png';
 
 type Step = 'account-select' | 'transfer-setup';
 

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
 import { getBankImgSrc } from '../constants/banks';
 import { useAuth } from '../contexts/AuthContext';
-import poriImg from '../assets/point_pori.png';
+import poriImg from '../assets/pori/point_pori.png';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 import { createPortfolios, updatePortfolios, getPortfolios, type PortfolioList } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';

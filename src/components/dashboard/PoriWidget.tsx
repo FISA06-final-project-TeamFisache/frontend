@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { getDashboard, type DashboardData } from '../../api/dashboardApi';
 import { fetchProposal, applyProposal, type Proposal } from '../../api/poriApi';
-import portiImg from '../../assets/porti.png';
+import portiImg from '../../assets/pori/porti.png';
 
 type PoriStep = 'input' | 'loading' | 'preview' | 'applying' | 'done';
 

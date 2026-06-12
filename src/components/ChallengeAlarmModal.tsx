@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ChallengeAlarmDetail, DailyLog, StockInfo } from '../api/challengeApi';
 import { getStockInfo } from '../api/challengeApi';
-import missionpori from '../assets/missionpori.png';
+import missionpori from '../assets/pori/missionpori.png';
 
 interface Props {
   detail: ChallengeAlarmDetail;

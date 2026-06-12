@@ -1,24 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import poriArtistVideo from '../assets/pori_artist.mov';
-import pointPoriImg from '../assets/point_pori.png';
-import portiImg from '../assets/porti.png';
-import swimporiImg from '../assets/Swimpori.png';
-import golfporiImg from '../assets/Golfpori.png';
-import cycleporiImg from '../assets/CyclePori.png';
-import judoporiImg from '../assets/JudoPori.png';
-import fencingporiImg from '../assets/FencingPori.png';
-import archeryporiImg from '../assets/Archerypori.png';
+import poriArtistVideo from '../assets/pori/pori_artist.mov';
+import pointPoriImg from '../assets/pori/point_pori.png';
+import portiImg from '../assets/pori/porti.png';
+import swimporiImg from '../assets/poti/swim_pori.png';
+import golfporiImg from '../assets/poti/golf_pori.png';
+import cycleporiImg from '../assets/poti/cycle_pori.png';
+import judoporiImg from '../assets/poti/judo_pori.png';
+import fencingporiImg from '../assets/poti/fencing_pori.png';
+import archeryporiImg from '../assets/poti/archery_pori.png';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAgentProfile, type AgentProfile } from '../api/agentApi';
 import { getGoal, updateGoal } from '../api/userApi';
-import warrenBuffettImg from '../assets/Warren Buffett.png';
-import kenFisherImg from '../assets/Ken Fisher.png';
-import johnBogleImg from '../assets/John Bogle.png';
-import rayDalioImg from '../assets/Ray Dalio.png';
-import stanleyDruckenmillerImg from '../assets/Stanley Druckenmiller.png';
-import sethKlarmanImg from '../assets/Seth Klarman.png';
+import warrenBuffettImg from '../assets/guru/warren_buffett.png';
+import kenFisherImg from '../assets/guru/ken_fisher.png';
+import johnBogleImg from '../assets/guru/john_bogle.png';
+import rayDalioImg from '../assets/guru/ray_dalio.png';
+import stanleyDruckenmillerImg from '../assets/guru/stanley_druckenmiller.png';
+import sethKlarmanImg from '../assets/guru/seth_klarman.png';
 
 
 const TOTAL_QUESTIONS = 10;
@@ -681,7 +681,7 @@ export default function PortiSurvey() {
         </p>
 
         <div style={{ paddingTop: '20px' }}>
-          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
+          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent' }} />
         </div>
       </div>
     </div>

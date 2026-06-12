@@ -24,6 +24,7 @@ import {
   splitEtfPortfolio,
   computeConsumption,
 } from '../components/dashboard/shared';
+import { MOCK_DASHBOARD, MOCK_ASSETS } from '../mocks/data';
 import WeatherAssetWidget from '../components/dashboard/WeatherAssetWidget';
 import { ConsumptionWidget, ConsumptionDetail } from '../components/dashboard/ConsumptionWidget';
 import SalaryGuideWidget from '../components/dashboard/SalaryGuideWidget';
@@ -99,8 +100,8 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
 
   useEffect(() => {
     getAssets()
-      .then(assets => setBanks(assetsToLinkedBanks(assets)))
-      .catch(() => { });
+      .then(assets => setBanks(assetsToLinkedBanks(assets.length > 0 ? assets : MOCK_ASSETS)))
+      .catch(() => setBanks(assetsToLinkedBanks(MOCK_ASSETS)));
   }, []);
 
   const toggleBank = (id: string) =>
@@ -494,12 +495,14 @@ export default function Dashboard() {
       .then(d => {
         if (cancelled) return;
         setDashboard(d);
-        if (d.user?.name) setUserName(d.user.name);   // 서버에서 받아온 이름으로 인사 문구 갱신
+        if (d.user?.name) setUserName(d.user.name);
       })
-      .catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : '대시보드 조회 실패'); });
+      .catch(() => {
+        if (!cancelled) setDashboard(MOCK_DASHBOARD);
+      });
     getAssets()
-      .then(res => { if (!cancelled) setAssets(res); })
-      .catch(() => { });
+      .then(res => { if (!cancelled) setAssets(res.length > 0 ? res : MOCK_ASSETS); })
+      .catch(() => { if (!cancelled) setAssets(MOCK_ASSETS); });
     return () => { cancelled = true; };
   }, []);
 
