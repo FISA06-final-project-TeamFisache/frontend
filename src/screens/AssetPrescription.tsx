@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
 import { getBankImgSrc } from '../constants/banks';
 import { useAuth } from '../contexts/AuthContext';
-import poriImg from '../assets/robot_pori.png';
+import poriImg from '../assets/point_pori.png';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 import { createPortfolios, updatePortfolios, getPortfolios, type PortfolioList } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';
@@ -357,12 +357,21 @@ export default function AssetPrescription() {
 
           {/* Pori 에이전트 코멘트 */}
           <div
-            className="flex items-center gap-3 mb-4 rounded-2xl p-3 border border-blue-200"
-            style={{ background: '#f0f7ff', backgroundImage: 'radial-gradient(circle, #bfdbfe 1px, transparent 1px)', backgroundSize: '14px 14px' }}
+            className="relative flex items-start gap-4 mb-4 rounded-2xl p-4 border border-sky-200 shadow-md overflow-hidden"
+            style={{ background: 'linear-gradient(150deg, #f0faff 0%, #e0f2fe 55%, #bae6fd 100%)' }}
           >
-            <img src={poriImg} alt="Pori" className="w-16 h-16 object-contain shrink-0" />
-            <div>
-              <p className="text-[11px] font-bold text-blue-500 mb-1.5">에이전트 포리의 한마디</p>
+            {/* 바닥 파도 레이어 */}
+            <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0,24 C65,8 130,38 195,24 C260,10 325,38 390,24 L390,48 L0,48 Z" fill="rgba(186,230,253,0.4)" />
+              <path d="M0,32 C80,18 160,44 240,30 C305,20 355,38 390,32 L390,48 L0,48 Z" fill="rgba(147,197,253,0.35)" />
+              <path d="M0,40 C55,28 125,48 195,38 C255,30 325,44 390,40 L390,48 L0,48 Z" fill="rgba(125,211,252,0.45)" />
+            </svg>
+
+            <img src={poriImg} alt="Pori" className="w-20 h-20 object-contain shrink-0 z-10 mt-3" />
+            <div className="flex-1 min-w-0 z-10 -mt-3">
+              <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">
+                🤖 AI Pori의 설명
+              </div>
               <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
                 {reasoning ?? '이번 달 소비 패턴을 분석했어요. 고정지출을 먼저 챙기고, 남은 여유자금은 목적별로 나눠 배분했어요. 투자 금액도 꾸준히 늘려가면 좋을 것 같아요!'}
               </p>
