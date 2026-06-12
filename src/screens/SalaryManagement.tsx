@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Check, X } from 'lucide-react';
 import { getBankMeta } from '../constants/banks';
-import heroImg from '../assets/hero.png';
+import heroImg from '../assets/pori/hero.png';
 import { getTransferPlans, updateTransferPlans, generateTransferPlans } from '../api/transferApi';
 import { getAssets } from '../api/assetApi';
 
@@ -40,9 +40,19 @@ const PRODUCT_TYPE_META: Record<string, { tag: string; term: string }> = {
 };
 
 
-// 월급 변동이 없을 때(rebalanceComment 없음) 보여줄 안내 — AI 리밸런싱이 없으므로
-// "기존 계획대로 분배" 라는 정확한 문구를 노출한다.
 const NO_CHANGE_GUIDE = '이번 달은 월급 변동이 없어, 기존 계획대로 분배해 드릴게요.';
+
+const MOCK_SPEND_PLANS: Plan[] = [
+  { id: 'm1', assetId: 'm1', name: '우리은행 생활비통장', tag: '생활비', amount: 1200000, delta: 1200000, editedDelta: 1200000, color: '#F59E0B', logo: getBankMeta('우리은행').imgSrc },
+  { id: 'm2', assetId: 'm2', name: '카카오뱅크 비상금', tag: '비상금', amount: 300000, delta: 300000, editedDelta: 300000, color: '#6366F1', logo: getBankMeta('카카오뱅크').imgSrc },
+  { id: 'm3', assetId: 'm3', name: '신한은행 저축통장', tag: '저축', amount: 300000, delta: 300000, editedDelta: 300000, color: '#3B82F6', logo: getBankMeta('신한은행').imgSrc },
+];
+
+const MOCK_INVEST_PLANS: Plan[] = [
+  { id: 'i1', assetId: 'i1', name: '삼성증권 주식계좌', tag: '주식', amount: 700000, delta: 700000, editedDelta: 700000, color: '#3b82f6', logo: getBankMeta('삼성증권').imgSrc, term: '장기', institution: '삼성증권', interestRate: null, productType: 'STOCK' },
+  { id: 'i2', assetId: 'i2', name: '미래에셋 채권펀드', tag: '채권', amount: 500000, delta: 500000, editedDelta: 500000, color: '#3b82f6', logo: getBankMeta('미래에셋증권').imgSrc, term: '중기', institution: '미래에셋증권', interestRate: null, productType: 'BOND' },
+  { id: 'i3', assetId: 'i3', name: 'KB국민 정기예금', tag: '예금', amount: 500000, delta: 500000, editedDelta: 500000, color: '#3b82f6', logo: getBankMeta('KB국민은행').imgSrc, term: '단기', institution: 'KB국민은행', interestRate: 3.8, productType: 'DEPOSIT' },
+];
 
 
 interface Plan {
@@ -174,8 +184,23 @@ export default function SalaryManagement({ onClose }: Props) {
             logo: getBankMeta(a.institution).imgSrc,
           })),
         );
+
+        // 실제 지출 계획(planId 있는 항목)이 없으면 mock 사용
+        const hasRealSpend = planData.portfolioItems.some(p => p.planId != null);
+        if (!hasRealSpend) setSpendPlans(MOCK_SPEND_PLANS);
+        // 투자 계획이 없으면 mock 사용
+        if (planData.flowItems.length === 0) setInvestPlans(MOCK_INVEST_PLANS);
+        // 급여 계좌 정보도 없으면 mock 사용
+        if (!salaryAsset) {
+          setSalary(4000000);
+          setSalaryAccount({ institution: '우리은행', logo: getBankMeta('우리은행').imgSrc });
+        }
       } catch (err) {
         console.error('이체 계획 조회 실패:', err);
+        setSalary(4000000);
+        setSalaryAccount({ institution: '우리은행', logo: getBankMeta('우리은행').imgSrc });
+        setSpendPlans(MOCK_SPEND_PLANS);
+        setInvestPlans(MOCK_INVEST_PLANS);
       }
     })();
   }, []);

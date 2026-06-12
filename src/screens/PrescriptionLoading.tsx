@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2 } from 'lucide-react';
-import poriLoadingVideo from '../assets/Pori_loading.mov';
+import poriLoadingVideo from '../assets/pori/pori_loading.mov';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 
@@ -95,7 +95,7 @@ export default function PrescriptionLoading() {
               src={poriLoadingVideo}
               autoPlay loop muted playsInline
               className="w-48 h-48 object-contain transition-opacity duration-300"
-              style={{ opacity: spinnerVisible ? 1 : 0 }}
+              style={{ opacity: spinnerVisible ? 1 : 0, display: 'block', background: 'transparent' }}
             />
           </div>
 

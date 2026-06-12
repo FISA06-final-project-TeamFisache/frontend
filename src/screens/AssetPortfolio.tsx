@@ -6,10 +6,10 @@ import {
   type PortfolioFlow, type AvailableAsset, type PortfolioFlowUpdateRequest,
 } from '../api/portfolioFlowApi';
 import { getProducts } from '../api/productApi';
-import pillImg from '../assets/money1.png';
-import poriLoadingVideo from '../assets/Pori_loading.mov';
-import poriImg from '../assets/point_pori.png';
-import missionPoriImg from '../assets/mirror_missionpori.jpg';
+import pillImg from '../assets/etc/money1.png';
+import poriLoadingVideo from '../assets/pori/pori_loading.mov';
+import poriImg from '../assets/pori/point_pori.png';
+import missionPoriImg from '../assets/pori/mirror_missionpori.jpg';
 import {
   type HubItem, type ProductItem, type FlowProduct, type FlowTerm, type Flow,
   STEP_COLORS, BAR_COLORS, HUB_ASSET_TYPES,
@@ -1035,7 +1035,7 @@ export default function AssetPortfolio() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-        <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: 280, height: 280, objectFit: 'contain' }} />
+        <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: 280, height: 280, objectFit: 'contain', display: 'block', background: 'transparent' }} />
       </div>
     );
   }

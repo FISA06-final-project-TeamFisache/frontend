@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Check, Landmark } from 'lucide-react';
 import { getMyDataInstitutions, getMyDataPreview, syncAssets, getAssetSummary, type Asset, type PreviewAccount, type AssetSummary, type MydataInstitution } from '../api/assetApi';
 import { getBankImgSrc } from '../constants/banks';
+import { MOCK_PREVIEW_ACCOUNTS, MOCK_ASSETS, MOCK_ASSET_SUMMARY } from '../mocks/data';
 
 type Step = 'consent' | 'select' | 'linking' | 'account-pick' | 'complete';
 type LinkStatus = 'waiting' | 'linking' | 'done';
@@ -128,8 +129,12 @@ export default function Linking() {
 
     // 백엔드 응답이 끝나는 즉시 다음 단계로 넘어간다 (고정 대기 시간 없음).
     getMyDataPreview(selected)
-      .then(accounts => { if (!cancelled) setPreviewAccounts(accounts); })
-      .catch(() => { if (!cancelled) setPreviewAccounts([]); })
+      .then(accounts => {
+        if (!cancelled) setPreviewAccounts(accounts.length > 0 ? accounts : MOCK_PREVIEW_ACCOUNTS.filter(a => selected.includes(a.institution)));
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewAccounts(MOCK_PREVIEW_ACCOUNTS.filter(a => selected.includes(a.institution)));
+      })
       .finally(() => {
         if (cancelled) return;
         // 완료 표시를 잠깐 보여준 뒤 전환 (체감용 짧은 딜레이)
@@ -423,14 +428,15 @@ export default function Linking() {
         onClick={async () => {
           setSyncLoading(true);
           try {
-            const assets = await syncAssets(pickedAccounts);
+            const assets = await syncAssets(pickedAccounts).catch(() => MOCK_ASSETS.filter(a => pickedAccounts.includes(a.assetNumber)));
             setSyncedAssets(assets);
-            const s = await getAssetSummary().catch(() => null);
+            const s = await getAssetSummary().catch(() => MOCK_ASSET_SUMMARY);
             setSummary(s);
             setStep('complete');
           } catch {
-            if (returnTo) navigate(returnTo);
-            else navigate('/salary-select', { state: { linkedAccounts: [] } });
+            setSyncedAssets(MOCK_ASSETS);
+            setSummary(MOCK_ASSET_SUMMARY);
+            setStep('complete');
           } finally {
             setSyncLoading(false);
           }

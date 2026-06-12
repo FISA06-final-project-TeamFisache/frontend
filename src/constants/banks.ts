@@ -10,10 +10,10 @@ import nhImg        from '../assets/banks/NH.png';
 import bcImg        from '../assets/banks/bc.png';
 import ibkImg       from '../assets/banks/ibk.svg';
 import meritzImg    from '../assets/banks/meritz.png';
-import kiwoomImg    from '../assets/banks/키움.jpg';
-import koreainvImg  from '../assets/banks/한국투자증권.jpg';
-import lotteImg     from '../assets/banks/롯데.png';
-import hyundaiImg   from '../assets/banks/현대.svg';
+import kiwoomImg    from '../assets/banks/kiwoom.jpg';
+import koreainvImg  from '../assets/banks/korea_investment.jpg';
+import lotteImg     from '../assets/banks/lotte.png';
+import hyundaiImg   from '../assets/banks/hyundai.svg';
 
 export interface BankMeta {
   logo: string;

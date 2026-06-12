@@ -1,17 +1,17 @@
 // 자산 날씨 위젯 — 예산 초과율에 따라 날씨 테마가 바뀌는 총자산 카드
 import type { DashboardData } from '../../api/dashboardApi';
 import React from 'react';
-import sunnyImg from '../../assets/sunny.png';
-import rainImg from '../../assets/rain.png';
-import cloudyImg from '../../assets/cloudy.png';
-import tornadoImg from '../../assets/tornado.png';
-import waveImg from '../../assets/wave.png';
-import wave2Img from '../../assets/wave2.png';
-import lifebuoyImg from '../../assets/lifebuoy.png';
-import poriTornadoImg from '../../assets/pori_tornado.png';
-import sunnyCruiseImg from '../../assets/sunny_cruise.png';
-import cloudySailboatImg from '../../assets/cloudy_sailboat.png';
-import rainKayakImg from '../../assets/rain_kayak.png';
+import sunnyImg from '../../assets/weather/sunny.png';
+import rainImg from '../../assets/weather/rain.png';
+import cloudyImg from '../../assets/weather/cloudy.png';
+import tornadoImg from '../../assets/weather/tornado.png';
+import waveImg from '../../assets/weather/wave.png';
+import wave2Img from '../../assets/weather/wave2.png';
+import lifebuoyImg from '../../assets/weather/lifebuoy.png';
+import poriTornadoImg from '../../assets/weather/pori_tornado.png';
+import sunnyCruiseImg from '../../assets/weather/sunny_cruise.png';
+import cloudySailboatImg from '../../assets/weather/cloudy_sailboat.png';
+import rainKayakImg from '../../assets/weather/rain_kayak.png';
 
 type WeatherType = 'sunny' | 'cloudy' | 'rain' | 'tornado';
 
