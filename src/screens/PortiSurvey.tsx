@@ -196,25 +196,22 @@ const RESULT_TYPES: ResultType[] = [
   },
 ];
 
+// 백엔드 UsersService.calculateAndSave 와 동일한 채점 — API 실패 시에도 같은 유형이 나오도록.
+// (투자성향 3단계 × 시간관념 2단계 = 6유형. 다운스트림 자산배분이 이 의미를 전제로 함)
 function calcResult(answers: Record<number, 'A' | 'B'>): ResultType {
   const B = (q: number) => answers[q] === 'B';
   const A = (q: number) => answers[q] === 'A';
 
-  // Risk: Q5B, Q6B, Q8B (높을수록 위험선호)
-  const risk = [B(5), B(6), B(8)].filter(Boolean).length;
-  // Goal/Discipline: Q2A(계획), Q4A(근접목표), Q9B(적극관리)
-  const goal = [A(2), A(4), B(9)].filter(Boolean).length;
+  // 투자성향 (0~7): Q1·Q3 A=공격, Q5·Q6·Q7·Q8·Q9 B=공격
+  const invest = [A(1), A(3), B(5), B(6), B(7), B(8), B(9)].filter(Boolean).length;
+  // 시간관념 (0~3): Q2 A=장기, Q4·Q10 B=장기
+  const longTerm = [A(2), B(4), B(10)].filter(Boolean).length >= 2;
 
-  const hiRisk = risk >= 2;
-  const hiGoal = goal >= 2;
-
-  if (!hiRisk && !hiGoal) return RESULT_TYPES[3]; // 유도
-  if (!hiRisk && hiGoal) return RESULT_TYPES[0]; // 수영
-  if (hiRisk && !hiGoal) return RESULT_TYPES[4]; // 펜싱
-  // hiRisk + hiGoal → 세 가지 세분화
-  if (A(7) && B(10)) return RESULT_TYPES[5];      // 양궁 (분석+공격저축)
-  if (A(1) || A(10)) return RESULT_TYPES[1];      // 골프 (소비+균형)
-  return RESULT_TYPES[2];                          // 사이클 (장기성장)
+  // 투자성향: 0~2 안전형 / 3~4 중립형 / 5~7 투자형
+  // 0:수영(안전·단기) 5:양궁(안전·장기) 3:유도(중립·단기) 1:골프(중립·장기) 4:펜싱(투자·단기) 2:사이클(투자·장기)
+  if (invest <= 2) return longTerm ? RESULT_TYPES[5] : RESULT_TYPES[0]; // 양궁 / 수영
+  if (invest <= 4) return longTerm ? RESULT_TYPES[1] : RESULT_TYPES[3]; // 골프 / 유도
+  return longTerm ? RESULT_TYPES[2] : RESULT_TYPES[4];                  // 사이클 / 펜싱
 }
 
 // 백엔드 portiType → RESULT_TYPES 인덱스 (히어로 타입은 백엔드 판정을 우선)
