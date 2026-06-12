@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2 } from 'lucide-react';
+import poriLoadingVideo from '../assets/Pori_loading.mp4';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 
@@ -90,14 +91,12 @@ export default function PrescriptionLoading() {
             >
               {mainText}
             </h2>
-            <div
-              className="flex gap-2 h-6 items-center transition-opacity duration-300"
+            <video
+              src={poriLoadingVideo}
+              autoPlay loop muted playsInline
+              className="w-48 h-48 object-contain transition-opacity duration-300"
               style={{ opacity: spinnerVisible ? 1 : 0 }}
-            >
-              <span className="w-2 h-2 bg-blue-600 rounded-full inline-block animate-pulse-dot" style={{ animationDelay: '-0.32s' }} />
-              <span className="w-2 h-2 bg-blue-600 rounded-full inline-block animate-pulse-dot" style={{ animationDelay: '-0.16s' }} />
-              <span className="w-2 h-2 bg-blue-600 rounded-full inline-block animate-pulse-dot" />
-            </div>
+            />
           </div>
 
           {/* 하단: 체크리스트 */}

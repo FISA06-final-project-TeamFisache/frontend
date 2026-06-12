@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import heroImg from '../assets/hero.png';
+import poriLoadingVideo from '../assets/Pori_loading.mp4';
 import pointPoriImg from '../assets/point_pori.png';
 import portiImg from '../assets/porti.png';
 import swimporiImg from '../assets/Swimpori.png';
@@ -683,11 +683,7 @@ export default function PortiSurvey() {
           <span className="font-bold">{USER_NAME}</span>님을 그리고 있어요.
         </p>
 
-        {/* 점선 원 + 마스코트 */}
-        <div className="relative flex items-center justify-center w-44 h-44">
-          <div className="absolute inset-0 rounded-full border-4 border-dashed border-blue-300 animate-spin [animation-duration:6s]" />
-          <img src={heroImg} alt="Pori" className="w-28 h-28 object-contain relative z-10" />
-        </div>
+        <video src={poriLoadingVideo} autoPlay loop muted playsInline className="w-56 h-56 object-contain" />
       </div>
     </div>
   );
