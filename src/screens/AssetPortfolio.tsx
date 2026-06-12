@@ -115,6 +115,16 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
 
   return (
     <div>
+      {flow.reasoning && (
+        <div style={{ background: '#f0f7ff', backgroundImage: 'radial-gradient(circle, #bfdbfe 1px, transparent 1px)', backgroundSize: '14px 14px', border: '0.5px solid #bfdbfe', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <img src={poriImg} alt="Pori" style={{ width: 52, height: 52, objectFit: 'contain', flexShrink: 0 }} />
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#3182F6', margin: '0 0 4px' }}>에이전트 포리의 한마디</p>
+            <p style={{ fontSize: 13, color: '#1e293b', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>{flow.reasoning}</p>
+          </div>
+        </div>
+      )}
+
       {/* 1. 모으기 */}
       <StepCard
         num={1}
@@ -587,8 +597,6 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
     .filter(t => termAmounts[t] > 0)
     .map(t => ({ pct: totalFlowAmount > 0 ? (termAmounts[t] / totalFlowAmount) * 100 : 0, color: PIE_TERM_COLORS[t], label: t, amt: termAmounts[t] }));
 
-  const reasoning = flows.find(f => f.reasoning)?.reasoning ?? null;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 14, padding: '10px 12px' }}>
@@ -615,17 +623,6 @@ function AllOverview({ flows, flowLabels, onSelectFlow }: { flows: Flow[]; flowL
               ))}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Pori 에이전트 코멘트 */}
-      <div style={{ background: '#f0f7ff', backgroundImage: 'radial-gradient(circle, #bfdbfe 1px, transparent 1px)', backgroundSize: '14px 14px', border: '0.5px solid #bfdbfe', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <img src={poriImg} alt="Pori" style={{ width: 52, height: 52, objectFit: 'contain', flexShrink: 0 }} />
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#3182F6', margin: '0 0 4px' }}>에이전트 포리의 한마디</p>
-          <p style={{ fontSize: 13, color: '#1e293b', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
-            {reasoning ?? '포트폴리오를 분석했어요. 단기 유동성과 장기 성장을 균형 있게 배분했어요. 매달 꾸준히 투자하면 목표 수익에 가까워질 거예요!'}
-          </p>
         </div>
       </div>
 
