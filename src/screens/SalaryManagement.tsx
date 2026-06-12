@@ -549,11 +549,11 @@ export default function SalaryManagement({ onClose }: Props) {
                     {isInvest ? (
                       /* 투자 탭: 우측 수직선 */
                       <div className={`absolute right-[23px] top-[-8px] w-[2px] bg-slate-300 z-0
-                        ${isLast ? 'h-[52px]' : '-bottom-5'}`} />
+                        ${isLast ? 'h-[58px]' : '-bottom-5'}`} />
                     ) : (
-                      /* 지출 탭: 좌측 수직선 (지출 탭에도 계좌 추가 버튼을 없앴으므로, 마지막 카드이면 h-[52px]로 끝맺음) */
+                      /* 지출 탭: 좌측 수직선 (지출 탭에도 계좌 추가 버튼을 없앴으므로, 마지막 카드이면 h-[58px]로 끝맺음) */
                       <div className={`absolute left-[23px] top-[-8px] w-[2px] bg-slate-300 z-0
-                        ${isLast ? 'h-[52px]' : '-bottom-5'}`} />
+                        ${isLast ? 'h-[58px]' : '-bottom-5'}`} />
                     )}
 
                     {/* 수평 화살표 */}
