@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import poriLoadingVideo from '../assets/Pori_loading.mp4';
+import poriLoadingVideo from '../assets/Pori_loading.mov';
 import pointPoriImg from '../assets/point_pori.png';
 import portiImg from '../assets/porti.png';
 import swimporiImg from '../assets/Swimpori.png';
@@ -680,10 +680,12 @@ export default function PortiSurvey() {
       <div className="w-full max-w-[390px] min-h-screen bg-white flex flex-col items-center justify-center shadow-2xl px-10 gap-8">
         <p className="text-sm text-blue-500 text-center leading-relaxed">
           마이데이터와 PorTI 검사를 기반으로<br />
-          <span className="font-bold">{USER_NAME}</span>님을 그리고 있어요.
+          <span className="font-bold">{USER_NAME}</span>님의 자산을 그리고 있어요.
         </p>
 
-        <video src={poriLoadingVideo} autoPlay loop muted playsInline className="w-56 h-56 object-contain" />
+        <div style={{ paddingTop: '20px' }}>
+          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
+        </div>
       </div>
     </div>
   );

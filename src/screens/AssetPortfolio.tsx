@@ -7,7 +7,7 @@ import {
 } from '../api/portfolioFlowApi';
 import { getProducts } from '../api/productApi';
 import pillImg from '../assets/money1.png';
-import poriLoadingVideo from '../assets/Pori_loading.mp4';
+import poriLoadingVideo from '../assets/Pori_loading.mov';
 import poriImg from '../assets/point_pori.png';
 import missionPoriImg from '../assets/mirror_missionpori.jpg';
 import {
@@ -1035,7 +1035,7 @@ export default function AssetPortfolio() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-        <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: 200, height: 200, objectFit: 'contain' }} />
+        <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: 280, height: 280, objectFit: 'contain' }} />
       </div>
     );
   }

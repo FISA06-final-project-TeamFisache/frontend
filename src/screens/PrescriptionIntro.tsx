@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import heroImg from '../assets/hero.png';
+import poriLoadingVideo from '../assets/Pori_loading.mov';
 import { useAuth } from '../contexts/AuthContext';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
 
@@ -63,11 +63,11 @@ export default function PrescriptionIntro() {
 
         {/* 점선 원 + 마스코트 */}
         <div
-          className="relative flex items-center justify-center w-52 h-52 animate-slide-up"
-          style={{ animationDelay: '0.6s' }}
+          className="relative flex items-center justify-center animate-slide-up"
+          style={{ animationDelay: '0.6s', width: '50vw', height: '50vw', maxWidth: '320px', maxHeight: '320px' }}
         >
           <div className="absolute inset-0 rounded-full border-4 border-dashed border-blue-300 animate-spin [animation-duration:6s]" />
-          <img src={heroImg} alt="Pori" className="w-36 h-36 object-contain relative z-10" />
+          <video src={poriLoadingVideo} autoPlay loop muted playsInline className="relative z-10" style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
         </div>
 
         {/* 하단 텍스트 */}
