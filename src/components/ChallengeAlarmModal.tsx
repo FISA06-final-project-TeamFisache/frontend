@@ -144,22 +144,6 @@ function EmojiCell({ log }: { log: DailyLog }) {
   );
 }
 
-// ── 카테고리 → 이모지 ────────────────────────────────────────
-function getCategoryEmoji(category: string): string {
-  switch (category) {
-    case '카페': return '☕';
-    case '배달': return '🛵';
-    case '야식': return '🌙';
-    case '술': return '🍺';
-    case '쇼핑': return '🛍️';
-    case '택시': return '🚕';
-    case '식비': return '🍽️';
-    case '교통': return '🚌';
-    case '편의점': return '🏪';
-    default: return '🪙';
-  }
-}
-
 // ── 주식 차트 path 생성 ──────────────────────────────────────
 function buildPricePath(closes: number[], w: number, h: number, padding = 6) {
   if (closes.length < 2) return '';
@@ -175,14 +159,11 @@ function buildPricePath(closes: number[], w: number, h: number, padding = 6) {
 
 // ── 주식 차트 뷰 (ACTIVE "자세히 보기" / SUCCESS "주식 받기") ─
 function StockChartView({
-  detail, savedCount, categoryEmoji, savedEmojis,
+  detail,
   stockInfo, stockLoading, isSuccess,
   onBack, onClose,
 }: {
   detail: ChallengeAlarmDetail;
-  savedCount: number;
-  categoryEmoji: string;
-  savedEmojis: number[];
   stockInfo: StockInfo | null;
   stockLoading: boolean;
   isSuccess: boolean;
@@ -270,23 +251,16 @@ function StockChartView({
           )}
         </div>
 
-        {/* 절약 공식: [이모지 N개] = 종목 N주 */}
+        {/* 평가 공식: 종목 N주 = 절약한 금액 (DB 저장값 estimatedSaving) */}
         <div style={{ background: '#F0F9FF', border: '2px solid #0095DB', borderRadius: 16, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center', maxWidth: 130 }}>
-              {savedEmojis.map(i => <span key={i} style={{ fontSize: 22 }}>{categoryEmoji}</span>)}
-              {savedCount > 8 && <span style={{ fontSize: 12, color: '#64748B', alignSelf: 'center' }}>+{savedCount - 8}</span>}
-            </div>
-            {detail.weeklyBaseline !== undefined && (
-              <span style={{ fontSize: 10, color: '#0095DB', fontWeight: 700 }}>
-                {detail.weeklyBaseline}잔 → {detail.target}잔 ({savedCount}잔 절약)
-              </span>
-            )}
-          </div>
-          <span style={{ fontSize: 22, fontWeight: 700, color: '#0095DB' }}>=</span>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>{detail.tickerName}</span>
             <span style={{ fontSize: 26, fontWeight: 800, color: '#1E293B' }}>{detail.estimatedShares}</span>
+          </div>
+          <span style={{ fontSize: 22, fontWeight: 700, color: '#0095DB' }}>=</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>절약한 금액</span>
+            <span style={{ fontSize: 26, fontWeight: 800, color: '#0095DB' }}>{fmt(detail.estimatedSaving)}원</span>
           </div>
         </div>
 
@@ -323,10 +297,6 @@ export default function ChallengeAlarmModal({ detail, userName, onClose, onNewCh
   const isSuccess = detail.weeklyStatus === 'SUCCESS';
   const isFailed = detail.weeklyStatus === 'FAILED';
 
-  const savedCount = detail.weeklyBaseline !== undefined ? Math.max(0, detail.weeklyBaseline - detail.target) : 5;
-  const categoryEmoji = getCategoryEmoji(detail.category);
-  const savedEmojis = Array.from({ length: Math.min(savedCount, 8) }, (_, i) => i);
-
   async function handleNewMission() {
     setSuggesting(true);
     try { await onNewChallenge?.(); } catch { /* ignore */ }
@@ -339,9 +309,6 @@ export default function ChallengeAlarmModal({ detail, userName, onClose, onNewCh
     return (
       <StockChartView
         detail={detail}
-        savedCount={savedCount}
-        categoryEmoji={categoryEmoji}
-        savedEmojis={savedEmojis}
         stockInfo={stockInfo}
         stockLoading={stockLoading}
         isSuccess={isSuccess}
