@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
 import { getBankImgSrc } from '../constants/banks';
 import { useAuth } from '../contexts/AuthContext';
+import poriImg from '../assets/robot_pori.png';
 import { getAgentRecommend, type AgentRecommend } from '../api/agentApi';
-import { createPortfolios } from '../api/portfolioApi';
+import { createPortfolios, updatePortfolios, getPortfolios, type PortfolioList } from '../api/portfolioApi';
 import { getAssets, type Asset } from '../api/assetApi';
 import { getTransferPlans } from '../api/transferApi';
 
@@ -83,12 +84,16 @@ export default function AssetPrescription() {
   const navigate = useNavigate();
   const location = useLocation();
   const recommend = location.state?.recommend as AgentRecommend | undefined;
+  // 사이드바 "월급 분배 수정" 진입 → AI 재추천(리밸런싱) 대신 DB 저장본(GET /portfolios)을 그대로 보여준다
+  const isEdit = location.state?.mode === 'edit';
 
   const [totalSalary, setTotalSalary] = useState(recommend?.salary ?? 0);
   const [fixedExpenseComment, setFixedExpenseComment] = useState(recommend?.fixedExpenseComment ?? '');
+  const [reasoning, setReasoning] = useState<string | null>(recommend?.reasoning ?? null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [showFixedInfo, setShowFixedInfo] = useState(false);
+  const [initialFixedInfo, setInitialFixedInfo] = useState(true);   // 첫 로딩 시 자동 노출 → 첫 hover에 사라지고 이후 hover로 재노출
   const [showModal, setShowModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedLinkedId, setSelectedLinkedId] = useState<string | null>(null);
@@ -108,6 +113,7 @@ export default function AssetPrescription() {
     setTotalSalary(data.salary);
     setInvestmentAmount(data.investAmount);
     setFixedExpenseComment(data.fixedExpenseComment ?? '');
+    setReasoning(data.reasoning ?? null);
     const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
     setAccounts(data.rebalancingPlans.map((plan, i) => ({
       id: i,
@@ -124,11 +130,42 @@ export default function AssetPrescription() {
     })));
   };
 
+  // DB 저장본(GET /portfolios) → 화면 상태로 초기화. AI 재추천 없이 저장된 분배 그대로 표시
+  const applyPortfolios = (data: PortfolioList, assets: Asset[] = []) => {
+    setTotalSalary(data.salary ?? 0);
+    setInvestmentAmount(data.monthlyInvestAmount ?? 0);
+    const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
+    const salary = data.salary ?? 0;
+    setAccounts(data.portfolios.map((p, i) => {
+      const asset = p.assetId ? assetMap[p.assetId] : undefined;
+      return {
+        id: i,
+        assetId: p.assetId,
+        assetType: p.assetType,
+        bank: asset?.accountName ?? p.institution ?? p.assetType,   // 왼쪽 = 통장이름
+        bankName: p.institution ?? asset?.institution ?? '',
+        tag: p.accountPurpose ?? p.assetType,                        // 파란칸 = nickname(생활비/비상금/적금)
+        amount: p.assetAmount,
+        percent: salary > 0 ? Math.round((p.assetAmount / salary) * 100) : 0,
+        isPinned: false,
+        color: TAG_COLORS[i % TAG_COLORS.length],
+      };
+    }));
+  };
+
   // 자산 목록 로드 + 추천 데이터로 초기화
   useEffect(() => {
     const now = new Date();
 
-    if (recommend) {
+    if (isEdit) {
+      // "월급 분배 수정": DB 저장본만 조회 (리밸런싱/재추천 호출 안 함)
+      Promise.all([getAssets(), getPortfolios()])
+        .then(([assets, pf]) => {
+          setLinkedAccounts(assets.map(assetToLinked));
+          applyPortfolios(pf, assets);
+        })
+        .catch(err => console.error('[AssetPrescription] GET /portfolios 실패:', err));
+    } else if (recommend) {
       getAssets()
         .then(assets => {
           setLinkedAccounts(assets.map(assetToLinked));
@@ -185,6 +222,13 @@ export default function AssetPrescription() {
   useEffect(() => () => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
+
+  // 첫 로딩 시 보여준 고정지출 안내는 일정 시간 뒤 자동으로 닫는다 (hover 안 해도 사라지도록)
+  useEffect(() => {
+    if (!initialFixedInfo) return;
+    const t = setTimeout(() => setInitialFixedInfo(false), 5000);
+    return () => clearTimeout(t);
+  }, [initialFixedInfo]);
 
   const [investmentAmount, setInvestmentAmount] = useState(recommend?.investAmount ?? 0);
 
@@ -280,11 +324,16 @@ export default function AssetPrescription() {
       ...(a.assetId ? { assetId: a.assetId } : {}),
     }));
     try {
-      await createPortfolios(portfolios, investmentAmount, totalSalary);
+      if (isEdit) {
+        // 수정 진입: 기존 분배를 갱신 (PATCH)
+        await updatePortfolios(portfolios, investmentAmount);
+      } else {
+        await createPortfolios(portfolios, investmentAmount, totalSalary);
+      }
     } catch (err) {
-      console.error('[AssetPrescription] POST /portfolios 실패:', err);
+      console.error('[AssetPrescription] /portfolios 저장 실패:', err);
     }
-    navigate('/prescription-complete');
+    navigate(isEdit ? '/dashboard' : '/prescription-complete');
   };
 
   return (
@@ -302,9 +351,23 @@ export default function AssetPrescription() {
 
         <main className="p-5 pt-2">
           {/* 헤더 텍스트 */}
-          <h2 className="text-base font-bold leading-snug mb-3.5 text-slate-800">
+          <h2 className="text-base font-bold leading-snug mb-3 text-slate-800">
             <span className="text-blue-600">Pori</span>가 {USER_NAME}님에 맞게 월급을 나눠봤어요!
           </h2>
+
+          {/* Pori 에이전트 코멘트 */}
+          <div
+            className="flex items-center gap-3 mb-4 rounded-2xl p-3 border border-blue-200"
+            style={{ background: '#f0f7ff', backgroundImage: 'radial-gradient(circle, #bfdbfe 1px, transparent 1px)', backgroundSize: '14px 14px' }}
+          >
+            <img src={poriImg} alt="Pori" className="w-16 h-16 object-contain shrink-0" />
+            <div>
+              <p className="text-[11px] font-bold text-blue-500 mb-1.5">에이전트 포리의 한마디</p>
+              <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
+                {reasoning ?? '이번 달 소비 패턴을 분석했어요. 고정지출을 먼저 챙기고, 남은 여유자금은 목적별로 나눠 배분했어요. 투자 금액도 꾸준히 늘려가면 좋을 것 같아요!'}
+              </p>
+            </div>
+          </div>
 
           {/* Row 1: 급여통장 (중앙 정렬) */}
           <div className="flex flex-col items-center justify-center relative z-10 pt-2">
@@ -344,15 +407,19 @@ export default function AssetPrescription() {
                 <span className="relative inline-block align-middle">
                   <button
                     type="button"
-                    onMouseEnter={() => setShowFixedInfo(true)}
+                    onMouseEnter={() => {
+                      // 첫 로딩 자동 노출 상태였다면 이번 hover에는 닫기만 하고, 이후 hover부터 정상 노출
+                      if (initialFixedInfo) setInitialFixedInfo(false);
+                      else setShowFixedInfo(true);
+                    }}
                     onMouseLeave={() => setShowFixedInfo(false)}
-                    onClick={() => setShowFixedInfo(prev => !prev)}
+                    onClick={() => { setInitialFixedInfo(false); setShowFixedInfo(prev => !prev); }}
                     className="p-0.5 rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600 outline-none"
                     aria-label="고정지출 안내"
                   >
                     <Info className="w-3 h-3" />
                   </button>
-                  {showFixedInfo && (
+                  {(showFixedInfo || initialFixedInfo) && (
                     <div className="absolute left-1/2 -translate-x-1/2 top-6 w-[240px] bg-slate-800 text-white text-[11px] p-3 rounded-xl shadow-xl z-50 text-left font-normal leading-relaxed pointer-events-none">
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 transform rotate-45" />
                       <p className="font-bold text-blue-300 mb-1">고정지출은?</p>
@@ -723,15 +790,21 @@ export default function AssetPrescription() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">태그</label>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-500">태그</label>
+                  <span className="text-[11px] font-medium text-slate-400">통장의 용도를 적어주세요</span>
+                </div>
                 <input
                   type="text"
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="예: 비상금"
+                  placeholder="예: 비상금, 월세, 퇴사비상금"
                   onKeyDown={(e) => { if (e.key === 'Enter') addAccount(); }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
+                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+                  태그를 자세히 적어주실수록 좋아요. 월급에 변동이 생겼을 때 Pori가 태그를 읽고 통장별로 더 똑똑하게 나눠드려요.
+                </p>
               </div>
             </div>
             <div className="flex border-t border-slate-100 bg-slate-50">

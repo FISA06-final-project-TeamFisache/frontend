@@ -95,6 +95,7 @@ export interface AgentRecommend {
   fixedExpenseComment: string;
   rebalancingPlans: RebalancingPlan[];
   remainingAmount: number;
+  reasoning?: string | null;
 }
 
 /**

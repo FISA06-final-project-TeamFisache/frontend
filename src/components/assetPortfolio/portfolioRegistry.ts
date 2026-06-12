@@ -18,14 +18,20 @@ export interface HubItem {
   border: string;
   nameColor: string;
   subColor: string;
-  kind: '일반' | 'IRP' | 'ISA';
+  kind: '일반' | 'IRP' | 'ISA' | '연금저축';
   hubLabel: string;
   imgSrc?: string;
 }
 
+// 상품 배지 라벨 — 카탈로그가 사실상 ETF뿐이라 ETF는 상품명 키워드로 세부 분류해 보여준다
+export type ProductType =
+  | '국내주식' | '해외주식' | '채권' | '배당' | '테마' | '금/원자재' | 'TDF' | '리츠'  // ETF 세부 분류
+  | 'ETF'    // 키워드로 분류되지 않은 ETF
+  | '적금';   // SAVING / DEPOSIT
+
 export interface ProductItem {
   id: string;
-  type: 'ETF' | '적금' | 'TDF' | '채권' | '리츠' | '주식';
+  type: ProductType;
   name: string;
   description: string;
   recommended?: boolean;
@@ -33,6 +39,7 @@ export interface ProductItem {
   iconColor: string;
   badgeBg: string;
   badgeColor: string;
+  rate?: number;   // 기대 연수익률(%) — 흐름 수익률 재계산에 사용
 }
 
 export interface FlowProduct {
@@ -41,6 +48,7 @@ export interface FlowProduct {
   barColor: string;
   productType: string;
   comment?: string;
+  rate?: number;   // 기대 연수익률(%) — 흐름 수익률 재계산에 사용
 }
 
 export type FlowTerm = '단기' | '중기' | '장기';
@@ -51,7 +59,7 @@ export interface Flow {
   summary: string;
   term: FlowTerm;
   termRaw: string;
-  kind: '일반' | 'IRP' | 'ISA';
+  kind: '일반' | 'IRP' | 'ISA' | '연금저축';
   hubId: string;
   rate: string;
   projected: string;
@@ -62,8 +70,8 @@ export interface Flow {
   amount: number;
   hubAssetType?: string;
   isRecommendation: boolean;
-  accountComment?: string;
   rrComment?: string;
+  reasoning?: string | null;
   products: FlowProduct[];
 }
 
@@ -155,13 +163,55 @@ const PRODUCT_TYPE_META: Record<string, ProductTypeMeta> = {
 export const productTypeMeta = (t: string | null | undefined): ProductTypeMeta =>
   PRODUCT_TYPE_META[t ?? ''] ?? PRODUCT_TYPE_META.STOCK;
 
+// ─── ETF 세부 분류 ────────────────────────────────────────
+// 상품명 키워드로 ETF의 성격(국내/해외/채권/배당/테마…)을 나눈다. 위에서부터 우선 적용
+
+interface EtfCategoryMeta {
+  type: ProductType;
+  iconColor: string;
+  badgeBg: string;
+  badgeColor: string;
+  barColor: string;
+}
+
+const ETF_CATEGORY_RULES: { re: RegExp; meta: EtfCategoryMeta }[] = [
+  { re: /TDF/i,
+    meta: { type: 'TDF', iconColor: '#534AB7', badgeBg: '#EEEDFE', badgeColor: '#534AB7', barColor: '#534AB7' } },
+  { re: /리츠|REITs?/i,
+    meta: { type: '리츠', iconColor: '#0F766E', badgeBg: '#CCFBF1', badgeColor: '#0F766E', barColor: '#14B8A6' } },
+  { re: /금현물|골드|은현물|원자재|원유|구리|팔라듐/,
+    meta: { type: '금/원자재', iconColor: '#92400E', badgeBg: '#FEF3C7', badgeColor: '#92400E', barColor: '#F59E0B' } },
+  { re: /채권|국채|국고채|통안채|회사채|금리|단기자금|하이일드|KOFR|SOFR|MMF/,
+    meta: { type: '채권', iconColor: '#185FA5', badgeBg: '#E6F1FB', badgeColor: '#185FA5', barColor: '#378ADD' } },
+  { re: /배당|주주환원|커버드콜/,
+    meta: { type: '배당', iconColor: '#15803D', badgeBg: '#DCFCE7', badgeColor: '#15803D', barColor: '#22C55E' } },
+  { re: /반도체|2차전지|전기.?수소차|자율주행|AI|테크|바이오|헬스케어|메타버스|게임|K-POP|미디어|푸드|골프|조선|해운|친환경|원자력|로봇|5G|iSelect|설비투자/,
+    meta: { type: '테마', iconColor: '#7E22CE', badgeBg: '#F3E8FF', badgeColor: '#7E22CE', barColor: '#A855F7' } },
+  { re: /미국|나스닥|S&P|글로벌|중국|차이나|일본|니케이|Nikkei|인도|Nifty|베트남|유럽|러시아|아시아|항셍|선진국|신흥국|월드|World/i,
+    meta: { type: '해외주식', iconColor: '#0369A1', badgeBg: '#E0F2FE', badgeColor: '#0369A1', barColor: '#0EA5E9' } },
+  { re: /200|코스피|코스닥|KRX|코리아|Korea|삼성그룹|TOP\d+/i,
+    meta: { type: '국내주식', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D', barColor: '#E24B4A' } },
+];
+
+const ETF_FALLBACK_META: EtfCategoryMeta =
+  { type: 'ETF', iconColor: '#A32D2D', badgeBg: '#FCEBEB', badgeColor: '#A32D2D', barColor: '#E24B4A' };
+
+export const classifyEtf = (name: string): EtfCategoryMeta =>
+  ETF_CATEGORY_RULES.find(r => r.re.test(name))?.meta ?? ETF_FALLBACK_META;
+
+// productType이 ETF 계열(STOCK)이면 상품명으로 세부 분류한 메타를 돌려준다
+export const resolveProductMeta = (productType: string | null | undefined, name: string | null | undefined): ProductTypeMeta => {
+  const base = productTypeMeta(productType);
+  return base.type === 'ETF' ? { ...base, ...classifyEtf(name ?? '') } : base;
+};
+
 // ─── 헬퍼 함수 ────────────────────────────────────────────
 
 export const isInvestableHub = (t?: string | null): boolean =>
   INVESTABLE_HUB_TYPES.has(t ?? '');
 
-export const assetTypeToKind = (t: string | null | undefined): '일반' | 'IRP' | 'ISA' =>
-  t === 'IRP' ? 'IRP' : t === 'ISA' ? 'ISA' : '일반';
+export const assetTypeToKind = (t: string | null | undefined): '일반' | 'IRP' | 'ISA' | '연금저축' =>
+  t === 'IRP' ? 'IRP' : t === 'ISA' ? 'ISA' : t === 'PENSION_SAVINGS' ? '연금저축' : '일반';
 
 export const apiTermToFlowTerm = (t?: string | null): FlowTerm =>
   t?.startsWith('단') ? '단기' : t?.startsWith('장') ? '장기' : '중기';
@@ -208,7 +258,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
   }
 
   const products: FlowProduct[] = dto.products.map((p, i) => {
-    const meta = productTypeMeta(p.productType);
+    const meta = resolveProductMeta(p.productType, p.productName);
     const productId = p.productId ?? `dyn-prod-${dto.id}-${i}`;
     if (!dynamicProducts.has(productId)) {
       dynamicProducts.set(productId, {
@@ -221,6 +271,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
         iconColor: meta.iconColor,
         badgeBg: meta.badgeBg,
         badgeColor: meta.badgeColor,
+        rate: p.interestRate ?? undefined,
       });
     }
     if (p.productType) productApiTypeById.set(productId, p.productType);
@@ -230,6 +281,7 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
       barColor: meta.barColor,
       productType: p.productType ?? 'STOCK',
       comment: p.comment ?? undefined,
+      rate: p.interestRate ?? undefined,
     };
   });
 
@@ -253,8 +305,8 @@ export function apiToFlow(dto: PortfolioFlow): Flow {
     amount: Math.round((dto.amount ?? 0) / 10000),
     hubAssetType: dto.gatheringAsset?.assetType ?? undefined,
     isRecommendation: dto.isRecommendation,
-    accountComment: dto.accountComment ?? undefined,
     rrComment: dto.rrComment ?? undefined,
+    reasoning: dto.reasoning ?? null,
     products: isInvestableHub(dto.gatheringAsset?.assetType) ? products : [],
   };
 }
@@ -280,7 +332,7 @@ export function assetToHubItem(a: AvailableAsset): HubItem {
 }
 
 export function productToCatalogItem(p: Product): ProductItem {
-  const meta = productTypeMeta(p.productType);
+  const meta = resolveProductMeta(p.productType, p.name);
   const item: ProductItem = {
     id: p.id,
     type: meta.type,
@@ -291,8 +343,40 @@ export function productToCatalogItem(p: Product): ProductItem {
     iconColor: meta.iconColor,
     badgeBg: meta.badgeBg,
     badgeColor: meta.badgeColor,
+    rate: p.interestRate ?? undefined,
   };
   dynamicProducts.set(p.id, item);
   if (p.productType) productApiTypeById.set(p.id, p.productType);
   return item;
+}
+
+// ─── 수익률/예상액 재계산 ─────────────────────────────────
+// 상품 구성이 바뀌면 3단계(불리기) 수익률·예상액이 즉시 반영되도록 흐름에서 다시 계산
+
+const parsePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
+
+// 상품 비중 가중 평균 연수익률(%). 상품에 rate가 없으면 fallback(기존 흐름 수익률) 사용
+export function weightedProductRate(products: FlowProduct[], fallbackPct: number): number {
+  const ratioSum = products.reduce((s, p) => s + p.pct, 0);
+  const hasRates = products.length > 0 && products.some(p => (p.rate ?? 0) > 0);
+  if (!hasRates || ratioSum === 0) return fallbackPct;
+  return products.reduce((s, p) => s + p.pct * (p.rate ?? 0), 0) / ratioSum;
+}
+
+// 월 적립식(기말) 복리 미래가치 — 만원 단위 입·출력
+export function futureValueMonthly(monthlyManwon: number, months: number, annualRatePct: number): number {
+  const i = (annualRatePct / 100) / 12;
+  if (i === 0) return monthlyManwon * months;
+  return monthlyManwon * ((Math.pow(1 + i, months) - 1) / i);
+}
+
+// 흐름의 rate/projected를 현재 상품·금액 기준으로 다시 채워 반환
+export function withProjection(flow: Flow): Flow {
+  const investable = isInvestableHub(flow.hubAssetType);
+  const basePct = parsePct(flow.rate);
+  const ratePct = investable ? weightedProductRate(flow.products, basePct) : basePct;
+  const rounded = Math.round(ratePct * 10) / 10;
+  const rate = `${rounded >= 0 ? '+' : ''}${rounded}%`;
+  const projected = formatKrw(Math.round(futureValueMonthly(flow.amount, flow.projectedMonths, ratePct)));
+  return { ...flow, rate, projected };
 }
