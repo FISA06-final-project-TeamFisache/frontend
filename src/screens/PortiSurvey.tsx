@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import poriLoadingVideo from '../assets/Pori_loading.mov';
+import poriArtistVideo from '../assets/pori_artist.mov';
 import pointPoriImg from '../assets/point_pori.png';
 import portiImg from '../assets/porti.png';
 import swimporiImg from '../assets/Swimpori.png';
@@ -422,7 +422,7 @@ export default function PortiSurvey() {
       ? (GOAL_CATEGORIES.find(g => g.id === selectedGoal)?.label ?? selectedGoal)
       : null;
 
-    const minDelay = new Promise<void>(resolve => setTimeout(resolve, 2800));
+    const minDelay = new Promise<void>(resolve => setTimeout(resolve, 7000));
     const apiCall = generateAgentProfile(answersArray, stockThemes, lifeGoal)
       .then(profile => {
         setAgentProfile(profile);
@@ -684,7 +684,7 @@ export default function PortiSurvey() {
         </p>
 
         <div style={{ paddingTop: '20px' }}>
-          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
+          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain' }} />
         </div>
       </div>
     </div>
