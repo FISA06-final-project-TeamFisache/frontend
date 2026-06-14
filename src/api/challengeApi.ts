@@ -35,32 +35,6 @@ export interface ChallengeAlarmDetail {
   weeklyStatus: 'ACTIVE' | 'SUCCESS' | 'FAILED';
 }
 
-// TODO: 백엔드 연결 후 mock 제거
-const MOCK_CHALLENGE_DETAIL: ChallengeAlarmDetail = {
-  challengeId: 'mock-challenge-id',
-  title: '커피 3잔만 마시기',
-  category: '카페',
-  challengeType: 'FREQUENCY',
-  target: 3,
-  currentCount: 2,
-  weeklyBaseline: 7,         // 평소 7잔 → 3잔 미션 → 4잔 절약
-  estimatedSaving: 24000,
-  tickerName: '삼성전자',
-  estimatedShares: '0.17주',
-  dailyLogs: [
-    { day: 1, achieved: true,  transaction: { date: '06-02', time: '11:10', name: '메머드 커피', amount: 6500 } },
-    { day: 2, achieved: true,  transaction: { date: '06-03', time: '8:10',  name: '메머드 커피', amount: 6500 } },
-    { day: 3, achieved: false },
-    { day: 4, achieved: false },
-    { day: 5, achieved: false },
-    { day: 6, achieved: false },
-    { day: 7, achieved: false },
-  ],
-  progressPercent: 66,
-  aiComment: '서태형님 이번주 남은 기간 1잔으로만 버티면 미션 성공이에요! 지난주보다 4잔을 줄여서 \'삼성전자\' 주식 0.01주 매수가 가능해요!',
-  weeklyStatus: 'ACTIVE',
-};
-
 /** 백엔드 GET /notifications/nag/{id} 응답 (NagNotificationResponseDto) */
 interface NagNotificationResponse {
   id: string;
@@ -76,33 +50,28 @@ interface NagNotificationResponse {
 }
 
 export async function getChallengeAlarmDetail(notificationId: string): Promise<ChallengeAlarmDetail> {
-  try {
-    const res = await api.get<CommonResponse<NagNotificationResponse>>(
-      `/notifications/nag/${notificationId}`
-    );
-    const d = res.data;
-    // 백엔드는 NAG 알림 단건 정보만 준다. 모달이 쓰는 형태로 매핑하되,
-    // 백엔드가 제공하지 않는 필드(dailyLogs·weeklyBaseline·category 등)는 안전 기본값.
-    // progressPercent·weeklyStatus 는 호출부(Dashboard)가 알림 타입으로 덮어쓴다.
-    return {
-      challengeId: d.challengeId ?? '',
-      title: d.challengeTitle ?? '미니챌린지',
-      category: '',
-      challengeType: 'FREQUENCY',
-      target: 0,
-      currentCount: 0,
-      estimatedSaving: d.estimatedSaving ?? 0,
-      tickerName: d.stockName ?? '',
-      estimatedShares: d.affordableShares != null ? `${d.affordableShares.toFixed(2)}주` : '-',
-      dailyLogs: [],
-      progressPercent: 0,
-      aiComment: d.content,
-      weeklyStatus: 'ACTIVE',
-    };
-  } catch {
-    // TODO: 백엔드 연결 후 mock 제거
-    return MOCK_CHALLENGE_DETAIL;
-  }
+  const res = await api.get<CommonResponse<NagNotificationResponse>>(
+    `/notifications/nag/${notificationId}`
+  );
+  const d = res.data;
+  // 백엔드는 NAG 알림 단건 정보만 준다. 모달이 쓰는 형태로 매핑하되,
+  // 백엔드가 제공하지 않는 필드(dailyLogs·weeklyBaseline·category 등)는 안전 기본값.
+  // progressPercent·weeklyStatus 는 호출부(Dashboard)가 알림 타입으로 덮어쓴다.
+  return {
+    challengeId: d.challengeId ?? '',
+    title: d.challengeTitle ?? '미니챌린지',
+    category: '',
+    challengeType: 'FREQUENCY',
+    target: 0,
+    currentCount: 0,
+    estimatedSaving: d.estimatedSaving ?? 0,
+    tickerName: d.stockName ?? '',
+    estimatedShares: d.affordableShares != null ? `${d.affordableShares.toFixed(2)}주` : '-',
+    dailyLogs: [],
+    progressPercent: 0,
+    aiComment: d.content,
+    weeklyStatus: 'ACTIVE',
+  };
 }
 
 export async function suggestNewChallenge(): Promise<void> {

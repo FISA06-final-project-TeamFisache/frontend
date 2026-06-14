@@ -16,7 +16,7 @@ import {
   dynamicHubs, dynamicProducts, productApiTypeById,
   lookupHub, lookupProduct,
   isInvestableHub, assetToHubItem, productToCatalogItem,
-  apiToFlow, buildFlowTabLabels, formatKrw, withProjection,
+  apiToFlow, buildFlowTabLabels, formatKrw, formatMonths, futureValueMonthly, withProjection,
 } from '../components/assetPortfolio/portfolioRegistry';
 import {
   Logo, ProductIcon,
@@ -47,6 +47,27 @@ const termBarColor = (term: FlowTerm, idx: number): string => {
 };
 
 const parseRatePct = (s: string) => parseFloat(s.replace(/[^0-9.\-]/g, '')) || 0;
+
+// AI 설명 텍스트 내 핵심 토큰(금액·비율·기간·혜택)을 굵게+파란색으로 강조
+const HL_SPLIT = /([+\-]?\d[\d,]*(?:\.\d+)?\s?(?:만\s?원|원|%|개월|년)|비과세|세액공제|복리)/g;
+const HL_TOKEN = /^(?:[+\-]?\d[\d,]*(?:\.\d+)?\s?(?:만\s?원|원|%|개월|년)|비과세|세액공제|복리)$/;
+function highlightReasoning(text: string): ReactNode[] {
+  return text.split(HL_SPLIT).filter(Boolean).map((part, i) =>
+    HL_TOKEN.test(part)
+      ? <span key={i} style={{ fontWeight: 700, color: '#1d4ed8' }}>{part}</span>
+      : <span key={i}>{part}</span>,
+  );
+}
+
+// flow의 구조화된 필드에서 핵심 정보 칩 추출 (prose 파싱 아님)
+function flowChips(flow: Flow): { icon: string; label: string }[] {
+  const chips: { icon: string; label: string }[] = [{ icon: '🗂️', label: flow.term }];
+  if (flow.projectedMonths > 0) chips.push({ icon: '📅', label: formatMonths(flow.projectedMonths) });
+  if (flow.kind && flow.kind !== '일반') chips.push({ icon: '🏦', label: flow.kind });
+  const r = flow.rate?.trim();
+  if (r && r !== '+0%' && r !== '0%') chips.push({ icon: '📈', label: `예상 ${r}` });
+  return chips;
+}
 
 const ASSET_TYPE_BADGE: Record<string, { label: string; bg: string; color: string }> = {
   IRP: { label: 'IRP', bg: '#FFF4E6', color: '#9A4D00' },
@@ -128,7 +149,14 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
             <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">
               🤖 AI Pori의 설명
             </div>
-            <p className="text-[13px] text-slate-700 leading-relaxed font-medium">{flow.reasoning}</p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {flowChips(flow).map((c, i) => (
+                <span key={i} className="inline-flex items-center gap-1 bg-white/70 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200">
+                  <span>{c.icon}</span>{c.label}
+                </span>
+              ))}
+            </div>
+            <p className="text-[13px] text-slate-700 leading-relaxed font-medium">{highlightReasoning(flow.reasoning)}</p>
           </div>
         </div>
       )}
@@ -458,6 +486,9 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
         {flow.kind === '연금저축' && (() => {
           const months = flow.projectedMonths || 48;
           const annualPayment = flow.amount * 12; // 만원/년
+          const principal = flow.amount * months; // 납입 원금(만원)
+          const fv = Math.round(futureValueMonthly(flow.amount, months, parseRatePct(flow.rate))); // 예상액(만원)
+          const gains = Math.max(0, fv - principal); // 불어난 금액(만원)
           // 연금저축 세액공제: 연 600만 한도, 16.5%(종소세 5500만 이하)
           const deductibleBase = Math.min(annualPayment, 600); // 만원
           const taxSaving = Math.round(deductibleBase * 0.165); // 16.5% 적용
@@ -482,6 +513,20 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
                 <Row label="예상 수익률" value={`연 ${flow.rate}`} />
               </div>
               <div style={{ background: '#f8fafc', padding: '6px 12px', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>운용 예상 ({flow.projectedPeriod})</span>
+              </div>
+              <div style={{ padding: '4px 12px 6px' }}>
+                <Row label="납입 원금" value={formatKrw(principal)} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>불어난 금액 (운용 수익)</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>+{formatKrw(gains)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderTop: '1px dashed #e2e8f0', marginTop: 4, paddingTop: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{flow.projectedPeriod} 후 예상액</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{formatKrw(fv)}</span>
+                </div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '6px 12px', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>세제 혜택 (연간)</span>
               </div>
               <div style={{ padding: '4px 12px 6px' }}>
@@ -494,10 +539,6 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
                   <span style={{ fontSize: 11, color: '#64748b' }}>{totalYears}년 누적 절세액</span>
                   <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a' }}>약 {fmt(totalTaxSaving)}만원</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>{flow.projectedPeriod} 후 예상액</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{flow.projected}</span>
                 </div>
               </div>
               <div style={{ background: '#f8fafc', padding: '5px 12px', borderTop: '1px solid #e2e8f0' }}>
