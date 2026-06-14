@@ -86,11 +86,14 @@ export default function SalaryManagement({ onClose }: Props) {
 
   const [view, setView] = useState<View>('summary');
   const [activeTab, setActiveTab] = useState<Tab>('spend');
-  const [spendPlans, setSpendPlans] = useState<Plan[]>([]);
-  const [investPlans, setInvestPlans] = useState<Plan[]>([]);
-  const [salary, setSalary] = useState(0);
+  const [spendPlans, setSpendPlans] = useState<Plan[]>(MOCK_SPEND_PLANS);
+  const [investPlans, setInvestPlans] = useState<Plan[]>(MOCK_INVEST_PLANS);
+  const [salary, setSalary] = useState(4000000);
   const [salaryDelta, setSalaryDelta] = useState(0);
-  const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>(null);
+  const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>({
+    institution: '우리은행',
+    logo: getBankMeta('우리은행').imgSrc,
+  });
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string; bank: string; logo: string }>>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
@@ -135,26 +138,27 @@ export default function SalaryManagement({ onClose }: Props) {
         // 변동이 없어 null 이면 "기존 계획대로 분배" 안내를 보여준다.
         setAgentReasons(planData.rebalanceComment ? [planData.rebalanceComment] : [NO_CHANGE_GUIDE]);
 
-        // 지출 항목 (portfolioItems: CASH/DEPOSIT/EMERGENCY)
-        if (planData.portfolioItems.length > 0) {
+        // 실제 지출 계획(출발 계좌 readOnly 제외)이 있을 때만 API 데이터 사용
+        const realSpendItems = planData.portfolioItems.filter(p => p.planId != null);
+        if (realSpendItems.length > 0) {
           setSpendPlans(planData.portfolioItems.map(p => {
             const typeMeta = SPEND_TYPE_META[p.assetType] ?? { tag: p.assetType, color: '#94A3B8' };
             return {
-              id: p.planId ?? '__auto_transfer__',   // 생활비는 planId=null → 표시 전용 sentinel
+              id: p.planId ?? '__auto_transfer__',
               assetId: p.assetId,
-              name: p.accountName ?? p.institution ?? '계좌',   // 좌측 = 통장이름
-              tag: p.accountPurpose ?? typeMeta.tag,            // 파란칸 = nickname(생활비/비상금/적금)
+              name: p.accountName ?? p.institution ?? '계좌',
+              tag: p.accountPurpose ?? typeMeta.tag,
               amount: p.baselineAmount,
               delta: p.plannedAmount,
               editedDelta: p.plannedAmount,
               color: typeMeta.color,
               logo: getBankMeta(p.institution ?? '').imgSrc,
-              readOnly: p.planId == null,   // 출발 계좌(우리은행에 남기는 몫) — 조정/이체 제외
+              readOnly: p.planId == null,
             };
           }));
         }
 
-        // 투자 항목 (flowItems: portfolio_flows 기반)
+        // 실제 투자 계획이 있을 때만 API 데이터 사용
         if (planData.flowItems.length > 0) {
           setInvestPlans(planData.flowItems.map(p => {
             const meta = PRODUCT_TYPE_META[p.productType ?? ''] ?? { tag: p.productType ?? '투자', term: null };
@@ -184,17 +188,6 @@ export default function SalaryManagement({ onClose }: Props) {
             logo: getBankMeta(a.institution).imgSrc,
           })),
         );
-
-        // 실제 지출 계획(planId 있는 항목)이 없으면 mock 사용
-        const hasRealSpend = planData.portfolioItems.some(p => p.planId != null);
-        if (!hasRealSpend) setSpendPlans(MOCK_SPEND_PLANS);
-        // 투자 계획이 없으면 mock 사용
-        if (planData.flowItems.length === 0) setInvestPlans(MOCK_INVEST_PLANS);
-        // 급여 계좌 정보도 없으면 mock 사용
-        if (!salaryAsset) {
-          setSalary(4000000);
-          setSalaryAccount({ institution: '우리은행', logo: getBankMeta('우리은행').imgSrc });
-        }
       } catch (err) {
         console.error('이체 계획 조회 실패:', err);
         setSalary(4000000);
