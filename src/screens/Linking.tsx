@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Check, Landmark } from 'lucide-react';
 import { getMyDataInstitutions, getMyDataPreview, syncAssets, getAssetSummary, type Asset, type PreviewAccount, type AssetSummary, type MydataInstitution } from '../api/assetApi';
 import { getBankImgSrc } from '../constants/banks';
-import { MOCK_PREVIEW_ACCOUNTS, MOCK_ASSETS, MOCK_ASSET_SUMMARY } from '../mocks/data';
 
 type Step = 'consent' | 'select' | 'linking' | 'account-pick' | 'complete';
 type LinkStatus = 'waiting' | 'linking' | 'done';
@@ -64,18 +63,6 @@ function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
-const MOCK_INSTITUTIONS: MydataInstitution[] = [
-  { institution: '우리은행', bankType: 'BANK', accountCount: 3 },
-  { institution: '신한은행', bankType: 'BANK', accountCount: 2 },
-  { institution: 'KB국민은행', bankType: 'BANK', accountCount: 2 },
-  { institution: '하나은행', bankType: 'BANK', accountCount: 1 },
-  { institution: 'NH농협은행', bankType: 'BANK', accountCount: 2 },
-  { institution: '카카오뱅크', bankType: 'BANK', accountCount: 1 },
-  { institution: '토스뱅크', bankType: 'BANK', accountCount: 1 },
-  { institution: '삼성증권', bankType: 'SECURITIES', accountCount: 1 },
-  { institution: '미래에셋증권', bankType: 'SECURITIES', accountCount: 1 },
-];
-
 export default function Linking() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -84,7 +71,7 @@ export default function Linking() {
   const [step, setStep] = useState<Step>(returnTo ? 'select' : 'consent');
   const [consents, setConsents] = useState({ personal: false, financial: false, terms: false, marketing: false });
   // 더미 테이블에서 받아온 연동 가능 기관 목록
-  const [institutions, setInstitutions] = useState<MydataInstitution[]>(MOCK_INSTITUTIONS);
+  const [institutions, setInstitutions] = useState<MydataInstitution[]>([]);
   const [institutionsLoading, setInstitutionsLoading] = useState(false);
   // 선택한 기관명(institution) 목록
   const [selected, setSelected] = useState<string[]>([]);
@@ -112,7 +99,7 @@ export default function Linking() {
     setInstitutionsLoading(true);
     getMyDataInstitutions()
       .then(setInstitutions)
-      .catch(() => setInstitutions(MOCK_INSTITUTIONS))
+      .catch(() => setInstitutions([]))
       .finally(() => setInstitutionsLoading(false));
   }, [step, institutions.length, institutionsLoading]);
 
@@ -130,10 +117,10 @@ export default function Linking() {
     // 백엔드 응답이 끝나는 즉시 다음 단계로 넘어간다 (고정 대기 시간 없음).
     getMyDataPreview(selected)
       .then(accounts => {
-        if (!cancelled) setPreviewAccounts(accounts.length > 0 ? accounts : MOCK_PREVIEW_ACCOUNTS.filter(a => selected.includes(a.institution)));
+        if (!cancelled) setPreviewAccounts(accounts);
       })
       .catch(() => {
-        if (!cancelled) setPreviewAccounts(MOCK_PREVIEW_ACCOUNTS.filter(a => selected.includes(a.institution)));
+        if (!cancelled) setPreviewAccounts([]);
       })
       .finally(() => {
         if (cancelled) return;
@@ -428,15 +415,13 @@ export default function Linking() {
         onClick={async () => {
           setSyncLoading(true);
           try {
-            const assets = await syncAssets(pickedAccounts).catch(() => MOCK_ASSETS.filter(a => pickedAccounts.includes(a.assetNumber)));
+            const assets = await syncAssets(pickedAccounts);
             setSyncedAssets(assets);
-            const s = await getAssetSummary().catch(() => MOCK_ASSET_SUMMARY);
+            const s = await getAssetSummary();
             setSummary(s);
             setStep('complete');
           } catch {
-            setSyncedAssets(MOCK_ASSETS);
-            setSummary(MOCK_ASSET_SUMMARY);
-            setStep('complete');
+            alert('계좌 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
           } finally {
             setSyncLoading(false);
           }

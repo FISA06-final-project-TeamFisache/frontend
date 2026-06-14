@@ -24,7 +24,6 @@ import {
   splitEtfPortfolio,
   computeConsumption,
 } from '../components/dashboard/shared';
-import { MOCK_DASHBOARD, MOCK_ASSETS } from '../mocks/data';
 import WeatherAssetWidget from '../components/dashboard/WeatherAssetWidget';
 import { ConsumptionWidget, ConsumptionDetail } from '../components/dashboard/ConsumptionWidget';
 import SalaryGuideWidget from '../components/dashboard/SalaryGuideWidget';
@@ -100,8 +99,8 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
 
   useEffect(() => {
     getAssets()
-      .then(assets => setBanks(assetsToLinkedBanks(assets.length > 0 ? assets : MOCK_ASSETS)))
-      .catch(() => setBanks(assetsToLinkedBanks(MOCK_ASSETS)));
+      .then(assets => setBanks(assetsToLinkedBanks(assets)))
+      .catch(() => setBanks([]));
   }, []);
 
   const toggleBank = (id: string) =>
@@ -498,11 +497,11 @@ export default function Dashboard() {
         if (d.user?.name) setUserName(d.user.name);
       })
       .catch(() => {
-        if (!cancelled) setDashboard(MOCK_DASHBOARD);
+        if (!cancelled) setLoadError('대시보드를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
       });
     getAssets()
-      .then(res => { if (!cancelled) setAssets(res.length > 0 ? res : MOCK_ASSETS); })
-      .catch(() => { if (!cancelled) setAssets(MOCK_ASSETS); });
+      .then(res => { if (!cancelled) setAssets(res); })
+      .catch(() => { if (!cancelled) setAssets([]); });
     return () => { cancelled = true; };
   }, []);
 
@@ -975,17 +974,21 @@ export default function Dashboard() {
                   CHALLENGE_COMPLETE: 'SUCCESS',
                   CHALLENGE_FAILED: 'FAILED',
                 };
-                const detail = await getChallengeAlarmDetail(id);
-                const progressPercent =
-                  type === 'CHALLENGE_COMPLETE' ? 100 :
-                  type === 'CHALLENGE_FAILED' ? 100 :
-                  type === 'NAG_90' ? 90 :
-                  type === 'NAG_80' ? 80 : 50;
-                setChallengeAlarmDetail({ ...detail, progressPercent, weeklyStatus: challengeTypeMap[type] });
-                setChallengeProgress(progressPercent);
-                sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
-                setNotiOpen(false);
-                setChallengeAlarmOpen(true);
+                try {
+                  const detail = await getChallengeAlarmDetail(id);
+                  const progressPercent =
+                    type === 'CHALLENGE_COMPLETE' ? 100 :
+                    type === 'CHALLENGE_FAILED' ? 100 :
+                    type === 'NAG_90' ? 90 :
+                    type === 'NAG_80' ? 80 : 50;
+                  setChallengeAlarmDetail({ ...detail, progressPercent, weeklyStatus: challengeTypeMap[type] });
+                  setChallengeProgress(progressPercent);
+                  sessionStorage.setItem(`challenge:progress:${new Date().getMonth()}`, String(progressPercent));
+                  setNotiOpen(false);
+                  setChallengeAlarmOpen(true);
+                } catch (err) {
+                  console.error('챌린지 상세 조회 실패:', err);
+                }
               }}
             />
           </div>
