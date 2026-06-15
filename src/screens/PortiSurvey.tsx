@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import poriArtistVideo from '../assets/pori/pori_artist.mov';
+import poriArtistVideo from '../assets/pori/pori_artist.mp4';
 import pointPoriImg from '../assets/pori/point_pori.png';
 import portiImg from '../assets/pori/porti.png';
 import swimporiImg from '../assets/poti/swim_pori.png';
@@ -681,7 +681,7 @@ export default function PortiSurvey() {
         </p>
 
         <div style={{ paddingTop: '20px' }}>
-          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent' }} />
+          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(1px)' }} />
         </div>
       </div>
     </div>
