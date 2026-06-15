@@ -966,7 +966,7 @@ export default function Dashboard() {
               userName={USER_NAME}
               onSalaryClick={() => { setNotiOpen(false); navigate('/salary-management'); }}
               onReportClick={() => { setNotiOpen(false); navigate('/monthly-report'); }}
-              onChallengeClick={async (id, type, body) => {
+              onChallengeClick={async (id, type) => {
                 const challengeTypeMap: Record<string, 'ACTIVE' | 'SUCCESS' | 'FAILED'> = {
                   NAG_50: 'ACTIVE',
                   NAG_80: 'ACTIVE',

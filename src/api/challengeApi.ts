@@ -195,7 +195,7 @@ function toProposal(raw: Record<string, unknown>): ChallengeProposal {
     description: raw.description as string,
     category: raw.category as string,
     challengeSubType: (raw.challengeSubType ?? raw.challenge_sub_type) as string,
-    challengeType: (raw.challengeType ?? raw.challenge_type) as 'FREQUENCY' | 'AMOUNT',
+    challengeType: (raw.challengeType ?? raw.challenge_type) as 'AMOUNT' | 'COUNT',
     target: (raw.target ?? 0) as number,
     estimatedSaving: (raw.estimatedSaving ?? raw.estimated_saving ?? 0) as number,
     ticker: raw.ticker as string,

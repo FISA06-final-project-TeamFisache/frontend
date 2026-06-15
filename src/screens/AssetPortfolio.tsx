@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getPortfolioFlows, getAvailableAssets, updatePortfolioFlow,
-  type PortfolioFlow, type AvailableAsset, type PortfolioFlowUpdateRequest,
+  type AvailableAsset, type PortfolioFlowUpdateRequest,
 } from '../api/portfolioFlowApi';
 import { getProducts } from '../api/productApi';
 import pillImg from '../assets/etc/money1.png';
@@ -13,7 +13,7 @@ import missionPoriImg from '../assets/pori/mirror_missionpori.jpg';
 import {
   type HubItem, type ProductItem, type FlowProduct, type FlowTerm, type Flow,
   STEP_COLORS, BAR_COLORS, HUB_ASSET_TYPES,
-  dynamicHubs, dynamicProducts, productApiTypeById,
+  productApiTypeById,
   lookupHub, lookupProduct,
   isInvestableHub, assetToHubItem, productToCatalogItem,
   apiToFlow, buildFlowTabLabels, formatKrw, formatMonths, futureValueMonthly, withProjection,
@@ -910,7 +910,6 @@ export default function AssetPortfolio() {
   const [termTab, setTermTab] = useState<TermTab>('all');
   const [detailFlowId, setDetailFlowId] = useState<string | null>(null);
   const [flows, setFlows] = useState<Flow[]>([]);
-  const [monthlyInvestAmount, setMonthlyInvestAmount] = useState<number>(0);
   const [availableAssets, setAvailableAssets] = useState<AvailableAsset[]>([]);
   const [productCatalog, setProductCatalog] = useState<ProductItem[]>([]);
   const [editor, setEditor] = useState<EditorMode>(null);
@@ -929,7 +928,6 @@ export default function AssetPortfolio() {
       .then(([flowsRes, assetsRes, productsRes]) => {
         if (cancelled) return;
         setFlows(sortFlowsByTerm(flowsRes.flows.map(apiToFlow).map(withProjection)));
-        setMonthlyInvestAmount(Math.round((flowsRes.monthlyInvestAmount ?? 0) / 10000));
         setAvailableAssets(assetsRes.assets);
         assetsRes.assets.forEach(assetToHubItem);
         setProductCatalog(productsRes.products.map(productToCatalogItem));

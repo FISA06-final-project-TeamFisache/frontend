@@ -73,8 +73,8 @@ export default function SalaryManagement({ onClose }: Props) {
 
   const [view, setView] = useState<View>('summary');
   const [activeTab, setActiveTab] = useState<Tab>('spend');
-  const [spendPlans, setSpendPlans] = useState<Plan[]>(MOCK_SPEND_PLANS);
-  const [investPlans, setInvestPlans] = useState<Plan[]>(MOCK_INVEST_PLANS);
+  const [spendPlans, setSpendPlans] = useState<Plan[]>([]);
+  const [investPlans, setInvestPlans] = useState<Plan[]>([]);
   const [salary, setSalary] = useState(4000000);
   const [salaryDelta, setSalaryDelta] = useState(0);
   const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>({
@@ -531,8 +531,6 @@ export default function SalaryManagement({ onClose }: Props) {
             <div className="space-y-5 relative">
               {activePlans.map((plan, idx) => {
                 const isInvest = activeTab === 'invest';
-                const isNeg = plan.editedDelta < 0;
-                const abs = Math.abs(plan.editedDelta);
                 const termInfo = plan.term ? TERM_META[plan.term] : null;
                 const meta = isInvest && plan.institution ? getBankMeta(plan.institution) : null;
                 const isLast = idx === activePlans.length - 1;
