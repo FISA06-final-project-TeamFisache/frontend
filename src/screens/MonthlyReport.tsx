@@ -8,6 +8,7 @@ import {
   type TaxBenefitSummary,
   type PortfolioBreakdownItem,
 } from '../api/reportApi';
+import poriImg from '../assets/pori/point_pori.png';
 
 const TODAY = new Date();
 
@@ -60,6 +61,29 @@ function BlockHeader({ children, color }: { children: ReactNode; color: string }
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return <p style={{ fontSize: 12, fontWeight: 600, color: '#64748b', margin: '0 0 7px 2px' }}>{children}</p>;
+}
+
+// AI Pori 코멘트 박스 (AssetPrescription/AssetPortfolio의 "🤖 AI Pori의 설명" 박스와 동일한 스타일)
+function PoriCommentBox({ children, label = '🤖 AI Pori의 설명' }: { children: ReactNode; label?: string }) {
+  return (
+    <div
+      className="relative flex items-start gap-3 rounded-2xl p-4 border border-sky-200 shadow-md overflow-hidden"
+      style={{ background: 'linear-gradient(150deg, #f0faff 0%, #e0f2fe 55%, #bae6fd 100%)' }}
+    >
+      <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,24 C65,8 130,38 195,24 C260,10 325,38 390,24 L390,48 L0,48 Z" fill="rgba(186,230,253,0.4)" />
+        <path d="M0,32 C80,18 160,44 240,30 C305,20 355,38 390,32 L390,48 L0,48 Z" fill="rgba(147,197,253,0.35)" />
+        <path d="M0,40 C55,28 125,48 195,38 C255,30 325,44 390,40 L390,48 L0,48 Z" fill="rgba(125,211,252,0.45)" />
+      </svg>
+      <img src={poriImg} alt="Pori" className="w-16 h-16 object-contain shrink-0 z-10" />
+      <div className="flex-1 min-w-0 z-10">
+        <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">
+          {label}
+        </div>
+        <p className="text-[12px] text-slate-700 leading-relaxed font-medium m-0">{children}</p>
+      </div>
+    </div>
+  );
 }
 
 function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
@@ -302,9 +326,8 @@ function MissionSummarySection({ missions, comment }: { missions: MiniChallenge[
           </tbody>
         </table>
 
-        <div style={{ marginTop: 14, padding: '12px', background: '#f8fafc', borderRadius: 10, border: '0.5px solid #e2e8f0' }}>
-          <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#378ADD' }}>🤖 Pori의 피드백</p>
-          <p style={{ margin: 0, fontSize: 11, color: '#475569', lineHeight: 1.6 }}>{comment}</p>
+        <div style={{ marginTop: 14 }}>
+          <PoriCommentBox label="🤖 Pori의 피드백">{comment}</PoriCommentBox>
         </div>
       </Card>
     </div>
@@ -341,9 +364,8 @@ function TaxDeductionSection({ tax }: { tax: TaxBenefitSummary }) {
         </tbody>
       </table>
 
-      <div style={{ marginTop: 14, padding: '12px', background: '#f8fafc', borderRadius: 10, border: '0.5px solid #e2e8f0' }}>
-        <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, color: '#1D9E75' }}>💡 절세 제안</p>
-        <p style={{ margin: 0, fontSize: 11, color: '#475569', lineHeight: 1.6 }}>{comment}</p>
+      <div style={{ marginTop: 14 }}>
+        <PoriCommentBox label="💡 절세 제안">{comment}</PoriCommentBox>
       </div>
     </Card>
   );
@@ -469,8 +491,8 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
                 </div>
               </div>
               {report.trendComment && (
-                <div style={{ marginTop: 8, padding: '10px 12px', background: '#f8fafc', borderRadius: 10, fontSize: 12, color: '#475569', lineHeight: 1.7 }}>
-                  {report.trendComment}
+                <div style={{ marginTop: 8 }}>
+                  <PoriCommentBox>{report.trendComment}</PoriCommentBox>
                 </div>
               )}
               {userGoal && (
@@ -486,10 +508,10 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
               <p style={{ fontSize: 10, color: '#94a3b8', textAlign: 'right', margin: '8px 0 0' }}>지난달 대비 수익 상승률입니다</p>
             </Card>
 
-            <Card>
+            <div>
               <SectionTitle>시장 상황 요약</SectionTitle>
-              <p style={{ fontSize: 12, color: '#475569', lineHeight: 1.8, margin: 0 }}>{report.marketCondition}</p>
-            </Card>
+              <PoriCommentBox>{report.marketCondition}</PoriCommentBox>
+            </div>
 
             {/* ──── 소비 블록 ──── */}
             <BlockHeader color="#EF9F27">소비</BlockHeader>
@@ -530,10 +552,7 @@ export default function MonthlyReport({ onClose }: { onClose?: () => void } = {}
               <SpendingDonut categories={donutCategories} hints={expenseHints} />
             </Card>
 
-            <div style={{ background: '#0f172a', borderRadius: 14, padding: '16px 18px', marginTop: 4 }}>
-              <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 8px' }}>Pori의 다음달 가이드</p>
-              <p style={{ fontSize: 13, color: '#f1f5f9', lineHeight: 1.9, margin: 0 }}>{report.guideline}</p>
-            </div>
+            <PoriCommentBox label="🤖 Pori의 다음달 가이드">{report.guideline}</PoriCommentBox>
 
             <SectionTitle>소비 미션 요약</SectionTitle>
             <MissionSummarySection missions={report.miniChallenges} comment={report.eventComment} />
