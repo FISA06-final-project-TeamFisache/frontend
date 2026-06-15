@@ -69,12 +69,12 @@ export default function PrescriptionLoading() {
       setSteps(s => ({ ...s, s3: true }));
     }, 4600));
     t.push(setTimeout(() => { setChecks(c => ({ ...c, c3: true })); setSpinnerVisible(false); }, 5300));
-    t.push(setTimeout(() => setComplete(true), 6500));
-    t.push(setTimeout(() => setExiting(true), 8500));
+    t.push(setTimeout(() => setComplete(true), 7500));
+    t.push(setTimeout(() => setExiting(true), 9500));
     t.push(setTimeout(async () => {
       await apiCall;
       navigate('/asset-prescription', { replace: true, state: { recommend } });
-    }, 9000));
+    }, 10000));
 
     return () => t.forEach(clearTimeout);
   }, [navigate]);
