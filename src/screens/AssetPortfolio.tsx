@@ -247,7 +247,7 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
           </div>
         ) : (
           <div style={{ padding: '12px 0 4px', fontSize: 11, color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
-            예·적금/파킹 통장은 상품 없이 그대로 모아요.<br />증권·ISA·IRP·연금저축 계좌일 때만 상품을 넣을 수 있어요.
+            증권·ISA·IRP·연금저축 계좌일 때만 상품을 넣을 수 있어요.
           </div>
         )}
         {isOverAllocated && (
@@ -549,8 +549,19 @@ function FlowDetail({ flow, onEdit, onPct, onFlowAmount, onRemoveProduct }: Flow
         })()}
 
         {flow.rrComment && (
-          <div style={{ marginTop: 8, padding: '6px 9px', background: '#f1f5f9', borderRadius: 6, fontSize: 10, color: '#64748b', lineHeight: 1.5 }}>
-            💬 {flow.rrComment}
+          <div className="relative flex items-center gap-3 mt-3 rounded-2xl p-4 border border-sky-200 shadow-md overflow-hidden" style={{ background: 'linear-gradient(150deg, #f0faff 0%, #e0f2fe 55%, #bae6fd 100%)' }}>
+            <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0,24 C65,8 130,38 195,24 C260,10 325,38 390,24 L390,48 L0,48 Z" fill="rgba(186,230,253,0.4)" />
+              <path d="M0,32 C80,18 160,44 240,30 C305,20 355,38 390,32 L390,48 L0,48 Z" fill="rgba(147,197,253,0.35)" />
+              <path d="M0,40 C55,28 125,48 195,38 C255,30 325,44 390,40 L390,48 L0,48 Z" fill="rgba(125,211,252,0.45)" />
+            </svg>
+            <img src={poriImg} alt="Pori" className="w-14 h-14 object-contain shrink-0 z-10" />
+            <div className="flex-1 min-w-0 z-10">
+              <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-1.5">
+                🤖 AI Pori의 한마디
+              </div>
+              <p className="text-[13px] text-slate-700 leading-relaxed font-medium [word-break:keep-all]">{flow.rrComment}</p>
+            </div>
           </div>
         )}
       </StepCard>

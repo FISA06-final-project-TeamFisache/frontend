@@ -838,8 +838,10 @@ export default function AssetPrescription() {
                   onKeyDown={(e) => { if (e.key === 'Enter') addAccount(); }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
-                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
-                  태그를 자세히 적어주실수록 좋아요. 월급에 변동이 생겼을 때 Pori가 태그를 읽고 통장별로 더 똑똑하게 나눠드려요.
+                <p className="mt-2 text-sm leading-relaxed text-blue-500 font-medium [word-break:keep-all] text-center">
+                  <span className="text-gray-800">태그를 자세히 적어주실수록 좋아요.</span><br />
+                  월급에 변동이 생겼을 때 <span className="font-bold text-blue-600">Pori</span>가 태그를 읽고<br />
+                  통장별로 더 똑똑하게 나눠드려요.
                 </p>
               </div>
             </div>

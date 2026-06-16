@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, type Dispatch, type SetStateAction } from 'react';
-import { getBankBadge } from '../constants/banks';
+import { getBankBadge, getBankImgSrc } from '../constants/banks';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withdrawAccount } from '../api/userApi';
@@ -157,8 +157,11 @@ function AccountManagePanel({ onClose, onAddInstitution }: { onClose: () => void
                 onClick={() => toggleBank(bank.id)}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}
               >
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: bank.badgeBg, color: bank.badgeColor, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {bank.short}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: bank.badgeBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                  {getBankImgSrc(bank.name)
+                    ? <img src={getBankImgSrc(bank.name)} alt={bank.name} style={{ width: 24, height: 24, objectFit: 'contain' }} />
+                    : <span style={{ color: bank.badgeColor, fontSize: 11, fontWeight: 700 }}>{bank.short}</span>
+                  }
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bank.name}</div>
@@ -930,20 +933,6 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div style={{ padding: '20px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 16, flexShrink: 0 }}>
-              <button
-                onClick={handleLogout}
-                style={{ fontSize: 13, color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
-              >
-                로그아웃
-              </button>
-              <button
-                onClick={handleWithdraw}
-                style={{ fontSize: 13, color: '#ef4444', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
-              >
-                회원탈퇴
-              </button>
-            </div>
           </div>
 
           <div style={{ flex: 1 }} onClick={() => setSidebarOpen(false)} />

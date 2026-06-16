@@ -84,7 +84,7 @@ export default function SalarySelect() {
       }
     };
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 모달: 메인 리스트에 없는 나머지 자산
@@ -118,11 +118,10 @@ export default function SalarySelect() {
               <button
                 key={acc.id}
                 onClick={() => setSelectedAccount(acc)}
-                className={`w-full text-left p-4 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
-                  selectedAccount?.id === acc.id
-                    ? 'border-blue-400 bg-blue-50'
-                    : 'border-gray-100 bg-white hover:border-gray-200'
-                }`}
+                className={`w-full text-left p-4 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${selectedAccount?.id === acc.id
+                  ? 'border-blue-400 bg-blue-50'
+                  : 'border-gray-100 bg-white hover:border-gray-200'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
@@ -137,9 +136,8 @@ export default function SalarySelect() {
                     <p className="text-xs text-gray-500 mt-0.5">{acc.balance.toLocaleString()}원</p>
                   </div>
                 </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
-                  selectedAccount?.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                }`}>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${selectedAccount?.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                  }`}>
                   {selectedAccount?.id === acc.id && <div className="w-2 h-2 rounded-full bg-white" />}
                 </div>
               </button>
@@ -297,9 +295,8 @@ export default function SalarySelect() {
                 <button
                   key={acc.id}
                   onClick={() => setTransferAccount(acc)}
-                  className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${
-                    transferAccount?.id === acc.id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-white'
-                  }`}
+                  className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition active:scale-[0.98] ${transferAccount?.id === acc.id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-white'
+                    }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-9 h-9 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
@@ -310,9 +307,8 @@ export default function SalarySelect() {
                       <p className="text-xs text-gray-500">{acc.balance.toLocaleString()}원</p>
                     </div>
                   </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ml-2 ${
-                    transferAccount?.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                  }`}>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ml-2 ${transferAccount?.id === acc.id ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                    }`}>
                     {transferAccount?.id === acc.id && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                 </button>
@@ -329,11 +325,10 @@ export default function SalarySelect() {
               <button
                 key={d}
                 onClick={() => setTransferDate(d)}
-                className={`py-2 rounded-xl text-sm font-bold transition active:scale-95 ${
-                  transferDate === d
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                className={`py-2 rounded-xl text-sm font-bold transition active:scale-95 ${transferDate === d
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
               >
                 {d}일
               </button>

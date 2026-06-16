@@ -17,9 +17,9 @@ function BankLogo({ institution, className }: { institution: string; className?:
 
 
 const CONSENT_ITEMS = [
-  { key: 'personal'  as const, label: '필수 개인정보 수집·이용 (필수)' },
+  { key: 'personal' as const, label: '필수 개인정보 수집·이용 (필수)' },
   { key: 'financial' as const, label: '금융정보 조회·전송 동의 (필수)' },
-  { key: 'terms'     as const, label: '서비스 이용약관 (필수)' },
+  { key: 'terms' as const, label: '서비스 이용약관 (필수)' },
   { key: 'marketing' as const, label: '마케팅 수신 동의 (선택)' },
 ];
 
@@ -137,7 +137,7 @@ export default function Linking() {
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   // ── Step 1: 서비스 동의 ──────────────────────────────────
@@ -215,9 +215,8 @@ export default function Linking() {
             <button
               key={inst.institution}
               onClick={() => toggleBank(inst.institution)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition active:scale-95 ${
-                selected.includes(inst.institution) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
-              }`}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border transition active:scale-95 ${selected.includes(inst.institution) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
+                }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
@@ -262,24 +261,21 @@ export default function Linking() {
             return (
               <div
                 key={name}
-                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors ${
-                  status === 'done'    ? 'border-green-200 bg-green-50' :
-                  status === 'linking' ? 'border-blue-200  bg-blue-50'  :
-                                        'border-gray-100  bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors ${status === 'done' ? 'border-green-200 bg-green-50' :
+                  status === 'linking' ? 'border-blue-200  bg-blue-50' :
+                    'border-gray-100  bg-gray-50'
+                  }`}
               >
-                <span className={`w-5 text-center text-sm font-bold leading-none ${
-                  status === 'done'    ? 'text-green-500' :
-                  status === 'linking' ? 'text-blue-400'  :
-                                        'text-gray-300'
-                }`}>
+                <span className={`w-5 text-center text-sm font-bold leading-none ${status === 'done' ? 'text-green-500' :
+                  status === 'linking' ? 'text-blue-400' :
+                    'text-gray-300'
+                  }`}>
                   {status === 'done' ? '✓' : status === 'linking' ? '···' : ''}
                 </span>
-                <span className={`text-sm font-medium ${
-                  status === 'done'    ? 'text-green-700' :
-                  status === 'linking' ? 'text-blue-700'  :
-                                        'text-gray-400'
-                }`}>
+                <span className={`text-sm font-medium ${status === 'done' ? 'text-green-700' :
+                  status === 'linking' ? 'text-blue-700' :
+                    'text-gray-400'
+                  }`}>
                   {name}&nbsp;
                   {status === 'done' ? '완료' : status === 'linking' ? '연결 중' : '대기 중'}
                 </span>
@@ -295,8 +291,8 @@ export default function Linking() {
   if (step === 'complete') return (
     <PhoneFrame bottomLabel="연동 완료">
       <div className="flex flex-col items-center text-center mt-8 mb-6">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-          <Check className="w-8 h-8 text-green-500" strokeWidth={3} />
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+          <Check className="w-8 h-8 text-blue-500" strokeWidth={3} />
         </div>
         <h2 className="text-xl font-bold text-gray-800 mb-1">연동 완료!</h2>
         <p className="text-sm text-gray-400">{syncedAssets.length}개 자산이 연결되었어요</p>
@@ -386,10 +382,9 @@ export default function Linking() {
                       <button
                         key={acc.assetNumber}
                         onClick={() => togglePickedAccount(acc.assetNumber)}
-                        className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition ${
-                          checked  ? 'border-blue-400 bg-blue-50 active:scale-[0.98]' :
-                                     'border-gray-100 bg-white hover:border-gray-200 active:scale-[0.98]'
-                        }`}
+                        className={`w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition ${checked ? 'border-blue-400 bg-blue-50 active:scale-[0.98]' :
+                          'border-gray-100 bg-white hover:border-gray-200 active:scale-[0.98]'
+                          }`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -433,8 +428,8 @@ export default function Linking() {
           ? '연결 중...'
           : pickedAccounts.length > 0
             ? (returnTo
-                ? `${pickedAccounts.length}개 계좌 연결하기`
-                : `${pickedAccounts.length}개 계좌 연결하고 급여통장 설정하기 →`)
+              ? `${pickedAccounts.length}개 계좌 연결하기`
+              : `${pickedAccounts.length}개 계좌 연결하고 급여통장 설정하기 →`)
             : '계좌를 선택해주세요'}
       </button>
     </PhoneFrame>

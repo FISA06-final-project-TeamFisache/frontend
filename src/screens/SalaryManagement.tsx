@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Check, X } from 'lucide-react';
 import { getBankMeta } from '../constants/banks';
 import heroImg from '../assets/pori/hero.png';
+import poriImg from '../assets/pori/point_pori.png';
 import { getTransferPlans, updateTransferPlans, generateTransferPlans } from '../api/transferApi';
 import { getAssets } from '../api/assetApi';
 
@@ -75,12 +76,9 @@ export default function SalaryManagement({ onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('spend');
   const [spendPlans, setSpendPlans] = useState<Plan[]>([]);
   const [investPlans, setInvestPlans] = useState<Plan[]>([]);
-  const [salary, setSalary] = useState(4000000);
+  const [salary, setSalary] = useState(0);
   const [salaryDelta, setSalaryDelta] = useState(0);
-  const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>({
-    institution: '우리은행',
-    logo: getBankMeta('우리은행').imgSrc,
-  });
+  const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>(null);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string; bank: string; logo: string }>>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
@@ -289,11 +287,21 @@ export default function SalaryManagement({ onClose }: Props) {
             </div>
 
             {/* Pori 분배 가이드 (agent API, 실패 시 fallback) */}
-            <div className="bg-[#fffbeb] border border-[#fef3c7] rounded-2xl px-4 py-3.5 space-y-1.5">
-              <p className="text-xs font-bold text-blue-500 mb-0.5">Pori의 분배 가이드</p>
-              {agentReasons.map((r, i) => (
-                <p key={i} className="text-xs text-[#92400e] leading-relaxed">{r}</p>
-              ))}
+            <div className="relative flex items-center gap-3 rounded-2xl p-4 border border-sky-200 shadow-md overflow-hidden" style={{ background: 'linear-gradient(150deg, #f0faff 0%, #e0f2fe 55%, #bae6fd 100%)' }}>
+              <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 48" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M0,24 C65,8 130,38 195,24 C260,10 325,38 390,24 L390,48 L0,48 Z" fill="rgba(186,230,253,0.4)" />
+                <path d="M0,32 C80,18 160,44 240,30 C305,20 355,38 390,32 L390,48 L0,48 Z" fill="rgba(147,197,253,0.35)" />
+                <path d="M0,40 C55,28 125,48 195,38 C255,30 325,44 390,40 L390,48 L0,48 Z" fill="rgba(125,211,252,0.45)" />
+              </svg>
+              <img src={poriImg} alt="Pori" className="w-14 h-14 object-contain shrink-0 z-10" />
+              <div className="flex-1 min-w-0 z-10">
+                <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-1.5">
+                  🤖 AI Pori의 한마디
+                </div>
+                {agentReasons.map((r, i) => (
+                  <p key={i} className="text-[13px] text-slate-700 leading-relaxed font-medium [word-break:keep-all]">{r}</p>
+                ))}
+              </div>
             </div>
 
             {/* 세부 분배 계획 */}
