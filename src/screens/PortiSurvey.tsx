@@ -102,7 +102,7 @@ const QUESTIONS: Question[] = [
     id: 7,
     emoji: '🔥',
     context: '요즘 핫하다는 그 주식!' + '\n' + '내 스타일은?',
-    optionA: '유튜브, 블로그 찾아보고 리스크 이해하고 시작하기',
+    optionA: '유튜브, 블로그 찾아보고\n리스크 이해하고 시작하기',
     optionB: '일단 5만 원이라도 넣어보고 직접 움직임 보기',
   },
   {
@@ -117,7 +117,7 @@ const QUESTIONS: Question[] = [
     emoji: '😌',
     context: '내가 바라는 이상적인 돈 관리는?',
     optionA: '월급 누가 관리해줬으면... 나는 신경 끄고 살래',
-    optionB: '매주 자산 체크하고, 직접 굴리고 컨트롤하고 싶어',
+    optionB: '매주 자산 체크하고,\n직접 굴리고 컨트롤하고 싶어',
   },
   {
     id: 10,
@@ -681,7 +681,7 @@ export default function PortiSurvey() {
         </p>
 
         <div style={{ paddingTop: '20px' }}>
-          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(1px)' }} />
+          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(4px)' }} />
         </div>
       </div>
     </div>

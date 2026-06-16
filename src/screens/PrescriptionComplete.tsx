@@ -39,7 +39,7 @@ export default function PrescriptionComplete() {
       >
         {/* 제목 */}
         <h1
-          className="text-2xl font-bold text-blue-500 text-center animate-slide-up"
+          className="text-2xl font-bold text-blue-500 text-center animate-slide-up font-wooridaum"
           style={{ animationDelay: '0.1s' }}
         >
           통장 나누기 완료
@@ -47,14 +47,14 @@ export default function PrescriptionComplete() {
 
         {/* 마스코트 — 진입 후 위아래 float 애니메이션 */}
         <div className="flex justify-center items-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(1px 1px 2px 1px)' }} />
+          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(4px 4px 6px 4px)' }} />
         </div>
 
         {/* 메인 텍스트 */}
         <div className="flex flex-col items-center justify-center space-y-4 text-center animate-slide-up" style={{ animationDelay: '0.6s' }}>
           <p className="text-xl font-semibold text-slate-800 leading-snug">
             {USER_NAME} 님의 자산을<br />
-            <span className="text-blue-500">어떻게 불릴지 고민중이에요</span>
+            <span className="text-blue-500">어떻게 불릴지 고민 중이에요</span>
           </p>
 
           <p className="text-base text-slate-500 leading-relaxed">

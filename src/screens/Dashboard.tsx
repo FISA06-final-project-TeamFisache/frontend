@@ -875,7 +875,7 @@ export default function Dashboard() {
             animation: 'slideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
           }}>
             <div style={{ padding: '20px 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', margin: 0 }}>전체 메뉴</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', margin: 0, fontFamily: "'Wooridaum', sans-serif" }}>전체 메뉴</h2>
               <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }} aria-label="닫기">✕</button>
             </div>
 
