@@ -131,8 +131,8 @@ const PLACEHOLDER_PRODUCT: ProductItem = {
 
 // ─── 레지스트리 (모듈 수준 캐시) ─────────────────────────
 
-export const dynamicHubs = new Map<string, HubItem>();
-export const dynamicProducts = new Map<string, ProductItem>();
+const dynamicHubs = new Map<string, HubItem>();
+const dynamicProducts = new Map<string, ProductItem>();
 export const productApiTypeById = new Map<string, string>();
 
 export const lookupHub = (id: string): HubItem =>

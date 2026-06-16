@@ -3,17 +3,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getPortfolioFlows, getAvailableAssets, updatePortfolioFlow,
-  type PortfolioFlow, type AvailableAsset, type PortfolioFlowUpdateRequest,
+  type AvailableAsset, type PortfolioFlowUpdateRequest,
 } from '../api/portfolioFlowApi';
 import { getProducts } from '../api/productApi';
 import pillImg from '../assets/etc/money1.png';
-import poriLoadingVideo from '../assets/pori/pori_loading.mov';
+import poriLoadingVideo from '../assets/pori/pori_loading.mp4';
 import poriImg from '../assets/pori/point_pori.png';
 import missionPoriImg from '../assets/pori/mirror_missionpori.jpg';
 import {
   type HubItem, type ProductItem, type FlowProduct, type FlowTerm, type Flow,
   STEP_COLORS, BAR_COLORS, HUB_ASSET_TYPES,
-  dynamicHubs, dynamicProducts, productApiTypeById,
+  productApiTypeById,
   lookupHub, lookupProduct,
   isInvestableHub, assetToHubItem, productToCatalogItem,
   apiToFlow, buildFlowTabLabels, formatKrw, formatMonths, futureValueMonthly, withProjection,
@@ -921,7 +921,6 @@ export default function AssetPortfolio() {
   const [termTab, setTermTab] = useState<TermTab>('all');
   const [detailFlowId, setDetailFlowId] = useState<string | null>(null);
   const [flows, setFlows] = useState<Flow[]>([]);
-  const [monthlyInvestAmount, setMonthlyInvestAmount] = useState<number>(0);
   const [availableAssets, setAvailableAssets] = useState<AvailableAsset[]>([]);
   const [productCatalog, setProductCatalog] = useState<ProductItem[]>([]);
   const [editor, setEditor] = useState<EditorMode>(null);
@@ -940,7 +939,6 @@ export default function AssetPortfolio() {
       .then(([flowsRes, assetsRes, productsRes]) => {
         if (cancelled) return;
         setFlows(sortFlowsByTerm(flowsRes.flows.map(apiToFlow).map(withProjection)));
-        setMonthlyInvestAmount(Math.round((flowsRes.monthlyInvestAmount ?? 0) / 10000));
         setAvailableAssets(assetsRes.assets);
         assetsRes.assets.forEach(assetToHubItem);
         setProductCatalog(productsRes.products.map(productToCatalogItem));
@@ -1087,7 +1085,7 @@ export default function AssetPortfolio() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-        <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: 280, height: 280, objectFit: 'contain', display: 'block', background: 'transparent' }} />
+        <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: 280, height: 280, objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(1px 1px 2px 1px)' }} />
       </div>
     );
   }

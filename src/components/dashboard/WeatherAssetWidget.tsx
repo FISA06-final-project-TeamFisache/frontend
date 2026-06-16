@@ -1,6 +1,5 @@
 // 자산 날씨 위젯 — 예산 초과율에 따라 날씨 테마가 바뀌는 총자산 카드
 import type { DashboardData } from '../../api/dashboardApi';
-import React from 'react';
 import sunnyImg from '../../assets/weather/sunny.png';
 import rainImg from '../../assets/weather/rain.png';
 import cloudyImg from '../../assets/weather/cloudy.png';

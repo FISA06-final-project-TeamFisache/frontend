@@ -539,8 +539,6 @@ export default function SalaryManagement({ onClose }: Props) {
             <div className="space-y-5 relative">
               {activePlans.map((plan, idx) => {
                 const isInvest = activeTab === 'invest';
-                const isNeg = plan.editedDelta < 0;
-                const abs = Math.abs(plan.editedDelta);
                 const termInfo = plan.term ? TERM_META[plan.term] : null;
                 const meta = isInvest && plan.institution ? getBankMeta(plan.institution) : null;
                 const isLast = idx === activePlans.length - 1;

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Info, Lock, LockOpen, Check, HelpCircle, Trash2, Plus, X } from 'lucide-react';
 import { getBankImgSrc } from '../constants/banks';
@@ -78,6 +78,20 @@ function toAssetCategory(assetType?: string): string {
 
 const formatNumber = (n: number) => n.toLocaleString('ko-KR');
 const parseDigits = (s: string) => parseInt(s.replace(/[^0-9]/g, ''), 10) || 0;
+// 칩(배지)용 만원 단위 표기 (예: 2,800,000 → "280만원")
+const formatManwon = (n: number) => `${formatNumber(Math.round(n / 10000))}만원`;
+
+// AI 설명 텍스트 내 핵심 토큰(금액·비율·기간·혜택)을 굵게+파란색으로 강조
+// (AssetPortfolio의 highlightReasoning과 동일 규칙)
+const HL_SPLIT = /([+\-]?\d[\d,]*(?:\.\d+)?\s?(?:만\s?원|원|%|개월|년)|비과세|세액공제|복리)/g;
+const HL_TOKEN = /^(?:[+\-]?\d[\d,]*(?:\.\d+)?\s?(?:만\s?원|원|%|개월|년)|비과세|세액공제|복리)$/;
+function highlightReasoning(text: string): ReactNode[] {
+  return text.split(HL_SPLIT).filter(Boolean).map((part, i) =>
+    HL_TOKEN.test(part)
+      ? <span key={i} style={{ fontWeight: 700, color: '#1d4ed8' }}>{part}</span>
+      : <span key={i}>{part}</span>,
+  );
+}
 
 export default function AssetPrescription() {
   const { userName: USER_NAME } = useAuth();
@@ -89,6 +103,7 @@ export default function AssetPrescription() {
 
   const [totalSalary, setTotalSalary] = useState(recommend?.salary ?? 0);
   const [fixedExpenseComment, setFixedExpenseComment] = useState(recommend?.fixedExpenseComment ?? '');
+  const [totalFixedExpense, setTotalFixedExpense] = useState(recommend?.totalFixedExpense ?? 0);
   const [reasoning, setReasoning] = useState<string | null>(recommend?.reasoning ?? null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
@@ -113,6 +128,7 @@ export default function AssetPrescription() {
     setTotalSalary(data.salary);
     setInvestmentAmount(data.investAmount);
     setFixedExpenseComment(data.fixedExpenseComment ?? '');
+    setTotalFixedExpense(data.totalFixedExpense ?? 0);
     setReasoning(data.reasoning ?? null);
     const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
     setAccounts(data.rebalancingPlans.map((plan, i) => ({
@@ -372,8 +388,19 @@ export default function AssetPrescription() {
               <div className="inline-flex items-center gap-1 bg-sky-200 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">
                 🤖 AI Pori의 설명
               </div>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  { icon: '💰', label: `월급 ${formatManwon(totalSalary)}` },
+                  ...(investmentAmount > 0 ? [{ icon: '📈', label: `투자 ${formatManwon(investmentAmount)}` }] : []),
+                  ...(totalFixedExpense > 0 ? [{ icon: '🧾', label: `고정지출 ${formatManwon(totalFixedExpense)}` }] : []),
+                ].map((c, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 bg-white/70 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200">
+                    <span>{c.icon}</span>{c.label}
+                  </span>
+                ))}
+              </div>
               <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
-                {reasoning ?? '이번 달 소비 패턴을 분석했어요. 고정지출을 먼저 챙기고, 남은 여유자금은 목적별로 나눠 배분했어요. 투자 금액도 꾸준히 늘려가면 좋을 것 같아요!'}
+                {highlightReasoning(reasoning ?? '이번 달 소비 패턴을 분석했어요. 고정지출을 먼저 챙기고, 남은 여유자금은 목적별로 나눠 배분했어요. 투자 금액도 꾸준히 늘려가면 좋을 것 같아요!')}
               </p>
             </div>
           </div>

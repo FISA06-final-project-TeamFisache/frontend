@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Download } from 'lucide-react';
-import poriArtistVideo from '../assets/pori/pori_artist.mov';
+import poriArtistVideo from '../assets/pori/pori_artist.mp4';
 import pointPoriImg from '../assets/pori/point_pori.png';
 import portiImg from '../assets/pori/porti.png';
 import swimporiImg from '../assets/poti/swim_pori.png';
@@ -15,7 +15,7 @@ import { generateAgentProfile, type AgentProfile } from '../api/agentApi';
 import { getGoal, updateGoal } from '../api/userApi';
 import warrenBuffettImg from '../assets/guru/warren_buffett.png';
 import kenFisherImg from '../assets/guru/ken_fisher.png';
-import johnBogleImg from '../assets/guru/john_bogle.png';
+import chuckAkreImg from '../assets/guru/chuck_akre.png';
 import rayDalioImg from '../assets/guru/ray_dalio.png';
 import stanleyDruckenmillerImg from '../assets/guru/stanley_druckenmiller.png';
 import sethKlarmanImg from '../assets/guru/seth_klarman.png';
@@ -254,7 +254,7 @@ const GURU_IMAGES: Record<string, string> = {
   '워렌 버핏': warrenBuffettImg,   // 표기 오류 대응
   '레이 달리오': rayDalioImg,        // ARCHERY
   '켄 피셔': kenFisherImg,       // JUDO
-  '존 보글': johnBogleImg,       // RHYTHMIC
+  '척 아크리': chuckAkreImg,       // CYCLING
   '스탠리 드러켄밀러': stanleyDruckenmillerImg, // FENCING
   '세스 클라먼': sethKlarmanImg,     // CYCLING
   '세스 클라만': sethKlarmanImg,     // 표기 오류 대응
@@ -681,7 +681,7 @@ export default function PortiSurvey() {
         </p>
 
         <div style={{ paddingTop: '20px' }}>
-          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent' }} />
+          <video src={poriArtistVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(1px)' }} />
         </div>
       </div>
     </div>
