@@ -8,10 +8,15 @@ interface Props {
   ctaLabel?: string;
   dismissLabel?: string;
   onClose: () => void;
+  onNavigate?: () => void;   // 제공되면 외부 링크 대신 이 콜백 실행 (UX 연출용)
 }
 
-export default function WooriIBPopup({ title, message, ctaLabel = '우리투자증권으로 이동', dismissLabel = '나중에', onClose }: Props) {
+export default function WooriIBPopup({ title, message, ctaLabel = '우리투자증권으로 이동', dismissLabel = '나중에', onClose, onNavigate }: Props) {
   const handleNavigate = () => {
+    if (onNavigate) {
+      onNavigate();
+      return;
+    }
     window.open(WOORI_IB_URL, '_blank');
     onClose();
   };

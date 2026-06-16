@@ -3,6 +3,7 @@ import type { ChallengeAlarmDetail, DailyLog, StockInfo } from '../api/challenge
 import { getStockInfo } from '../api/challengeApi';
 import missionpori from '../assets/pori/missionpori.png';
 import WooriIBPopup from './WooriIBPopup';
+import WooriBuyJourney from './WooriBuyJourney';
 
 interface Props {
   detail: ChallengeAlarmDetail;
@@ -172,6 +173,7 @@ function StockChartView({
   onClose: () => void;
 }) {
   const [showWooriPopup, setShowWooriPopup] = useState(false);
+  const [showBuyJourney, setShowBuyJourney] = useState(false);
   const closes = stockInfo?.chart.map(p => p.close) ?? [];
   const isUp = (stockInfo?.changeAmount ?? 0) >= 0;
   const color = isUp ? '#EF4444' : '#3B82F6';
@@ -281,7 +283,16 @@ function StockChartView({
         message={`미션 성공 리워드 ${detail.tickerName} ${detail.estimatedShares}이\n우리투자증권에 적립됩니다.\n지금 바로 확인해보세요!`}
         ctaLabel="우리투자증권으로 이동"
         dismissLabel="나중에"
+        onNavigate={() => { setShowWooriPopup(false); setShowBuyJourney(true); }}
         onClose={() => { setShowWooriPopup(false); onClose(); }}
+      />
+    )}
+    {showBuyJourney && (
+      <WooriBuyJourney
+        stockName={stockInfo?.name ?? detail.tickerName}
+        shares={detail.estimatedShares}
+        price={stockInfo?.currentPrice}
+        onDone={() => { setShowBuyJourney(false); onClose(); }}
       />
     )}
     </>
