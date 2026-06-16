@@ -28,7 +28,6 @@ export function TaxSavingWidget({ taxDeduction, active, onClick }: {
     >
       {/* 상단 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <span style={{ fontSize: 16 }}>🎁</span>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>절세</span>
       </div>
 

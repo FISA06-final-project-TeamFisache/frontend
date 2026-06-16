@@ -66,7 +66,7 @@ export default function PrescriptionIntro() {
           className="flex items-center justify-center animate-slide-up mt-8"
           style={{ animationDelay: '0.6s' }}
         >
-          <video src={poriLoadingVideo} autoPlay muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(1px 1px 2px 1px)' }} />
+          <video src={poriLoadingVideo} autoPlay muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(4px 4px 6px 4px)' }} />
         </div>
 
         {/* 하단 텍스트 */}

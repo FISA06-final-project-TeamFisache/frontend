@@ -47,7 +47,7 @@ export default function PrescriptionComplete() {
 
         {/* 마스코트 — 진입 후 위아래 float 애니메이션 */}
         <div className="flex justify-center items-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(1px 1px 2px 1px)' }} />
+          <video src={poriLoadingVideo} autoPlay loop muted playsInline style={{ width: '45vw', height: '45vw', maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block', background: 'transparent', clipPath: 'inset(4px 4px 6px 4px)' }} />
         </div>
 
         {/* 메인 텍스트 */}
