@@ -73,14 +73,11 @@ export default function SalaryManagement({ onClose }: Props) {
 
   const [view, setView] = useState<View>('summary');
   const [activeTab, setActiveTab] = useState<Tab>('spend');
-  const [spendPlans, setSpendPlans] = useState<Plan[]>(MOCK_SPEND_PLANS);
-  const [investPlans, setInvestPlans] = useState<Plan[]>(MOCK_INVEST_PLANS);
-  const [salary, setSalary] = useState(4000000);
+  const [spendPlans, setSpendPlans] = useState<Plan[]>([]);
+  const [investPlans, setInvestPlans] = useState<Plan[]>([]);
+  const [salary, setSalary] = useState(0);
   const [salaryDelta, setSalaryDelta] = useState(0);
-  const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>({
-    institution: '우리은행',
-    logo: getBankMeta('우리은행').imgSrc,
-  });
+  const [salaryAccount, setSalaryAccount] = useState<{ institution: string; logo: string } | null>(null);
   const [accounts, setAccounts] = useState<Array<{ id: string; name: string; bank: string; logo: string }>>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);

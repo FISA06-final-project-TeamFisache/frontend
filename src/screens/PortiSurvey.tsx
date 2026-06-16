@@ -458,7 +458,7 @@ export default function PortiSurvey() {
       <div className="w-full max-w-[390px] min-h-screen bg-white flex flex-col shadow-2xl px-8">
 
         {/* 상단: 텍스트 + 캐릭터 */}
-        <div className="flex items-center justify-between pt-16 mb-10">
+        <div className="flex items-center justify-between pt-20 mb-10">
           <p className="text-xl font-bold text-gray-800 leading-snug">
             10개의 질문으로<br />파악할게요
           </p>
@@ -1170,17 +1170,17 @@ export default function PortiSurvey() {
           <div className="space-y-3 shrink-0">
             <button
               onClick={() => handleAnswer('A')}
-              className="w-full text-left px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98]"
+              className="w-full text-left px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98] flex items-start gap-3"
             >
-              <span className="text-xs font-bold text-blue-400 mr-2">A.</span>
-              <span className="text-sm text-gray-700">{currentQ.optionA}</span>
+              <span className="text-lg font-bold text-blue-500 shrink-0 leading-snug">A.</span>
+              <span className="text-sm text-gray-700 leading-snug mt-0.5">{currentQ.optionA}</span>
             </button>
             <button
               onClick={() => handleAnswer('B')}
-              className="w-full text-left px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98]"
+              className="w-full text-left px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98] flex items-start gap-3"
             >
-              <span className="text-xs font-bold text-blue-400 mr-2">B.</span>
-              <span className="text-sm text-gray-700">{currentQ.optionB}</span>
+              <span className="text-lg font-bold text-blue-500 shrink-0 leading-snug">B.</span>
+              <span className="text-sm text-gray-700 leading-snug mt-0.5">{currentQ.optionB}</span>
             </button>
           </div>
         </div>
