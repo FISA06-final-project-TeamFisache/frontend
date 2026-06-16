@@ -930,20 +930,6 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div style={{ padding: '20px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 16, flexShrink: 0 }}>
-              <button
-                onClick={handleLogout}
-                style={{ fontSize: 13, color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
-              >
-                로그아웃
-              </button>
-              <button
-                onClick={handleWithdraw}
-                style={{ fontSize: 13, color: '#ef4444', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
-              >
-                회원탈퇴
-              </button>
-            </div>
           </div>
 
           <div style={{ flex: 1 }} onClick={() => setSidebarOpen(false)} />

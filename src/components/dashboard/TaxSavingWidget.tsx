@@ -27,20 +27,29 @@ export function TaxSavingWidget({ taxDeduction, active, onClick }: {
       }}
     >
       {/* 상단 */}
-      <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>절세</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <span style={{ fontSize: 16 }}>🎁</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>절세</span>
+      </div>
 
       {/* 중앙 예상 환급액 */}
-      <div style={{ display: 'flex', flexDirection: 'column', margin: '4px 0' }}>
-        <span style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>13월의 월급으로</span>
-        <span style={{ fontSize: 14, fontWeight: 800, color: '#0095DB', marginTop: 2, lineHeight: 1.35 }}>
-          {taxDeduction.toLocaleString()}원<br />돌려받아요
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <span style={{
+          fontSize: 10, fontWeight: 700,
+          color: '#0095DB',
+          background: 'rgba(0,149,219,0.08)',
+          borderRadius: 99, padding: '2px 8px', display: 'inline-block', width: 'fit-content',
+        }}>13월의 월급</span>
+        <span style={{ fontSize: 20, fontWeight: 900, color: '#0095DB', lineHeight: 1.2 }}>
+          {taxDeduction.toLocaleString()}원
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>
+          돌려받아요
         </span>
       </div>
 
       {/* 하단 */}
-      <div>
-        <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>+ 더 채우면 환급 ↑</span>
-      </div>
+      <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>+ 더 채우면 환급 ↑</span>
     </div>
   );
 }

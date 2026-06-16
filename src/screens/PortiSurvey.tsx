@@ -88,7 +88,7 @@ const QUESTIONS: Question[] = [
     id: 5,
     emoji: '📉',
     context: '마음 먹고 산 주식이 다음 날 -15%...' + '\n' + '어떻게 할거야?',
-    optionA: '스트레스 받으니까' + '\n' + '일단 팔거나, 앱 지우고 안 보려고 해',
+    optionA: '스트레스 받으니까 일단 팔거나,\n앱 지우고 안 보려고 해',
     optionB: '오히려 기회! 여유 자금으로 더 살까 고민해',
   },
   {
@@ -101,16 +101,16 @@ const QUESTIONS: Question[] = [
   {
     id: 7,
     emoji: '🔥',
-    context: '요즘 핫하다는 그 주식' + '\n' + '내 스타일은?',
-    optionA: '유튜브, 블로그 찾아보고 리스크 이해한 다음 시작',
-    optionB: '일단 5만 원이라도 넣어보고 직접 움직임 지켜봐',
+    context: '요즘 핫하다는 그 주식!' + '\n' + '내 스타일은?',
+    optionA: '유튜브, 블로그 찾아보고 리스크 이해하고 시작하기',
+    optionB: '일단 5만 원이라도 넣어보고 직접 움직임 보기',
   },
   {
     id: 8,
     emoji: '📺',
-    context: '나도 모르게 클릭할 것 같은 유튜브 영상은?',
-    optionA: '"월 200 직장인, 적금만으로 2년 만에 전세 보증금 모은 비법"',
-    optionB: '"28살 사회초년생, 주식 300만 원으로 시작해서 1년 수익 공개"',
+    context: '나도 모르게 클릭할 것 같은\n유튜브 영상은?',
+    optionA: '"월 200 직장인,\n적금만으로 2년 만에 전세 보증금 모은 비법"',
+    optionB: '"28살 사회초년생,\n주식 300만 원으로 시작해서 1년 수익 공개"',
   },
   {
     id: 9,
@@ -123,8 +123,8 @@ const QUESTIONS: Question[] = [
     id: 10,
     emoji: '🎯',
     context: '내 재테크 슬로건을 고른다면?',
-    optionA: '"쓸 땐 쓰고 모을 땐 모은다" 누릴 건 누리면서',
-    optionB: '"젊을 때 바짝 모아야지" 지금 참고 시드머니 먼저',
+    optionA: '"쓸 땐 쓰고 모을 땐 모은다"\n누릴 건 누리면서',
+    optionB: '"젊을 때 바짝 모아야지"\n지금 참고 시드머니 먼저',
   },
 ];
 
@@ -165,7 +165,7 @@ const RESULT_TYPES: ResultType[] = [
     quote: '오르막이 있어야 내리막도 있지, 나는 계속 달린다',
     description: '장기 복리의 힘을 믿는 타입이에요.\n단기 등락에 흔들리지 않고 꾸준히 인덱스를 적립하는 전략이 딱 맞아요.\n목적 통장을 분산 운영하며 목표별로 체계적으로 관리해요.',
     strengths: ['장기 복리 효과 극대화', '단기 등락에 휘둘리지 않는 멘탈', '목표별 분산으로 체계적 자산 관리'],
-    weaknesses: ['단기 수익 기회에 무감각할 수 있음', '너무 긴 시계로 유동성 부족', '시장 급변 시 리밸런싱 타이밍 놓침'],
+    weaknesses: ['단기 수익 기회에 무감각할 수 있음', '장기에 묶여 급전 대응이 어려울 수 있음', '시장 급변 시 리밸런싱 타이밍 놓침'],
   },
   {
     typeName: '유도하는 Pori',
@@ -675,7 +675,7 @@ export default function PortiSurvey() {
   if (step === 'loading') return (
     <div className="min-h-screen bg-gray-200 flex justify-center font-sans">
       <div className="w-full max-w-[390px] min-h-screen bg-white flex flex-col items-center justify-center shadow-2xl px-10 gap-8">
-        <p className="text-sm text-blue-500 text-center leading-relaxed">
+        <p className="text-lg text-blue-500 text-center leading-relaxed">
           마이데이터와 PorTI 검사를 기반으로<br />
           <span className="font-bold">{USER_NAME}</span>님의 자산을 그리고 있어요.
         </p>
@@ -740,9 +740,19 @@ export default function PortiSurvey() {
               </button>
 
               {showProfile && (
-                <div className="bg-[#FFFDF0] border border-yellow-200 rounded-xl p-4 text-left mx-2 mb-3 shadow-sm animate-in fade-in slide-in-from-top-1">
-                  <p className="text-xs font-bold text-yellow-700 mb-2">🐳 요약</p>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{result.description}</p>
+                <div className="bg-[#FFFDF0] border border-yellow-200 rounded-2xl p-5 text-left mb-3 shadow-sm animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <span className="text-base">🐳</span>
+                    <span className="text-xs font-bold text-yellow-700 tracking-wide">요약</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {result.description.split('\n').map((line, i) => (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0 mt-1.5" />
+                        <p className="text-sm text-gray-700 leading-relaxed [word-break:keep-all]">{line}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -997,18 +1007,28 @@ export default function PortiSurvey() {
               {/* 성향 */}
               <section className="space-y-3">
                 <h3 className="font-bold text-lg font-wooridaum">성향</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-emerald-50 rounded-xl p-3">
-                    <p className="text-xs font-bold text-emerald-700 mb-2">💪 강점</p>
-                    {result.strengths.map((s, i) => (
-                      <p key={i} className="text-xs text-emerald-800 leading-snug mb-1">• {s}</p>
-                    ))}
+                <div className="space-y-2.5">
+                  <div className="bg-emerald-50 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-emerald-700 mb-3">💪 강점</p>
+                    <div className="space-y-2">
+                      {result.strengths.map((s, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
+                          <p className="text-sm text-emerald-800 leading-snug [word-break:keep-all]">{s}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="bg-red-50 rounded-xl p-3">
-                    <p className="text-xs font-bold text-red-600 mb-2">⚠️ 약점</p>
-                    {result.weaknesses.map((w, i) => (
-                      <p key={i} className="text-xs text-red-700 leading-snug mb-1">• {w}</p>
-                    ))}
+                  <div className="bg-red-50 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-red-500 mb-3">⚠️ 약점</p>
+                    <div className="space-y-2">
+                      {result.weaknesses.map((w, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 mt-1.5" />
+                          <p className="text-sm text-red-700 leading-snug [word-break:keep-all]">{w}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1035,14 +1055,14 @@ export default function PortiSurvey() {
                             <div className="w-full h-full bg-blue-50 flex items-center justify-center text-lg font-bold text-blue-400">{investorName.charAt(0)}</div>
                           )}
                         </div>
-                        <p className="font-bold text-sm text-gray-900 leading-tight">{investorName}</p>
+                        <p className="font-bold text-sm text-gray-900 leading-tight [word-break:keep-all]">{investorName}</p>
                       </div>
                       <div className="flex-1">
                         {/* 해시태그 */}
                         {hashtags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-2">
+                          <div className="flex gap-1.5 mb-2">
                             {hashtags.map(tag => (
-                              <span key={tag} className="text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1 leading-none">
+                              <span key={tag} className="text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-1 leading-none whitespace-nowrap">
                                 #{tag.replace(/^#/, '')}
                               </span>
                             ))}
@@ -1053,9 +1073,9 @@ export default function PortiSurvey() {
                           <div className="absolute top-4 -left-2 border-[6px] border-transparent border-r-[#FFFDF0] z-10" />
                           <div className="absolute top-4 -left-[9px] border-[6px] border-transparent border-r-yellow-200 z-0" />
                           {investorQuote && (
-                            <p className="text-xs text-gray-400 italic mb-1.5">"{investorQuote}"</p>
+                            <p className="text-xs text-gray-600 italic font-bold mb-1.5">"{investorQuote}"</p>
                           )}
-                          <p className="text-xs text-gray-700 leading-relaxed font-semibold">{investorDesc}</p>
+                          <p className="text-xs text-gray-700 leading-relaxed font-semibold [word-break:keep-all]">{investorDesc}</p>
                         </div>
                       </div>
                     </div>
@@ -1170,17 +1190,17 @@ export default function PortiSurvey() {
           <div className="space-y-3 shrink-0">
             <button
               onClick={() => handleAnswer('A')}
-              className="w-full text-left px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98] flex items-start gap-3"
+              className="w-full px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98] flex items-center justify-center gap-3"
             >
               <span className="text-lg font-bold text-blue-500 shrink-0 leading-snug">A.</span>
-              <span className="text-sm text-gray-700 leading-snug mt-0.5">{currentQ.optionA}</span>
+              <span className="text-sm text-gray-700 leading-snug whitespace-pre-line text-center">{currentQ.optionA}</span>
             </button>
             <button
               onClick={() => handleAnswer('B')}
-              className="w-full text-left px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98] flex items-start gap-3"
+              className="w-full px-5 py-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border-2 border-gray-100 transition active:scale-[0.98] flex items-center justify-center gap-3"
             >
               <span className="text-lg font-bold text-blue-500 shrink-0 leading-snug">B.</span>
-              <span className="text-sm text-gray-700 leading-snug mt-0.5">{currentQ.optionB}</span>
+              <span className="text-sm text-gray-700 leading-snug whitespace-pre-line text-center">{currentQ.optionB}</span>
             </button>
           </div>
         </div>

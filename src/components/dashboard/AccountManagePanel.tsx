@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getBankBadge } from '../../constants/banks';
+import { getBankBadge, getBankImgSrc } from '../../constants/banks';
 import { deleteAsset, getAssets, type Asset } from '../../api/assetApi';
 
 interface LinkedAccount {
@@ -122,8 +122,11 @@ export default function AccountManagePanel({ onClose, onAddInstitution }: Accoun
                 onClick={() => toggleBank(bank.id)}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}
               >
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: bank.badgeBg, color: bank.badgeColor, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {bank.short}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: bank.badgeBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                  {getBankImgSrc(bank.name)
+                    ? <img src={getBankImgSrc(bank.name)} alt={bank.name} style={{ width: 24, height: 24, objectFit: 'contain' }} />
+                    : <span style={{ color: bank.badgeColor, fontSize: 11, fontWeight: 700 }}>{bank.short}</span>
+                  }
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{bank.name}</div>
