@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import WooriIBPopup from '../components/WooriIBPopup';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getPortfolioFlows, getAvailableAssets, updatePortfolioFlow,
@@ -10,6 +11,7 @@ import pillImg from '../assets/etc/money1.png';
 import poriLoadingVideo from '../assets/pori/pori_loading.mp4';
 import poriImg from '../assets/pori/point_pori.png';
 import missionPoriImg from '../assets/pori/mirror_missionpori.jpg';
+import wooriibLogo from '../assets/banks/wooriib.svg';
 import {
   type HubItem, type ProductItem, type FlowProduct, type FlowTerm, type Flow,
   STEP_COLORS, BAR_COLORS, HUB_ASSET_TYPES,
@@ -930,6 +932,8 @@ export default function AssetPortfolio() {
   const [openedAccounts, setOpenedAccounts] = useState<HubItem[] | null>(null);
   // 추천 계좌 개설 동의 모달 (저장 직전 1회)
   const [consentOpen, setConsentOpen] = useState(false);
+  // 우리투자증권 이동 팝업 (주식 매수 안내)
+  const [wooriStockPopup, setWooriStockPopup] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1041,7 +1045,13 @@ export default function AssetPortfolio() {
         setOpenedAccounts(opened);   // 개설 완료 오버레이 → 대시보드 이동은 오버레이 버튼에서
         setSaving(false);
       } else {
-        navigate('/dashboard');
+        const hasInvestable = flows.some(f => isInvestableHub(f.hubAssetType ?? '') && f.products.length > 0);
+        if (hasInvestable) {
+          setWooriStockPopup(true);
+          setSaving(false);
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (e) {
       alert(e instanceof Error ? e.message : '저장 실패');
@@ -1113,7 +1123,7 @@ export default function AssetPortfolio() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
-          <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+          <h1 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0, fontFamily: "'Wooridaum', sans-serif" }}>
             {isEditMode ? '포트폴리오 재설정' : '투자 가이드'}
           </h1>
         </div>
@@ -1121,7 +1131,7 @@ export default function AssetPortfolio() {
         <div style={{ padding: '12px 16px 0' }}>
           {!showDetail && (
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 0 }}>
-              <p style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, margin: 0 }}>
+              <p style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, margin: 0, fontFamily: "'Wooridaum', sans-serif" }}>
                 {isEditMode
                   ? <>흐름과 상품 구성을<br />원하는 대로 수정해보세요</>
                   : <>{USER_NAME}님의 자산<br />이렇게 설계되었어요</>}
@@ -1220,6 +1230,17 @@ export default function AssetPortfolio() {
         />
       )}
 
+      {/* 투자 가이드 주식 매수 안내 팝업 */}
+      {wooriStockPopup && (
+        <WooriIBPopup
+          title="우리투자증권에서 주식을 매수해보세요"
+          message={`설계된 투자 가이드대로\n우리투자증권 앱에서 주식을 매수하면\n포트폴리오가 완성돼요`}
+          ctaLabel="우리투자증권으로 이동"
+          dismissLabel="대시보드로 바로 가기"
+          onClose={() => { setWooriStockPopup(false); navigate('/dashboard'); }}
+        />
+      )}
+
       {/* 추천 계좌 개설 완료 오버레이 */}
       {openedAccounts && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -1244,6 +1265,25 @@ export default function AssetPortfolio() {
                 </div>
               ))}
             </div>
+            {/* 우리투자증권 계좌 개설 안내 */}
+            <div style={{ marginTop: 4, padding: '16px', background: '#f0f6ff', borderRadius: 14, border: '1px solid #dbeafe' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6, flexShrink: 0 }}>
+                  <img src={wooriibLogo} alt="우리투자증권" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#1e40af', margin: '0 0 2px', fontFamily: "'Wooridaum', sans-serif" }}>우리투자증권에서 계좌를 완성해보세요</p>
+                  <p style={{ fontSize: 11, color: '#3b82f6', margin: 0 }}>개설된 계좌를 우리투자증권 앱에서 활성화할 수 있어요</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { window.open('https://m.wooriib.com', '_blank'); navigate('/dashboard'); }}
+                style={{ width: '100%', padding: '11px 0', fontSize: 13, fontWeight: 700, background: '#004EA2', color: '#fff', border: 'none', borderRadius: 11, cursor: 'pointer', boxShadow: '0 3px 10px rgba(0,78,162,0.25)' }}
+              >
+                우리투자증권으로 이동
+              </button>
+            </div>
+
             <button
               onClick={() => navigate('/dashboard')}
               style={{ width: '100%', padding: '14px 0', fontSize: 15, fontWeight: 700, background: '#3182F6', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(49,130,246,0.2)' }}

@@ -367,7 +367,7 @@ export default function AssetPrescription() {
 
         <main className="p-5 pt-2">
           {/* 헤더 텍스트 */}
-          <h2 className="text-base font-bold leading-snug mb-3 text-slate-800">
+          <h2 className="text-base font-bold leading-snug mb-3 text-slate-800 font-wooridaum">
             <span className="text-blue-600">Pori</span>가 {USER_NAME}님에 맞게 월급을 나눠봤어요!
           </h2>
 

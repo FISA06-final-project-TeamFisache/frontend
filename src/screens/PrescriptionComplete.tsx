@@ -39,7 +39,7 @@ export default function PrescriptionComplete() {
       >
         {/* 제목 */}
         <h1
-          className="text-2xl font-bold text-blue-500 text-center animate-slide-up"
+          className="text-2xl font-bold text-blue-500 text-center animate-slide-up font-wooridaum"
           style={{ animationDelay: '0.1s' }}
         >
           통장 나누기 완료
@@ -54,7 +54,7 @@ export default function PrescriptionComplete() {
         <div className="flex flex-col items-center justify-center space-y-4 text-center animate-slide-up" style={{ animationDelay: '0.6s' }}>
           <p className="text-xl font-semibold text-slate-800 leading-snug">
             {USER_NAME} 님의 자산을<br />
-            <span className="text-blue-500">어떻게 불릴지 고민중이에요</span>
+            <span className="text-blue-500">어떻게 불릴지 고민 중이에요</span>
           </p>
 
           <p className="text-base text-slate-500 leading-relaxed">

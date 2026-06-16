@@ -46,7 +46,7 @@ export default function PrescriptionIntro() {
       >
         {/* 제목 */}
         <h1
-          className="text-2xl font-bold text-slate-800 text-center animate-slide-up"
+          className="text-2xl font-bold text-slate-800 text-center animate-slide-up font-wooridaum"
           style={{ animationDelay: '0.1s' }}
         >
           {USER_NAME}님을&nbsp; 파악했어요

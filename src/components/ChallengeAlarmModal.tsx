@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ChallengeAlarmDetail, DailyLog, StockInfo } from '../api/challengeApi';
 import { getStockInfo } from '../api/challengeApi';
 import missionpori from '../assets/pori/missionpori.png';
+import WooriIBPopup from './WooriIBPopup';
 
 interface Props {
   detail: ChallengeAlarmDetail;
@@ -170,6 +171,7 @@ function StockChartView({
   onBack: () => void;
   onClose: () => void;
 }) {
+  const [showWooriPopup, setShowWooriPopup] = useState(false);
   const closes = stockInfo?.chart.map(p => p.close) ?? [];
   const isUp = (stockInfo?.changeAmount ?? 0) >= 0;
   const color = isUp ? '#EF4444' : '#3B82F6';
@@ -181,6 +183,7 @@ function StockChartView({
   const lastY = closes.length > 1 ? 80 - 6 - ((lastClose - minC) / (maxC - minC || 1)) * (80 - 12) : 40;
 
   return (
+    <>
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 375, display: 'flex', flexDirection: 'column', gap: 14, padding: '20px 16px 32px', maxHeight: '90vh', overflowY: 'auto', animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
 
@@ -264,11 +267,24 @@ function StockChartView({
           </div>
         </div>
 
-        <button onClick={onClose} style={{ width: '100%', padding: '14px 0', borderRadius: 12, background: isSuccess ? '#16A34A' : '#0095DB', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700 }}>
-          {isSuccess ? '✓ 확인' : '확인'}
+        <button
+          onClick={isSuccess ? () => setShowWooriPopup(true) : onClose}
+          style={{ width: '100%', padding: '14px 0', borderRadius: 12, background: isSuccess ? '#16A34A' : '#0095DB', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700 }}
+        >
+          {isSuccess ? '주식 매수하러 가기' : '확인'}
         </button>
       </div>
     </div>
+    {showWooriPopup && (
+      <WooriIBPopup
+        title="우리투자증권에서 주식을 받아보세요"
+        message={`미션 성공 리워드 ${detail.tickerName} ${detail.estimatedShares}이\n우리투자증권에 적립됩니다.\n지금 바로 확인해보세요!`}
+        ctaLabel="우리투자증권으로 이동"
+        dismissLabel="나중에"
+        onClose={() => { setShowWooriPopup(false); onClose(); }}
+      />
+    )}
+    </>
   );
 }
 

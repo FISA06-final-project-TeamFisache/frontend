@@ -115,8 +115,8 @@ export default function PrescriptionLoading() {
           <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-6">
             <CheckCircle2 className="w-10 h-10" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">처방 완료!</h1>
-          <p className="text-slate-500 font-medium">최적의 포트폴리오로 이동합니다</p>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2 font-wooridaum">처방 완료!</h1>
+          <p className="text-slate-500 font-medium">맞춤형 자산 처방전으로 이동합니다</p>
         </div>
       </div>
     </div>
